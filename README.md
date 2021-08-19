@@ -1,7 +1,8 @@
 # Pomodouroboros
 
 Most pomodoro trackers assume you're going to start them. But time and tide
-waits for no man - the great pomodoro of life is eternal.
+wait for no one - the great pomodoro of the cosmos is cold and dark, and it
+goes on forever.
 
 For people with ADHD or other executive function disorders, time blindness is
 common; the inability to notice that time is passing or initiate tasks at an
