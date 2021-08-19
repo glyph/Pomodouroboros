@@ -1,0 +1,7 @@
+#!/bin/bash -ex
+
+mypy ./src;
+rm -fr ./dist;
+python setup.py py2app --alias;
+codesign -s - ./dist/Pomodouroboros.app;
+./dist/Pomodouroboros.app/Contents/MacOS/Pomodouroboros;
