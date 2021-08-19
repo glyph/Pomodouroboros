@@ -178,10 +178,10 @@ class Day(object):
         """
         Create a test day that starts around now and goes real fast.
         """
-        now = datetime.now(tz=tzlocal())
+        startTime = datetime.now(tz=tzlocal()) + timedelta(seconds=15)
         return cls.new(
-            startTimeOfDay=now.time(),
-            endTimeOfDay=(now + timedelta(minutes=3)).time(),
+            startTimeOfDay=startTime.time(),
+            endTimeOfDay=(startTime + timedelta(minutes=3)).time(),
             longBreaks=[],
             pomodoroLength=timedelta(seconds=30),
             breakLength=timedelta(seconds=15),
@@ -235,7 +235,7 @@ class Day(object):
     def failedPomodoros(self) -> Sequence[Pomodoro]:
         allFailed = [
             each
-            for each in self.elapsedIntervals
+            for (idx, each) in enumerate(self.elapsedIntervals)
             if isinstance(each, Pomodoro)
             and (
                 each.intention is None or each.intention.wasSuccessful == False
@@ -252,13 +252,22 @@ class Day(object):
         List of pomodoros that haven't yet been evaluated and the user needs to
         confirm or reject their success.
         """
-        return [
+        unEvaluated = [
             each
             for each in self.elapsedIntervals
             if isinstance(each, Pomodoro)
             and each.intention is not None
             and each.intention.wasSuccessful is None
         ]
+        # we can have at most 2 unevaluated poms. if we're on break 2 can be in
+        # elapsedIntervals; if we're active then only 1 can be.
+        offset = -1
+        if not self.pendingIntervals or isinstance(self.pendingIntervals[0], Break):
+            offset = -2
+        for failedAlready in unEvaluated[:offset]:
+            assert failedAlready.intention is not None
+            failedAlready.intention.wasSuccessful = False
+        return unEvaluated[offset:]
 
     def currentIsFailed(self) -> bool:
         if not self.pendingIntervals:
@@ -343,8 +352,9 @@ class Day(object):
         total = totalTD.total_seconds()
         elapsed = elapsedTD.total_seconds()
         rawPct = elapsed / total
-        clamped = max(0.0, min(rawPct, 1.0))
-        observer.progressUpdate(
-            currentInterval, clamped, self.expressIntention(currentTime, "")
-        )
+        if 0.0 <= rawPct <= 1.0:
+            # otherwise we're outside the bounds of the interval and we should not report on it
+            observer.progressUpdate(
+                currentInterval, rawPct, self.expressIntention(currentTime, "")
+            )
         self.lastUpdateTime = currentTime

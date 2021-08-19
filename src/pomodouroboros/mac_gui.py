@@ -154,6 +154,7 @@ class MacPomObserver(object):
     active: bool = field(default=False)
 
     def __post_init__(self):
+        print("post-init", self.active)
         self.window.setIsVisible_(self.active)
 
     def setWindow(self, newWindow: HUDWindow) -> None:
@@ -161,12 +162,14 @@ class MacPomObserver(object):
         Change the window to be the new window.
         """
         self.window = newWindow
+        print("set-window", self.active)
         newWindow.setIsVisible_(self.active)
 
     def breakStarting(self, startingBreak: Break) -> None:
         """
         A break is starting.
         """
+        print("break start")
         self.active = True
         self.window.setIsVisible_(True)
         notify("Starting Break", "Take it easy for a while.")
@@ -175,6 +178,7 @@ class MacPomObserver(object):
         """
         A pomodoro is starting; time to express an intention.
         """
+        print("pom start")
         self.active = True
         self.lastThreshold = 0.0
         self.window.setIsVisible_(True)
