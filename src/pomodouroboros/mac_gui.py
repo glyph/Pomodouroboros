@@ -190,7 +190,9 @@ class MacPomObserver(object):
         """
         notify(
             "Pomodoro Failed",
-            informativeText="The pomodoro elapsed with no intention specified.",
+            informativeText=(
+                "The pomodoro elapsed with no intention specified."
+            ),
         )
 
     def progressUpdate(
@@ -309,17 +311,20 @@ def expressIntention(day: Day, newIntention: str) -> None:
     if intentionResult == IntentionResponse.WasSet:
         notify("Intention Set", f"“{newIntention}”")
     elif intentionResult == IntentionResponse.AlreadySet:
-        description = day.pendingIntervals[0].intention.description  # type: ignore
+        description = day.pendingIntervals[
+            0
+        ].intention.description  # type: ignore
         notify(
             "Intention Not Set",
             "Already Specified",
-            informativeText=f"The intention was already set to: “{description}”",
+            informativeText=f"intention was already: “{description}”",
         )
     elif intentionResult == IntentionResponse.TooLate:
         notify(
             "Intention Not Set",
             "Too Late",
-            informativeText="It's too late to set an intention. Try again next time!",
+            informativeText="It's too late to set an intention. "
+            "Try again next time!",
         )
     elif intentionResult == IntentionResponse.OnBreak:
         notify(
@@ -338,6 +343,7 @@ def expressIntention(day: Day, newIntention: str) -> None:
     saveDay(day)
     print("saved")
 
+
 def setIntention(day: Day) -> None:
     try:
         newIntention = getString(
@@ -347,7 +353,7 @@ def setIntention(day: Day) -> None:
         )
         print("String Get")
         expressIntention(day, newIntention)
-    except:
+    except BaseException:
         print(Failure().getTraceback())
 
 
@@ -365,7 +371,8 @@ def thisAndPreviousPoms(day: Day) -> Iterable[Pomodoro]:
 
 def bonus(when: datetime, day: Day) -> None:
     """
-    Start a new pom outside the usual bounds of pomodoro time, either before or after the end of the day.
+    Start a new pom outside the usual bounds of pomodoro time, either before or
+    after the end of the day.
     """
     day.bonusPomodoro(when)
     saveDay(day)
@@ -456,7 +463,7 @@ class DayManager(object):
                     self.day = newDay(date.today())
                 self.day.advanceToTime(present, self.observer)
                 status.item.setTitle_(labelForDay(self.day))
-            except:
+            except BaseException:
                 print(Failure().getTraceback())
 
         self.loopingCall = LoopingCall(update)
@@ -480,7 +487,7 @@ class DayManager(object):
                     )
                     notify(
                         "Success Previously Set",
-                        informativeText=f"You already marked this pomodoro as {adjective}.",
+                        informativeText=f"Pomodoro Already {adjective}.",
                     )
                 else:
                     self.day.evaluateIntention(aPom, succeeded)
@@ -496,7 +503,7 @@ class DayManager(object):
                     )
                     notify(
                         f"pomodoro {noun}".title(),
-                        informativeText=f"You marked this pomodoro as {adjective}.",
+                        informativeText=f"Marked Pomodoro {adjective}.",
                     )
                 return
 
