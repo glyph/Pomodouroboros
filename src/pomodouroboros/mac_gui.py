@@ -483,6 +483,7 @@ class DayManager(object):
                         informativeText=f"You already marked this pomodoro as {adjective}.",
                     )
                 else:
+                    self.day.evaluateIntention(aPom, succeeded)
                     adjective = (
                         "successful"
                         if aPom.intention.wasSuccessful
@@ -493,7 +494,6 @@ class DayManager(object):
                         if aPom.intention.wasSuccessful
                         else "failure"
                     )
-                    self.day.evaluateIntention(aPom, succeeded)
                     notify(
                         f"pomodoro {noun}".title(),
                         informativeText=f"You marked this pomodoro as {adjective}.",
