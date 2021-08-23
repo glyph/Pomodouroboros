@@ -1,3 +1,6 @@
 # requirements
 pyobjc
 twisted
+mypy>=0.910
+python-dateutil
+types-python-dateutil
