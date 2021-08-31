@@ -146,7 +146,7 @@ class Day(object):
     def new(
         cls,
         startTimeOfDay: time = time(9),
-        endTimeOfDay: time = time(17),
+        endTimeOfDay: time = time(18),
         day: date = date.today(),
         timezone: tzinfo = tzlocal(),
         longBreaks: Sequence[int] = (7, 8),  # 1 hour (2-pom) break for lunch.
