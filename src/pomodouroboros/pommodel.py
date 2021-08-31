@@ -74,12 +74,25 @@ class PomObserver(Protocol):
         """
 
 
+class IntentionSuccess(Enum):
+    Achieved = "Achieved"
+    "The goal described in the intention is finished."
+    Focused = "Focused"
+    "Good focus during the pomodoro, but the goal was not complete."
+    Distracted = "Distracted"
+    "Distracted during the pomodoro; not great progress."
+
+
 @dataclass
 class Intention:
     description: str
     "A brief description of the intent of this pomodoro."
-    wasSuccessful: Optional[bool]
-    "Was this pomodoro successful? None if it's not complete yet."
+    wasSuccessful: Optional[Union[bool, IntentionSuccess]]
+    """
+    Was this pomodoro successful?  None if it's not complete yet.  True and
+    False are legacy values, newer pomodoros should be set to an
+    IntentionSuccess.
+    """
 
     @property
     def isComplete(self) -> bool:
@@ -213,7 +226,9 @@ class Day(object):
         # unreachable, really
         return IntentionResponse.OnBreak
 
-    def evaluateIntention(self, pomodoro: Pomodoro, success: bool) -> None:
+    def evaluateIntention(
+        self, pomodoro: Pomodoro, success: IntentionSuccess
+    ) -> None:
         """
         Evaluate the given pomodoro's intention as successful or not.
         """
@@ -223,13 +238,32 @@ class Day(object):
         print("set to", success)
         intention.wasSuccessful = success
 
+    def achievedPomodoros(self) -> Sequence[Pomodoro]:
+        return [
+            each
+            for each in self.elapsedIntervals
+            if isinstance(each, Pomodoro)
+            and each.intention is not None
+            and each.intention.wasSuccessful == IntentionSuccess.Achieved
+        ]
+
+    def focusedPomodoros(self) -> Sequence[Pomodoro]:
+        return [
+            each
+            for each in self.elapsedIntervals
+            if isinstance(each, Pomodoro)
+            and each.intention is not None
+            and each.intention.wasSuccessful == IntentionSuccess.Focused
+        ]
+
     def successfulPomodoros(self) -> Sequence[Pomodoro]:
         return [
             each
             for each in self.elapsedIntervals
             if isinstance(each, Pomodoro)
             and each.intention is not None
-            and each.intention.wasSuccessful == True
+            and each.intention.wasSuccessful
+            not in (False, IntentionSuccess.Distracted)
         ]
 
     def failedPomodoros(self) -> Sequence[Pomodoro]:
@@ -238,7 +272,9 @@ class Day(object):
             for (idx, each) in enumerate(self.elapsedIntervals)
             if isinstance(each, Pomodoro)
             and (
-                each.intention is None or each.intention.wasSuccessful == False
+                each.intention is None
+                or each.intention.wasSuccessful
+                in (False, IntentionSuccess.Distracted)
             )
         ]
         if self.currentIsFailed():
@@ -262,7 +298,9 @@ class Day(object):
         # we can have at most 2 unevaluated poms. if we're on break 2 can be in
         # elapsedIntervals; if we're active then only 1 can be.
         offset = -1
-        if not self.pendingIntervals or isinstance(self.pendingIntervals[0], Break):
+        if not self.pendingIntervals or isinstance(
+            self.pendingIntervals[0], Break
+        ):
             offset = -2
         for failedAlready in unEvaluated[:offset]:
             assert failedAlready.intention is not None
@@ -297,16 +335,24 @@ class Day(object):
         """
         Create a new pomodoro at the end of the day.
         """
-        allIntervals = (self.elapsedIntervals + self.pendingIntervals)
+        allIntervals = self.elapsedIntervals + self.pendingIntervals
         lastInterval = allIntervals[-1]
         newStartTime = max(lastInterval.endTime, currentTime)
         iterIntervals = iter(allIntervals)
-        firstPom = next(each for each in iterIntervals if isinstance(each, Pomodoro))
-        firstBreak = next(each for each in iterIntervals if isinstance(each, Break))
+        firstPom = next(
+            each for each in iterIntervals if isinstance(each, Pomodoro)
+        )
+        firstBreak = next(
+            each for each in iterIntervals if isinstance(each, Break)
+        )
         pomodoroLength = firstPom.endTime - firstPom.startTime
         breakLength = firstBreak.endTime - firstBreak.startTime
-        newPomodoro = Pomodoro(None, newStartTime, newStartTime + pomodoroLength)
-        newBreak = Break(newPomodoro.endTime, newPomodoro.endTime + breakLength)
+        newPomodoro = Pomodoro(
+            None, newStartTime, newStartTime + pomodoroLength
+        )
+        newBreak = Break(
+            newPomodoro.endTime, newPomodoro.endTime + breakLength
+        )
         self.pendingIntervals.append(newPomodoro)
         self.pendingIntervals.append(newBreak)
         return newPomodoro
@@ -338,9 +384,8 @@ class Day(object):
         currentInterval = self.pendingIntervals[0]
         # No elapsed intervals means we've never sent the 'starting'
         # notification, so do that now.
-        if (
-            (self.lastUpdateTime <= currentInterval.startTime)
-            and (currentTime > currentInterval.startTime)
+        if (self.lastUpdateTime <= currentInterval.startTime) and (
+            currentTime > currentInterval.startTime
         ):
             if isinstance(currentInterval, Break):
                 observer.breakStarting(currentInterval)

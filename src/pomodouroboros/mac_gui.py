@@ -6,15 +6,12 @@ from datetime import date, datetime
 from time import time as rawSeconds
 from typing import Callable, ClassVar, Iterable, List, Optional, Tuple
 
-from Foundation import NSRect
-from twisted.internet.interfaces import IReactorTCP
-from twisted.internet.task import LoopingCall
-from twisted.python.failure import Failure
-
 import math
 from AppKit import (
     NSAlert,
     NSAlertFirstButtonReturn,
+    NSAlertSecondButtonReturn,
+    NSAlertThirdButtonReturn,
     NSApp,
     NSApplicationDidChangeScreenParametersNotification,
     NSBackingStoreBuffered,
@@ -31,17 +28,23 @@ from AppKit import (
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
 )
+from Foundation import NSRect
 from dateutil.tz import tzlocal
 from pomodouroboros.notifs import askForIntent, notify, setupNotifications
 from pomodouroboros.pommodel import (
     Break,
     Day,
     IntentionResponse,
+    IntentionSuccess,
     Interval,
     Pomodoro,
+    Intention,
 )
 from pomodouroboros.quickapp import Actionable, Status, mainpoint, quit
 from pomodouroboros.storage import TEST_MODE, loadOrCreateDay, saveDay
+from twisted.internet.interfaces import IReactorTCP
+from twisted.internet.task import LoopingCall
+from twisted.python.failure import Failure
 
 
 fillRect = NSBezierPath.fillRect_
@@ -111,6 +114,27 @@ class HUDWindow(NSWindow):
 
 
 NSModalResponse = int
+buttonReturnTo = {
+    NSAlertFirstButtonReturn: IntentionSuccess.Achieved,
+    NSAlertSecondButtonReturn: IntentionSuccess.Focused,
+    NSAlertThirdButtonReturn: IntentionSuccess.Distracted,
+}
+
+
+def getSuccess(intention: Intention) -> IntentionSuccess:
+    """
+    Show an alert that asks for an evaluation of the success.
+    """
+    msg = NSAlert.alloc().init()
+    msg.addButtonWithTitle_("Achieved it")
+    msg.addButtonWithTitle_("Focused on it")
+    msg.addButtonWithTitle_("I was distracted")
+    msg.setMessageText_("Did you follow your intention?")
+    msg.setInformativeText_(f"Your intention was: “{intention.description}”.  How did you track to it?")
+    msg.layout()
+    NSApp().activateIgnoringOtherApps_(True)
+    response: NSModalResponse = msg.runModal()
+    return buttonReturnTo[response]
 
 
 def getString(title: str, question: str, defaultValue: str) -> str:
@@ -396,13 +420,14 @@ def labelForDay(day: Day) -> str:
     Generate a textual label representing the success proportion of the given
     day.
     """
+    bonus = len(day.achievedPomodoros()) * 0.25
     success = len(day.successfulPomodoros())
     failed = len(day.failedPomodoros())
     mystery = len(day.unEvaluatedPomodoros())
     unfinished = len(day.pendingPomodoros())
     icon = tomato if success > failed else can
     title = icon + ": "
-    title += f"{success}✓ "
+    title += f"{success + bonus}✓ "
     title += f"{failed}✗ "
     if mystery:
         title += f"{mystery}? "
@@ -448,10 +473,8 @@ class DayManager(object):
             [
                 ("Intention", lambda: setIntention(self.day)),
                 ("Bonus Pomodoro", lambda: bonus(now(), self.day)),
-                ("Previous was successful", lambda: self.setSuccess(True, -1)),
-                ("This is successful", lambda: self.setSuccess(True, 0)),
-                ("Failed previous", lambda: self.setSuccess(False, -1)),
-                ("Oops, failed this one", lambda: self.setSuccess(False, 0)),
+                ("Evaluate", lambda: self.setSuccess(0)),
+                ("Previous evaluation", lambda: self.setSuccess(-1)),
                 ("Quit", quit),
             ]
         )
@@ -469,7 +492,7 @@ class DayManager(object):
         self.loopingCall = LoopingCall(update)
         self.loopingCall.start(1.0 / 10.0)
 
-    def setSuccess(self, succeeded: bool, index: int) -> None:
+    def setSuccess(self, index: int) -> None:
         for idx, aPom in enumerate(thisAndPreviousPoms(self.day)):
             if idx == -index:
                 # this error testing should really be in the model
@@ -490,6 +513,7 @@ class DayManager(object):
                         informativeText=f"Pomodoro Already {adjective}.",
                     )
                 else:
+                    succeeded = getSuccess(aPom.intention)
                     self.day.evaluateIntention(aPom, succeeded)
                     adjective = (
                         "successful"
