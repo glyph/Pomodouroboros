@@ -502,12 +502,16 @@ class DayManager(object):
                         "Automatic Failure",
                         "Set an intention next time!",
                     )
-                elif aPom.intention.wasSuccessful is not None:
-                    adjective = (
-                        "successful"
-                        if aPom.intention.wasSuccessful
-                        else "failed"
-                    )
+                elif (intentSuccess := aPom.intention.wasSuccessful) is not None:
+                    adjective = {
+                        IntentionSuccess.Achieved: "achieved",
+                        IntentionSuccess.Focused: "focused",
+                        IntentionSuccess.Distracted: "distracted",
+                        IntentionSuccess.NeverEvaluated: "no longer evaluable",
+                        True: "successful",
+                        False: "failed",
+                        None: "??????",
+                    }[intentSuccess]
                     notify(
                         "Success Previously Set",
                         informativeText=f"Pomodoro Already {adjective}.",
@@ -515,6 +519,8 @@ class DayManager(object):
                 else:
                     succeeded = getSuccess(aPom.intention)
                     self.day.evaluateIntention(aPom, succeeded)
+                    saveDay(self.day)
+                    didIt = aPom.intention.wasSuccessful not in (False, IntentionSuccess.Distracted, IntentionSuccess.NeverEvaluated)
                     adjective = (
                         "successful"
                         if aPom.intention.wasSuccessful

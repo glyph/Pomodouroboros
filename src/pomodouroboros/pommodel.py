@@ -81,6 +81,8 @@ class IntentionSuccess(Enum):
     "Good focus during the pomodoro, but the goal was not complete."
     Distracted = "Distracted"
     "Distracted during the pomodoro; not great progress."
+    NeverEvaluated = "NeverEvaluated"
+    "The deadline for evaluating this pom expired without an evaluation."
 
 
 @dataclass
@@ -304,7 +306,7 @@ class Day(object):
             offset = -2
         for failedAlready in unEvaluated[:offset]:
             assert failedAlready.intention is not None
-            failedAlready.intention.wasSuccessful = False
+            failedAlready.intention.wasSuccessful = IntentionSuccess.NeverEvaluated
         return unEvaluated[offset:]
 
     def currentIsFailed(self) -> bool:
