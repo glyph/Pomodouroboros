@@ -126,6 +126,23 @@ class Break:
 Interval = Union[Pomodoro, Break]
 
 
+class DayOfWeek(Enum):
+    monday = 0
+    tuesday = 1
+    wednesday = 2
+    thursday = 3
+    friday = 4
+    saturday = 5
+    sunday = 6
+
+
+def isWeekend(aDate: date) -> bool:
+    """
+    Is the given day a weekend day?
+    """
+    return DayOfWeek(aDate.weekday()) in (DayOfWeek.saturday, DayOfWeek.sunday)
+
+
 @dataclass
 class Day(object):
     """
@@ -147,11 +164,11 @@ class Day(object):
     @classmethod
     def new(
         cls,
-        startTimeOfDay: time = time(9),
-        endTimeOfDay: time = time(18),
+        startTimeOfDay: Optional[time] = None,
+        endTimeOfDay: Optional[time] = None,
         day: date = date.today(),
         timezone: tzinfo = tzlocal(),
-        longBreaks: Sequence[int] = (7, 8),  # 1 hour (2-pom) break for lunch.
+        longBreaks: Optional[Sequence[int]] = None,
         pomodoroLength: timedelta = timedelta(minutes=25),
         breakLength: timedelta = timedelta(minutes=5),
         intentionGracePeriod: timedelta = timedelta(minutes=4),
@@ -159,6 +176,25 @@ class Day(object):
         """
         Create a new day filled with pomodoros.
         """
+        if (
+            isWeekend(day)
+            and startTimeOfDay is None
+            and endTimeOfDay is None
+            and longBreaks is None
+        ):
+            # It might be nicer to have a 'configuration' object with all these
+            # attributes so that we could supply one for weekdays and one for
+            # weekends rather than this "you didn't pass any args" heuristic
+            startTimeOfDay = time(0)
+            endTimeOfDay = time(0)
+            longBreaks = ()
+        else:
+            if startTimeOfDay is None:
+                startTimeOfDay = time(9)
+            if endTimeOfDay is None:
+                endTimeOfDay = time(18)
+            if longBreaks is None:
+                longBreaks = (7, 8)  # 1 hour (2-pom) break for noon lunch.
         startTime = datetime.combine(day, startTimeOfDay, timezone)
         endTime = datetime.combine(day, endTimeOfDay, timezone)
         currentTime = startTime
@@ -306,7 +342,9 @@ class Day(object):
             offset = -2
         for failedAlready in unEvaluated[:offset]:
             assert failedAlready.intention is not None
-            failedAlready.intention.wasSuccessful = IntentionSuccess.NeverEvaluated
+            failedAlready.intention.wasSuccessful = (
+                IntentionSuccess.NeverEvaluated
+            )
         return unEvaluated[offset:]
 
     def currentIsFailed(self) -> bool:
@@ -337,18 +375,32 @@ class Day(object):
         """
         Create a new pomodoro at the end of the day.
         """
-        allIntervals = self.elapsedIntervals + self.pendingIntervals
-        lastInterval = allIntervals[-1]
-        newStartTime = max(lastInterval.endTime, currentTime)
-        iterIntervals = iter(allIntervals)
-        firstPom = next(
-            each for each in iterIntervals if isinstance(each, Pomodoro)
-        )
-        firstBreak = next(
-            each for each in iterIntervals if isinstance(each, Break)
-        )
-        pomodoroLength = firstPom.endTime - firstPom.startTime
-        breakLength = firstBreak.endTime - firstBreak.startTime
+
+        def lengths():
+            allIntervals = self.elapsedIntervals + self.pendingIntervals
+            if allIntervals:
+                startingPoint = allIntervals[-1].endTime
+                iterIntervals = iter(allIntervals)
+                firstPom = next(
+                    each
+                    for each in iterIntervals
+                    if isinstance(each, Pomodoro)
+                )
+                firstBreak = next(
+                    each for each in iterIntervals if isinstance(each, Break)
+                )
+                pomodoroLength = firstPom.endTime - firstPom.startTime
+                breakLength = firstBreak.endTime - firstBreak.startTime
+            else:
+                # we need to save these attributes in the constructor so we
+                # don't need to synthesize defaults here.
+                startingPoint = self.endTime
+                pomodoroLength = timedelta(minutes=25)
+                breakLength = timedelta(minutes=5)
+            return startingPoint, pomodoroLength, breakLength
+
+        startingPoint, pomodoroLength, breakLength = lengths()
+        newStartTime = max(startingPoint, currentTime)
         newPomodoro = Pomodoro(
             None, newStartTime, newStartTime + pomodoroLength
         )
@@ -357,6 +409,7 @@ class Day(object):
         )
         self.pendingIntervals.append(newPomodoro)
         self.pendingIntervals.append(newBreak)
+        print("created bonus", newPomodoro, newBreak)
         return newPomodoro
 
     def advanceToTime(

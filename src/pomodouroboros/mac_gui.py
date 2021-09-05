@@ -398,8 +398,11 @@ def bonus(when: datetime, day: Day) -> None:
     Start a new pom outside the usual bounds of pomodoro time, either before or
     after the end of the day.
     """
-    day.bonusPomodoro(when)
-    saveDay(day)
+    try:
+        day.bonusPomodoro(when)
+        saveDay(day)
+    except BaseException:
+        print(Failure().getTraceback())
 
 
 def now() -> datetime:
