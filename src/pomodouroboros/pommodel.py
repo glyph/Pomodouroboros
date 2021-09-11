@@ -13,6 +13,7 @@ What do I want in here?
             - pass/fail status
 """
 from __future__ import annotations
+from decimal import Decimal
 from dataclasses import dataclass
 from typing import Optional, Sequence, Protocol, List, Union
 from datetime import datetime, timedelta, date, time, tzinfo
@@ -114,6 +115,22 @@ class Pomodoro(object):
 
 
 @dataclass
+class Score(object):
+    """
+    The score for a given day.
+    """
+
+    hits: Decimal
+    "Points scored by the player."
+    misses: Decimal
+    "Potential points lost"
+    unevaluated: Decimal
+    "Evaluations which are still possible, but haven't been performed yet"
+    remaining: Decimal
+    "Intervals remaining that haven't been scored yet."
+
+
+@dataclass
 class Break:
     """
     A break; no goal, just chill.
@@ -143,6 +160,17 @@ def isWeekend(aDate: date) -> bool:
     return DayOfWeek(aDate.weekday()) in (DayOfWeek.saturday, DayOfWeek.sunday)
 
 
+POINTS_LOOKUP = {
+    None: (Decimal("0.1"), Decimal("1.0")),
+    True: (Decimal("1.0"), Decimal("0.0")),
+    False: (Decimal("0.25"), Decimal("1.0")),
+    IntentionSuccess.Achieved: (Decimal("1.25"), Decimal("0.0")),
+    IntentionSuccess.Focused: (Decimal("1.0"), Decimal("0.0")),
+    IntentionSuccess.Distracted: (Decimal("0.25"), Decimal("1.0")),
+    IntentionSuccess.NeverEvaluated: (Decimal("0.1"), Decimal("1.0")),
+}
+
+
 @dataclass
 class Day(object):
     """
@@ -160,6 +188,54 @@ class Day(object):
     lastUpdateTime: datetime
     "When was this Day last updated?"
     intentionGracePeriod: timedelta
+
+    def score(self) -> Score:
+        """
+        Evaluate the score of the current day.
+        """
+        result = Score(Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"))
+        elapsed = [
+            interval
+            for interval in self.elapsedIntervals
+            if isinstance(interval, Pomodoro)
+        ]
+        pending = [
+            interval
+            for interval in self.pendingIntervals
+            if isinstance(interval, Pomodoro)
+        ]
+        elapsed, grace = elapsed[:-1], elapsed[-1:]
+        for stillPossibleToEvaluate in grace:
+            if (
+                stillPossibleToEvaluate.intention is not None
+                and stillPossibleToEvaluate.intention.wasSuccessful is None
+            ):
+                result.unevaluated += 1
+            else:
+                elapsed.append(stillPossibleToEvaluate)
+
+        if pending:
+            # Did we already evaluate our currently-executing pom?
+            current = pending[0]
+            if (
+                current.intention is not None
+                and current.intention.wasSuccessful is not None
+            ):
+                # Treat it as completed if so.
+                elapsed.append(pending.pop(0))
+
+        for each in elapsed:
+            if not isinstance(each, Pomodoro):
+                # Breaks don't affect score.
+                continue
+            if each.intention is None:
+                result.misses += Decimal("1.0")
+                continue
+            hits, misses = POINTS_LOOKUP[each.intention.wasSuccessful]
+            result.hits += hits
+            result.misses += misses
+        result.remaining = Decimal(len(pending))
+        return result
 
     @classmethod
     def new(
@@ -453,7 +529,8 @@ class Day(object):
         elapsed = elapsedTD.total_seconds()
         rawPct = elapsed / total
         if 0.0 <= rawPct <= 1.0:
-            # otherwise we're outside the bounds of the interval and we should not report on it
+            # otherwise we're outside the bounds of the interval and we should
+            # not report on it
             observer.progressUpdate(
                 currentInterval, rawPct, self.expressIntention(currentTime, "")
             )

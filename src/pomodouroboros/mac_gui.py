@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from datetime import date, datetime
 from time import time as rawSeconds
 from typing import Callable, ClassVar, Iterable, List, Optional, Tuple
@@ -423,18 +424,15 @@ def labelForDay(day: Day) -> str:
     Generate a textual label representing the success proportion of the given
     day.
     """
-    bonus = len(day.achievedPomodoros()) * 0.25
-    success = len(day.successfulPomodoros())
-    failed = len(day.failedPomodoros())
-    mystery = len(day.unEvaluatedPomodoros())
-    unfinished = len(day.pendingPomodoros())
-    icon = tomato if success > failed else can
+    score = day.score()
+    icon = tomato if score.hits > score.misses else can
     title = icon + ": "
-    title += f"{success + bonus}✓ "
-    title += f"{failed}✗ "
-    if mystery:
-        title += f"{mystery}? "
-    title += f"{unfinished}…"
+    title += f"{score.hits}✓ "
+    title += f"{score.misses}✗ "
+    if score.unevaluated:
+        title += f"{score.unevaluated}? "
+    if score.remaining:
+        title += f"{score.remaining}…"
     return title
 
 
