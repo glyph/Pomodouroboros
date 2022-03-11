@@ -2,10 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from decimal import Decimal
-from datetime import date, datetime
 from time import time as rawSeconds
-from typing import Callable, ClassVar, Iterable, List, Optional, Tuple
 
 import math
 from AppKit import (
@@ -30,22 +27,30 @@ from AppKit import (
     NSWindowCollectionBehaviorStationary,
 )
 from Foundation import NSRect
+from datetime import date, datetime
 from dateutil.tz import tzlocal
-from pomodouroboros.notifs import askForIntent, notify, setupNotifications
+from pomodouroboros.notifs import (
+    askForIntent,
+    notify,
+    setupNotifications,
+    withdrawIntentPrompt,
+)
 from pomodouroboros.pommodel import (
     Break,
     Day,
+    Intention,
     IntentionResponse,
     IntentionSuccess,
     Interval,
     Pomodoro,
-    Intention,
 )
 from pomodouroboros.quickapp import Actionable, Status, mainpoint, quit
 from pomodouroboros.storage import TEST_MODE, loadOrCreateDay, saveDay
+from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IReactorTCP
 from twisted.internet.task import LoopingCall
 from twisted.python.failure import Failure
+from typing import Callable, ClassVar, List, Optional, Tuple
 
 
 fillRect = NSBezierPath.fillRect_
@@ -131,7 +136,9 @@ def getSuccess(intention: Intention) -> IntentionSuccess:
     msg.addButtonWithTitle_("Focused on it")
     msg.addButtonWithTitle_("I was distracted")
     msg.setMessageText_("Did you follow your intention?")
-    msg.setInformativeText_(f"Your intention was: “{intention.description}”.  How did you track to it?")
+    msg.setInformativeText_(
+        f"Your intention was: “{intention.description}”.  How did you track to it?"
+    )
     msg.layout()
     NSApp().activateIgnoringOtherApps_(True)
     response: NSModalResponse = msg.runModal()
@@ -382,18 +389,6 @@ def setIntention(day: Day) -> None:
         print(Failure().getTraceback())
 
 
-def thisAndPreviousPoms(day: Day) -> Iterable[Pomodoro]:
-    if day.pendingIntervals:
-        currentInterval = day.pendingIntervals[0]
-        if isinstance(currentInterval, Pomodoro):
-            yield currentInterval
-
-    if day.elapsedIntervals:
-        for each in reversed(day.elapsedIntervals):
-            if isinstance(each, Pomodoro):
-                yield each
-
-
 def bonus(when: datetime, day: Day) -> None:
     """
     Start a new pom outside the usual bounds of pomodoro time, either before or
@@ -445,28 +440,41 @@ class DayManager(object):
     observer: MacPomObserver
     window: HUDWindow
     progress: BigProgressView
+    reactor: IReactorTCP
     day: Day = field(default_factory=lambda: newDay(date.today()))
     loopingCall: Optional[LoopingCall] = field(default=None)
+    screenReconfigurationTimer: Optional[DelayedCall] = None
 
     @classmethod
-    def new(cls) -> DayManager:
+    def new(cls, reactor) -> DayManager:
         progressView = BigProgressView.alloc().init()
         window = makeOneWindow(progressView)
         observer = MacPomObserver(progressView, window)
-        self = DayManager(
+        return cls(
             observer,
             window,
             progressView,
+            reactor,
         )
-        return self
 
-    def recreateWindow(self) -> None:
-        print("screens changed")
-        newWindow = makeOneWindow(self.progress)
-        self.observer.setWindow(newWindow)
-        oldWindow = self.window
-        self.window = newWindow
-        oldWindow.close()
+    def screensChanged(self) -> None:
+        print("screens changed...")
+
+        def recreateWindow():
+            print("recreating window")
+            self.screenReconfigurationTimer = None
+            newWindow = makeOneWindow(self.progress)
+            self.observer.setWindow(newWindow)
+            self.window, oldWindow = newWindow, self.window
+            oldWindow.close()
+
+        settleDelay = 3.0
+        if self.screenReconfigurationTimer is None:
+            self.screenReconfigurationTimer = self.reactor.callLater(
+                settleDelay, recreateWindow
+            )
+        else:
+            self.screenReconfigurationTimer.reset(settleDelay)
 
     def start(self) -> None:
         status = Status(can)
@@ -474,8 +482,7 @@ class DayManager(object):
             [
                 ("Intention", lambda: setIntention(self.day)),
                 ("Bonus Pomodoro", lambda: bonus(now(), self.day)),
-                ("Evaluate", lambda: self.setSuccess(0)),
-                ("Previous evaluation", lambda: self.setSuccess(-1)),
+                ("Evaluate", lambda: self.setSuccess()),
                 ("Quit", quit),
             ]
         )
@@ -493,50 +500,32 @@ class DayManager(object):
         self.loopingCall = LoopingCall(update)
         self.loopingCall.start(1.0 / 10.0)
 
-    def setSuccess(self, index: int) -> None:
-        for idx, aPom in enumerate(thisAndPreviousPoms(self.day)):
-            if idx == -index:
-                # this error testing should really be in the model
-                if aPom.intention is None:
-                    notify(
-                        "Intention Not Set",
-                        "Automatic Failure",
-                        "Set an intention next time!",
-                    )
-                elif (intentSuccess := aPom.intention.wasSuccessful) is not None:
-                    adjective = {
-                        IntentionSuccess.Achieved: "achieved",
-                        IntentionSuccess.Focused: "focused",
-                        IntentionSuccess.Distracted: "distracted",
-                        IntentionSuccess.NeverEvaluated: "no longer evaluable",
-                        True: "successful",
-                        False: "failed",
-                        None: "??????",
-                    }[intentSuccess]
-                    notify(
-                        "Success Previously Set",
-                        informativeText=f"Pomodoro Already {adjective}.",
-                    )
-                else:
-                    succeeded = getSuccess(aPom.intention)
-                    self.day.evaluateIntention(aPom, succeeded)
-                    saveDay(self.day)
-                    didIt = aPom.intention.wasSuccessful not in (False, IntentionSuccess.Distracted, IntentionSuccess.NeverEvaluated)
-                    adjective = (
-                        "successful"
-                        if aPom.intention.wasSuccessful
-                        else "failed"
-                    )
-                    noun = (
-                        "success"
-                        if aPom.intention.wasSuccessful
-                        else "failure"
-                    )
-                    notify(
-                        f"pomodoro {noun}".title(),
-                        informativeText=f"Marked Pomodoro {adjective}.",
-                    )
-                return
+    def setSuccess(self) -> None:
+        pomsToEvaluate = self.day.unEvaluatedPomodoros()
+        if not pomsToEvaluate:
+            notify("No Evaluations Pending")
+            notify("You've already evaluated everything you can.")
+            return
+        aPom = pomsToEvaluate[0]
+        # todo: teach mypy about this
+        assert (
+            aPom.intention is not None
+        ), "unEvaluatedPomodoros scans this already"
+        succeeded = getSuccess(aPom.intention)
+        self.day.evaluateIntention(aPom, succeeded)
+        saveDay(self.day)
+        didIt = aPom.intention.wasSuccessful not in (
+            False,
+            IntentionSuccess.Distracted,
+            IntentionSuccess.NeverEvaluated,
+        )
+        adjective = "successful" if didIt else "failed"
+        noun = "success" if didIt else "failure"
+        notify(
+            f"pomodoro {noun}".title(),
+            informativeText=f"Marked Pomodoro {adjective}.",
+        )
+        return
 
 
 def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
@@ -551,9 +540,10 @@ def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
 @mainpoint()
 def main(reactor: IReactorTCP) -> None:
     setupNotifications()
-    dayManager = DayManager.new()
+    withdrawIntentPrompt()
+    dayManager = DayManager.new(reactor)
     dayManager.start()
     callOnNotification(
         NSApplicationDidChangeScreenParametersNotification,
-        dayManager.recreateWindow,
+        dayManager.screensChanged,
     )

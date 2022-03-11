@@ -204,30 +204,16 @@ class Day(object):
             for interval in self.pendingIntervals
             if isinstance(interval, Pomodoro)
         ]
-        elapsed, grace = elapsed[:-1], elapsed[-1:]
-        for stillPossibleToEvaluate in grace:
-            if (
-                stillPossibleToEvaluate.intention is not None
-                and stillPossibleToEvaluate.intention.wasSuccessful is None
-            ):
-                result.unevaluated += 1
-            else:
-                elapsed.append(stillPossibleToEvaluate)
-
-        if pending:
-            # Did we already evaluate our currently-executing pom?
-            current = pending[0]
-            if (
-                current.intention is not None
-                and current.intention.wasSuccessful is not None
-            ):
-                # Treat it as completed if so.
-                elapsed.append(pending.pop(0))
-
+        unEvaluated = self.unEvaluatedPomodoros()
+        result.unevaluated = Decimal(len(unEvaluated))
+        for eachRemainingInterval in unEvaluated:
+            if eachRemainingInterval in pending:
+                pending.remove(eachRemainingInterval)
+            elif eachRemainingInterval in elapsed:
+                # If it's pending evaluation it isn't fully "elapsed" yet, we
+                # shouldn't score it
+                elapsed.remove(eachRemainingInterval)
         for each in elapsed:
-            if not isinstance(each, Pomodoro):
-                # Breaks don't affect score.
-                continue
             if each.intention is None:
                 result.misses += Decimal("1.0")
                 continue
@@ -402,26 +388,37 @@ class Day(object):
         List of pomodoros that haven't yet been evaluated and the user needs to
         confirm or reject their success.
         """
-        unEvaluated = [
+        elapsedPoms = iter(
             each
-            for each in self.elapsedIntervals
+            for each in reversed(self.elapsedIntervals)
             if isinstance(each, Pomodoro)
-            and each.intention is not None
-            and each.intention.wasSuccessful is None
-        ]
-        # we can have at most 2 unevaluated poms. if we're on break 2 can be in
-        # elapsedIntervals; if we're active then only 1 can be.
-        offset = -1
-        if not self.pendingIntervals or isinstance(
-            self.pendingIntervals[0], Break
+        )
+        mostRecentlyElapsed = next(elapsedPoms, None)
+        potentiallyEligible = []
+        if mostRecentlyElapsed is not None:
+            potentiallyEligible.append(mostRecentlyElapsed)
+        if self.pendingIntervals and isinstance(
+            thisOne := self.pendingIntervals[0], Pomodoro
         ):
-            offset = -2
-        for failedAlready in unEvaluated[:offset]:
-            assert failedAlready.intention is not None
-            failedAlready.intention.wasSuccessful = (
-                IntentionSuccess.NeverEvaluated
+            # We're on an active pomodoro, which could itself be eligible.
+            potentiallyEligible.append(thisOne)
+        else:
+            # We're on a break, so one more from the recently-elapsed list
+            # might be eligible.
+            secondMostRecentlyElapsed = next(elapsedPoms, None)
+            if secondMostRecentlyElapsed is not None:
+                potentiallyEligible.insert(0, secondMostRecentlyElapsed)
+
+        return [
+            pom
+            for pom in potentiallyEligible
+            if (
+                # an intention was ever set on it, and...
+                pom.intention is not None
+                # that intention has not *yet* been evaluated.
+                and pom.intention.wasSuccessful is None
             )
-        return unEvaluated[offset:]
+        ]
 
     def currentIsFailed(self) -> bool:
         if not self.pendingIntervals:

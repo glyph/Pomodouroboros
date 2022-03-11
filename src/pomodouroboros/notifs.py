@@ -49,7 +49,9 @@ class NotificationDelegate(NSObject):
         if handler is None:
             print("no handler")
         else:
-            if isinstance(notificationResponse, UNTextInputNotificationResponse):
+            if isinstance(
+                notificationResponse, UNTextInputNotificationResponse
+            ):
                 userText = notificationResponse.userText()
                 print("received response", userText)
                 handler(userText)
@@ -59,26 +61,32 @@ class NotificationDelegate(NSObject):
 
 
 notificationCenter = UNUserNotificationCenter.currentNotificationCenter()
-categoryIdentifier = "SET_INTENTION_PROMPT"
+setIntentionCategoryIdentifier = "SET_INTENTION_PROMPT"
+setIntentionMessageIdentifier = "ask-for-intent"
 basicCategoryIdentifier = "BASIC_MESSAGE"
+basicMessageIdentifier = "basic-message"
+
 
 theDelegate = NotificationDelegate.alloc().init()
 
 
 def askForIntent(callback: Callable[[str], None]):
-    identifier = "ask-for-intent"
-    theDelegate.handlers[identifier] = callback
+    # When we ask for an intention, we should remove the reminder of the intention.
+    notificationCenter.removeDeliveredNotificationsWithIdentifiers_(
+        [basicMessageIdentifier]
+    )
+    theDelegate.handlers[setIntentionMessageIdentifier] = callback
     content = UNMutableNotificationContent.alloc().init()
     content.setTitle_("Time To Set Intention")
     content.setBody_("What do you want to do right now?")
-    content.setCategoryIdentifier_(categoryIdentifier)
+    content.setCategoryIdentifier_(setIntentionCategoryIdentifier)
     trigger = (
         UNTimeIntervalNotificationTrigger.triggerWithTimeInterval_repeats_(
             1, False
         )
     )
     request = UNNotificationRequest.requestWithIdentifier_content_trigger_(
-        identifier, content, trigger
+        setIntentionMessageIdentifier, content, trigger
     )
 
     def notificationRequestCompleted(error: NSError) -> None:
@@ -89,14 +97,18 @@ def askForIntent(callback: Callable[[str], None]):
     )
 
 
-messageIdentifier = "basic-message"
+def withdrawIntentPrompt() -> None:
+    notificationCenter.removeDeliveredNotificationsWithIdentifiers_(
+        [setIntentionMessageIdentifier]
+    )
+
 
 def notify(title="", subtitle="", informativeText=""):
+    withdrawIntentPrompt()
     content = UNMutableNotificationContent.alloc().init()
     content.setTitle_(title)
     content.setSubtitle_(subtitle)
     content.setBody_(informativeText)
-
 
     trigger = (
         UNTimeIntervalNotificationTrigger.triggerWithTimeInterval_repeats_(
@@ -105,7 +117,7 @@ def notify(title="", subtitle="", informativeText=""):
     )
 
     request = UNNotificationRequest.requestWithIdentifier_content_trigger_(
-        messageIdentifier, content, trigger
+        basicMessageIdentifier, content, trigger
     )
 
     def notificationRequestCompleted(error: NSError) -> None:
@@ -121,7 +133,9 @@ def setupNotifications():
     identifier = "SET_INTENTION"
     title = "Set Intention"
     options = 0
-    # UNNotificationAction.actionWithIdentifier_title_options_(identifier, title, options)
+    # UNNotificationAction.actionWithIdentifier_title_options_(
+    #     identifier, title, options
+    # )
     textInputButtonTitle = "Set Intent"
     textInputPlaceholder = "What would you like to do?"
     setIntentionAction = UNTextInputNotificationAction.actionWithIdentifier_title_options_textInputButtonTitle_textInputPlaceholder_(
@@ -132,7 +146,7 @@ def setupNotifications():
     # I think these are mostly to do with Siri
     intentIdentifiers = []
     setIntentionPromptCategory = UNNotificationCategory.categoryWithIdentifier_actions_intentIdentifiers_options_(
-        categoryIdentifier, actions, intentIdentifiers, options
+        setIntentionCategoryIdentifier, actions, intentIdentifiers, options
     )
     basicMessageCategory = UNNotificationCategory.categoryWithIdentifier_actions_intentIdentifiers_options_(
         basicCategoryIdentifier, [], [], 0
