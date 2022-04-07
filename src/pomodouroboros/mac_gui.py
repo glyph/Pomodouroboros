@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import time as rawSeconds
+from cProfile import Profile
 
 import math
 from AppKit import (
@@ -493,6 +494,7 @@ class DayManager(object):
     day: Day = field(default_factory=lambda: newDay(date.today()))
     loopingCall: Optional[LoopingCall] = field(default=None)
     screenReconfigurationTimer: Optional[DelayedCall] = None
+    profile: Optional[Profile] = None
 
     @classmethod
     def new(cls, reactor) -> DayManager:
@@ -525,6 +527,28 @@ class DayManager(object):
         else:
             self.screenReconfigurationTimer.reset(settleDelay)
 
+    def startProfiling(self) -> None:
+        """
+        start profiling the python
+        """
+        self.profile = Profile()
+        self.profile.enable()
+
+    def stopProfiling(self) -> None:
+        """
+        stop the profiler and show some stats
+        """
+        assert self.profile is not None
+        self.profile.disable()
+        profile: Optional[Profile]
+        profile, self.profile = self.profile, None
+        assert profile is not None
+        print("stats?")
+        import os
+
+        profile.dump_stats(os.path.expanduser("~/pom.pstats"))
+        print("stats.")
+
     def start(self) -> None:
         status = Status(can)
         status.menu(
@@ -532,6 +556,8 @@ class DayManager(object):
                 ("Intention", lambda: setIntention(self.day)),
                 ("Bonus Pomodoro", lambda: bonus(localDate(rawSeconds()), self.day)),
                 ("Evaluate", lambda: self.setSuccess()),
+                # ("Start Profiling", lambda: self.startProfiling()),
+                # ("Stop Profiling", lambda: self.stopProfiling()),
                 ("Quit", quit),
             ]
         )
