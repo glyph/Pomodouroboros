@@ -343,7 +343,7 @@ def expressIntention(day: Day, newIntention: str) -> None:
     Express the given intention to the given day.
     """
     intentionResult = day.expressIntention(
-        datetime.now(tz=tzlocal()), newIntention
+        rawSeconds(), newIntention
     )
     print("IR", intentionResult)
     if intentionResult == IntentionResponse.WasSet:
@@ -407,8 +407,52 @@ def bonus(when: datetime, day: Day) -> None:
         print(Failure().getTraceback())
 
 
-def now() -> datetime:
+def nowNative() -> datetime:
     return datetime.now(tz=tzlocal())
+
+
+from Foundation import (
+    NSCalendarUnitYear,
+    NSCalendarUnitMonth,
+    NSCalendarUnitDay,
+    NSCalendarUnitHour,
+    NSCalendarUnitMinute,
+    NSCalendarUnitSecond,
+    NSCalendarUnitNanosecond,
+    NSCalendar,
+    NSDate,
+)
+
+datetimeComponents = (
+    NSCalendarUnitYear
+    | NSCalendarUnitMonth
+    | NSCalendarUnitDay
+    | NSCalendarUnitHour
+    | NSCalendarUnitMinute
+    | NSCalendarUnitSecond
+    | NSCalendarUnitNanosecond
+)
+
+fromDate = NSCalendar.currentCalendar().components_fromDate_
+localOffset = tzlocal()
+nsDateNow = NSDate.date
+nsDateFromTimestamp = NSDate.dateWithTimeIntervalSince1970_
+
+def localDate(ts: float) -> datetime:
+    """
+    Use Cocoa to compute a local datetime
+    """
+    components = fromDate(datetimeComponents, nsDateFromTimestamp(ts))
+    return datetime(
+        year=components.year(),
+        month=components.month(),
+        day=components.day(),
+        hour=components.hour(),
+        minute=components.minute(),
+        second=components.second(),
+        microsecond=components.nanosecond() // 1000,
+        tzinfo=localOffset,
+    )
 
 
 def newDay(forDate: date) -> Day:
@@ -486,7 +530,7 @@ class DayManager(object):
         status.menu(
             [
                 ("Intention", lambda: setIntention(self.day)),
-                ("Bonus Pomodoro", lambda: bonus(now(), self.day)),
+                ("Bonus Pomodoro", lambda: bonus(localDate(rawSeconds()), self.day)),
                 ("Evaluate", lambda: self.setSuccess()),
                 ("Quit", quit),
             ]
@@ -494,10 +538,12 @@ class DayManager(object):
 
         def update() -> None:
             try:
-                present = now()
-                if present.date() != self.day.startTime.date():
-                    self.day = newDay(date.today())
-                self.day.advanceToTime(present, self.observer)
+                currentTimestamp = rawSeconds()
+                # presentDate = localDate(currentTimestamp).date()
+                presentDate = date.today()
+                if presentDate != self.day.startTime.date():
+                    self.day = newDay(presentDate)
+                self.day.advanceToTime(currentTimestamp, self.observer)
                 status.item.setTitle_(labelForDay(self.day))
             except BaseException:
                 print(Failure().getTraceback())

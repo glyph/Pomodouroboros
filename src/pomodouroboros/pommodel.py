@@ -13,11 +13,12 @@ What do I want in here?
             - pass/fail status
 """
 from __future__ import annotations
-from decimal import Decimal
+
 from dataclasses import dataclass
-from typing import Optional, Sequence, Protocol, List, Union
-from datetime import datetime, timedelta, date, time, tzinfo
+from datetime import date, datetime, time, timedelta, tzinfo
+from decimal import Decimal
 from enum import Enum
+from typing import Any, Callable, Generic, List, Optional, Protocol, Sequence, Union
 
 from dateutil.tz import tzlocal
 
@@ -101,6 +102,22 @@ class Intention:
     def isComplete(self) -> bool:
         return self.wasSuccessful is not None
 
+from typing import TypeVar
+T = TypeVar("T")
+
+@dataclass
+class cproperty(Generic[T]):
+    f: Callable[[Any], T]
+
+    def __get__(self, oself: Any, owner: Any = None) -> T:
+        name = "_" + self.f.__name__
+        cached = getattr(oself, name, None)
+        if cached is not None:
+            return cached
+        new = self.f(oself)
+        setattr(oself, name, new)
+        return new
+
 
 @dataclass
 class Pomodoro(object):
@@ -112,6 +129,20 @@ class Pomodoro(object):
     "The intention, if one was specified."
     startTime: datetime
     endTime: datetime
+
+    @cproperty
+    def startTimestamp(self) -> float:
+        """
+        startTime as a POSIX timestamp
+        """
+        return self.startTime.timestamp()
+
+    @cproperty
+    def endTimestamp(self) -> float:
+        """
+        endTime as a POSIX timestamp
+        """
+        return self.endTime.timestamp()
 
 
 @dataclass
@@ -138,6 +169,21 @@ class Break:
 
     startTime: datetime
     endTime: datetime
+
+    @cproperty
+    def startTimestamp(self) -> float:
+        """
+        startTime as a POSIX timestamp
+        """
+        return self.startTime.timestamp()
+
+    @cproperty
+    def endTimestamp(self) -> float:
+        """
+        endTime as a POSIX timestamp
+        """
+        return self.endTime.timestamp()
+
 
 
 Interval = Union[Pomodoro, Break]
@@ -185,9 +231,9 @@ class Day(object):
     "Intervals which have not yet elapsed, and are not complete."
     elapsedIntervals: List[Interval]
     "Intervals which have fully elapsed."
-    lastUpdateTime: datetime
+    lastUpdateTimestamp: float
     "When was this Day last updated?"
-    intentionGracePeriod: timedelta
+    intentionGracePeriod: float
 
     def score(self) -> Score:
         """
@@ -283,7 +329,7 @@ class Day(object):
                 intervals.append(Pomodoro(None, pomStart, pomEnd))
                 intervals.append(Break(breakStart, breakEnd))
         return cls(
-            startTime, endTime, intervals, [], startTime, intentionGracePeriod
+            startTime, endTime, intervals, [], startTime.timestamp(), intentionGracePeriod.total_seconds()
         )
 
     @classmethod
@@ -302,7 +348,7 @@ class Day(object):
         )
 
     def expressIntention(
-        self, currentTime: datetime, description: str
+        self, currentTimestamp: float, description: str
     ) -> IntentionResponse:
         """
         UIs should call this when the user decides what the current pomodoro is
@@ -317,8 +363,8 @@ class Day(object):
             if currentInterval.intention is not None:
                 return IntentionResponse.AlreadySet
             if (
-                currentTime - self.intentionGracePeriod
-            ) > currentInterval.startTime:
+                currentTimestamp - self.intentionGracePeriod
+            ) > currentInterval.startTimestamp:
                 return IntentionResponse.TooLate
             if description:
                 currentInterval.intention = Intention(description, None)
@@ -427,8 +473,8 @@ class Day(object):
         if not isinstance(current, Pomodoro):
             return False
         return current.intention is None and (
-            self.lastUpdateTime
-            > (current.startTime + self.intentionGracePeriod)
+            self.lastUpdateTimestamp
+            > (current.startTimestamp + self.intentionGracePeriod)
         )
 
     def pendingPomodoros(self) -> Sequence[Pomodoro]:
@@ -486,7 +532,7 @@ class Day(object):
         return newPomodoro
 
     def advanceToTime(
-        self, currentTime: datetime, observer: PomObserver
+        self, currentTimestamp: float, observer: PomObserver
     ) -> None:
         """
         Advance this Day to the given time, emitting observer notifications
@@ -497,7 +543,7 @@ class Day(object):
             return
         while (
             self.pendingIntervals
-            and currentTime > self.pendingIntervals[0].endTime
+            and currentTimestamp > self.pendingIntervals[0].endTimestamp
         ):
             # Notification: interval complete
             self.elapsedIntervals.append(
@@ -512,23 +558,21 @@ class Day(object):
         currentInterval = self.pendingIntervals[0]
         # No elapsed intervals means we've never sent the 'starting'
         # notification, so do that now.
-        if (self.lastUpdateTime <= currentInterval.startTime) and (
-            currentTime > currentInterval.startTime
+        if (self.lastUpdateTimestamp <= currentInterval.startTimestamp) and (
+            currentTimestamp > currentInterval.startTimestamp
         ):
             if isinstance(currentInterval, Break):
                 observer.breakStarting(currentInterval)
             elif isinstance(currentInterval, Pomodoro):
                 observer.pomodoroStarting(self, currentInterval)
 
-        totalTD = currentInterval.endTime - currentInterval.startTime
-        elapsedTD = currentTime - currentInterval.startTime
-        total = totalTD.total_seconds()
-        elapsed = elapsedTD.total_seconds()
+        total = currentInterval.endTimestamp - currentInterval.startTimestamp
+        elapsed = currentTimestamp - currentInterval.startTimestamp
         rawPct = elapsed / total
         if 0.0 <= rawPct <= 1.0:
             # otherwise we're outside the bounds of the interval and we should
             # not report on it
             observer.progressUpdate(
-                currentInterval, rawPct, self.expressIntention(currentTime, "")
+                currentInterval, rawPct, self.expressIntention(currentTimestamp, "")
             )
-        self.lastUpdateTime = currentTime
+        self.lastUpdateTimestamp = currentTimestamp
