@@ -421,14 +421,13 @@ def labelForDay(day: Day) -> str:
     """
     score = day.score()
     icon = tomato if score.hits > score.misses else can
-    title = icon + ": "
-    title += f"{score.hits}✓ "
-    title += f"{score.misses}✗ "
-    if score.unevaluated:
-        title += f"{score.unevaluated}? "
-    if score.remaining:
-        title += f"{score.remaining}…"
-    return title
+    unevaluated, q = (
+        (score.unevaluated, "?") if score.unevaluated else ("", "")
+    )
+    remaining, e = (score.remaining, "…") if score.remaining else ("", "")
+    return (
+        f"{icon}: {score.hits}✓ {score.misses}✗ {unevaluated}{q}{remaining}{e}"
+    )
 
 
 can = "🥫"
