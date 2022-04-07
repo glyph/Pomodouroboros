@@ -65,6 +65,12 @@ class BigProgressView(NSView):
     _leftColor = NSColor.greenColor()
     _rightColor = NSColor.redColor()
 
+    def opaque(self) -> bool:
+        """
+        This view is opaque, try to be faster compositing it
+        """
+        return True
+
     def setPercentage_(self, newPercentage: float) -> None:
         """
         Set the percentage-full here.
