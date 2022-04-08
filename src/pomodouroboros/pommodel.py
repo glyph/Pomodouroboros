@@ -18,7 +18,16 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, tzinfo
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Generic, List, Optional, Protocol, Sequence, Union
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    Union,
+)
 
 from dateutil.tz import tzlocal
 
@@ -102,8 +111,11 @@ class Intention:
     def isComplete(self) -> bool:
         return self.wasSuccessful is not None
 
+
 from typing import TypeVar
+
 T = TypeVar("T")
+
 
 @dataclass
 class cproperty(Generic[T]):
@@ -183,7 +195,6 @@ class Break:
         endTime as a POSIX timestamp
         """
         return self.endTime.timestamp()
-
 
 
 Interval = Union[Pomodoro, Break]
@@ -329,7 +340,12 @@ class Day(object):
                 intervals.append(Pomodoro(None, pomStart, pomEnd))
                 intervals.append(Break(breakStart, breakEnd))
         return cls(
-            startTime, endTime, intervals, [], startTime.timestamp(), intentionGracePeriod.total_seconds()
+            startTime,
+            endTime,
+            intervals,
+            [],
+            startTime.timestamp(),
+            intentionGracePeriod.total_seconds(),
         )
 
     @classmethod
@@ -492,13 +508,13 @@ class Day(object):
 
     def bonusPomodoro(self, currentTime: datetime) -> Pomodoro:
         """
-        Create a new pomodoro at the end of the day.
+        Create a new pomodoro that doesn't overlap with existing ones.
         """
 
         def lengths():
             allIntervals = self.elapsedIntervals + self.pendingIntervals
+            position = slice(len(self.pendingIntervals), 0)
             if allIntervals:
-                startingPoint = allIntervals[-1].endTime
                 iterIntervals = iter(allIntervals)
                 firstPom = next(
                     each
@@ -510,15 +526,23 @@ class Day(object):
                 )
                 pomodoroLength = firstPom.endTime - firstPom.startTime
                 breakLength = firstBreak.endTime - firstBreak.startTime
+                potentialEnd = currentTime + pomodoroLength + breakLength
+                if potentialEnd < min(
+                    firstPom.startTime, firstBreak.startTime
+                ):
+                    startingPoint = currentTime
+                    position = slice(0, 0)
+                else:
+                    startingPoint = allIntervals[-1].endTime
             else:
                 # we need to save these attributes in the constructor so we
                 # don't need to synthesize defaults here.
                 startingPoint = self.endTime
                 pomodoroLength = timedelta(minutes=25)
                 breakLength = timedelta(minutes=5)
-            return startingPoint, pomodoroLength, breakLength
+            return position, startingPoint, pomodoroLength, breakLength
 
-        startingPoint, pomodoroLength, breakLength = lengths()
+        position, startingPoint, pomodoroLength, breakLength = lengths()
         newStartTime = max(startingPoint, currentTime)
         newPomodoro = Pomodoro(
             None, newStartTime, newStartTime + pomodoroLength
@@ -526,8 +550,7 @@ class Day(object):
         newBreak = Break(
             newPomodoro.endTime, newPomodoro.endTime + breakLength
         )
-        self.pendingIntervals.append(newPomodoro)
-        self.pendingIntervals.append(newBreak)
+        self.pendingIntervals[position] = [newPomodoro, newBreak]
         print("created bonus", newPomodoro, newBreak)
         return newPomodoro
 
@@ -573,6 +596,8 @@ class Day(object):
             # otherwise we're outside the bounds of the interval and we should
             # not report on it
             observer.progressUpdate(
-                currentInterval, rawPct, self.expressIntention(currentTimestamp, "")
+                currentInterval,
+                rawPct,
+                self.expressIntention(currentTimestamp, ""),
             )
         self.lastUpdateTimestamp = currentTimestamp

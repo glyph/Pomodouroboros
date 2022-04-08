@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from time import time as rawSeconds
 from cProfile import Profile
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from time import time as rawSeconds
+from typing import Callable, ClassVar, Dict, List, Optional, Tuple
+
+from Foundation import NSRect
+from twisted.internet.base import DelayedCall
+from twisted.internet.interfaces import IReactorTCP
+from twisted.internet.task import LoopingCall
+from twisted.python.failure import Failure
 
 import math
 from AppKit import (
@@ -26,9 +34,8 @@ from AppKit import (
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
+    NSFocusRingTypeNone,
 )
-from Foundation import NSRect
-from datetime import date, datetime
 from dateutil.tz import tzlocal
 from pomodouroboros.notifs import (
     askForIntent,
@@ -47,11 +54,6 @@ from pomodouroboros.pommodel import (
 )
 from pomodouroboros.quickapp import Actionable, Status, mainpoint, quit
 from pomodouroboros.storage import TEST_MODE, loadOrCreateDay, saveDay
-from twisted.internet.base import DelayedCall
-from twisted.internet.interfaces import IReactorTCP
-from twisted.internet.task import LoopingCall
-from twisted.python.failure import Failure
-from typing import Callable, ClassVar, List, Optional, Tuple
 
 
 fillRect = NSBezierPath.fillRect_
@@ -66,11 +68,15 @@ class BigProgressView(NSView):
     _leftColor = NSColor.greenColor()
     _rightColor = NSColor.redColor()
 
-    def opaque(self) -> bool:
+    def isOpaque(self) -> bool:
         """
         This view is opaque, try to be faster compositing it
         """
         return True
+
+    @classmethod
+    def defaultFocusRingType(self) -> int:
+        return NSFocusRingTypeNone
 
     def setPercentage_(self, newPercentage: float) -> None:
         """
@@ -78,12 +84,15 @@ class BigProgressView(NSView):
         """
         self._percentage = newPercentage
         self.setNeedsDisplay_(True)
+        # self.setNeedsDisplay_(True)
 
     def setLeftColor_(self, newLeftColor: NSColor) -> None:
         self._leftColor = newLeftColor
+        # self.setNeedsDisplay_(True)
 
     def setRightColor_(self, newRightColor: NSColor) -> None:
         self._rightColor = newRightColor
+        # self.setNeedsDisplay_(True)
 
     def drawRect_(self, rect: NSRect) -> None:
         bounds = self.bounds()
@@ -175,6 +184,9 @@ def getString(title: str, question: str, defaultValue: str) -> str:
         return ""
 
 
+intcb = Callable[["MacPomObserver", Interval, float], None]
+
+
 @dataclass
 class MacPomObserver(object):
     """
@@ -191,6 +203,10 @@ class MacPomObserver(object):
         (0.95, "Almost done!"),
     ]
     active: bool = field(default=False)
+    lastIntentionResponse: Optional[IntentionResponse] = None
+    baseAlphaValue: float = 0.15
+    alphaVariance: float = 0.015
+    pulseMultiplier: float = 1.5
 
     def __post_init__(self):
         print("post-init", self.active)
@@ -234,6 +250,73 @@ class MacPomObserver(object):
             ),
         )
 
+    responses: ClassVar[Dict[IntentionResponse, intcb]] = {}
+
+    def _intention(  # type: ignore
+        response: IntentionResponse,
+        responses: Dict[IntentionResponse, intcb] = responses,
+    ) -> Callable[[intcb], intcb]:
+        def decorator(f: intcb) -> intcb:
+            responses[response] = f
+            return f
+
+        return decorator
+
+    @_intention(IntentionResponse.CanBeSet)
+    def _canBeSet(self, interval: Interval, percentageElapsed: float) -> None:
+        self.baseAlphaValue = MacPomObserver.baseAlphaValue + 0.1
+        self.alphaVariance = MacPomObserver.alphaVariance * 2
+        self.pulseMultiplier = MacPomObserver.pulseMultiplier * 2
+
+        self.progressView.setLeftColor_(NSColor.yellowColor())
+        self.progressView.setRightColor_(NSColor.purpleColor())
+        # boost the urgency on setting an intention
+
+    @_intention(IntentionResponse.AlreadySet)
+    def _alreadySet(
+        self, interval: Interval, percentageElapsed: float
+    ) -> None:
+        # Nice soothing "You're doing it!" colors for remembering to set
+        # intention
+        self.baseAlphaValue = MacPomObserver.baseAlphaValue
+        self.pulseMultiplier = MacPomObserver.pulseMultiplier
+        self.alphaVariance = MacPomObserver.alphaVariance
+
+        self.progressView.setLeftColor_(NSColor.greenColor())
+        self.progressView.setRightColor_(NSColor.blueColor())
+        if isinstance(interval, Pomodoro) and interval.intention is not None:
+            # TODO: maybe put reminder messages in the model?
+            for pct, message in self.thresholds:
+                if self.lastThreshold <= pct and percentageElapsed > pct:
+                    self.lastThreshold = percentageElapsed
+                    notify(
+                        "Remember Your Intention",
+                        message,
+                        "“" + interval.intention.description + "”",
+                    )
+
+    @_intention(IntentionResponse.OnBreak)
+    def _onBreak(self, interval: Interval, percentageElapsed: float) -> None:
+        # Neutral "take it easy" colors for breaks
+        self.baseAlphaValue = MacPomObserver.baseAlphaValue
+        self.pulseMultiplier = MacPomObserver.pulseMultiplier / 2
+        self.alphaVariance = MacPomObserver.alphaVariance / 2
+
+        self.progressView.setLeftColor_(NSColor.lightGrayColor())
+        self.progressView.setRightColor_(NSColor.darkGrayColor())
+
+    @_intention(IntentionResponse.TooLate)
+    def _tooLate(self, interval: Interval, percentageElapsed: float) -> None:
+        self.baseAlphaValue = MacPomObserver.baseAlphaValue
+        self.pulseMultiplier = MacPomObserver.pulseMultiplier
+        self.alphaVariance = MacPomObserver.alphaVariance
+
+        # Angry "You forgot" colors for setting it too late
+        self.progressView.setLeftColor_(NSColor.orangeColor())
+        self.progressView.setRightColor_(NSColor.redColor())
+
+    del _intention
+
     def progressUpdate(
         self,
         interval: Interval,
@@ -245,48 +328,13 @@ class MacPomObserver(object):
         percentageElapsed% done.  canSetIntention tells you the likely outcome
         of setting the intention.
         """
-        baseAlphaValue = 0.15
-        alphaVariance = 0.015
-        pulseMultiplier = 1.5
-        if canSetIntention == IntentionResponse.CanBeSet:
-            self.progressView.setLeftColor_(NSColor.yellowColor())
-            self.progressView.setRightColor_(NSColor.purpleColor())
-            # boost the urgency on setting an intention
-            baseAlphaValue += 0.1
-            alphaVariance *= 2
-            pulseMultiplier *= 2
-        if canSetIntention == IntentionResponse.AlreadySet:
-            # Nice soothing "You're doing it!" colors for remembering to set
-            # intention
-            self.progressView.setLeftColor_(NSColor.greenColor())
-            self.progressView.setRightColor_(NSColor.blueColor())
-            if (
-                isinstance(interval, Pomodoro)
-                and interval.intention is not None
-            ):
-                # TODO: maybe put reminder messages in the model?
-                for pct, message in self.thresholds:
-                    if self.lastThreshold <= pct and percentageElapsed > pct:
-                        self.lastThreshold = percentageElapsed
-                        notify(
-                            "Remember Your Intention",
-                            message,
-                            "“" + interval.intention.description + "”",
-                        )
-        elif canSetIntention == IntentionResponse.OnBreak:
-            # Neutral "take it easy" colors for breaks
-            pulseMultiplier /= 2
-            alphaVariance /= 2
-            self.progressView.setLeftColor_(NSColor.lightGrayColor())
-            self.progressView.setRightColor_(NSColor.darkGrayColor())
-        elif canSetIntention == IntentionResponse.TooLate:
-            # Angry "You forgot" colors for setting it too late
-            self.progressView.setLeftColor_(NSColor.orangeColor())
-            self.progressView.setRightColor_(NSColor.redColor())
+        if canSetIntention != self.lastIntentionResponse:
+            self.lastIntentionResponse = canSetIntention
+            self.responses[canSetIntention](self, interval, percentageElapsed)
         self.progressView.setPercentage_(percentageElapsed)
         alphaValue = (
-            math.sin(rawSeconds() * pulseMultiplier) * alphaVariance
-        ) + baseAlphaValue
+            math.sin(rawSeconds() * self.pulseMultiplier) * self.alphaVariance
+        ) + self.baseAlphaValue
         self.active = True
         self.window.setIsVisible_(True)
         self.window.setAlphaValue_(alphaValue)
@@ -343,9 +391,7 @@ def expressIntention(day: Day, newIntention: str) -> None:
     """
     Express the given intention to the given day.
     """
-    intentionResult = day.expressIntention(
-        rawSeconds(), newIntention
-    )
+    intentionResult = day.expressIntention(rawSeconds(), newIntention)
     print("IR", intentionResult)
     if intentionResult == IntentionResponse.WasSet:
         notify("Intention Set", f"“{newIntention}”")
@@ -438,6 +484,7 @@ fromDate = NSCalendar.currentCalendar().components_fromDate_
 localOffset = tzlocal()
 nsDateNow = NSDate.date
 nsDateFromTimestamp = NSDate.dateWithTimeIntervalSince1970_
+
 
 def localDate(ts: float) -> datetime:
     """
@@ -554,10 +601,13 @@ class DayManager(object):
         status.menu(
             [
                 ("Intention", lambda: setIntention(self.day)),
-                ("Bonus Pomodoro", lambda: bonus(localDate(rawSeconds()), self.day)),
+                (
+                    "Bonus Pomodoro",
+                    lambda: bonus(localDate(rawSeconds()), self.day),
+                ),
                 ("Evaluate", lambda: self.setSuccess()),
-                # ("Start Profiling", lambda: self.startProfiling()),
-                # ("Stop Profiling", lambda: self.stopProfiling()),
+                ("Start Profiling", lambda: self.startProfiling()),
+                ("Finish Profiling", lambda: self.stopProfiling()),
                 ("Quit", quit),
             ]
         )
@@ -575,7 +625,7 @@ class DayManager(object):
                 print(Failure().getTraceback())
 
         self.loopingCall = LoopingCall(update)
-        self.loopingCall.start(1.0 / 10.0)
+        self.loopingCall.start(1.0 / 24.0)
 
     def setSuccess(self) -> None:
         pomsToEvaluate = self.day.unEvaluatedPomodoros()
