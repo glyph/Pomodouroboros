@@ -10,7 +10,6 @@ from typing import Callable, ClassVar, Dict, List, Optional, Tuple
 from Foundation import NSRect
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IReactorTCP
-from twisted.internet.task import LoopingCall
 from twisted.python.failure import Failure
 
 import math
@@ -35,6 +34,9 @@ from AppKit import (
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
     NSFocusRingTypeNone,
+    NSRectFill,
+    NSRectFillListWithColorsUsingOperation,
+    NSCompositingOperationCopy,
 )
 from dateutil.tz import tzlocal
 from pomodouroboros.notifs import (
@@ -56,7 +58,8 @@ from pomodouroboros.quickapp import Actionable, Status, mainpoint, quit
 from pomodouroboros.storage import TEST_MODE, loadOrCreateDay, saveDay
 
 
-fillRect = NSBezierPath.fillRect_
+# fillRect = NSBezierPath.fillRect_
+fillRect = NSRectFill
 
 
 class BigProgressView(NSView):
@@ -97,11 +100,16 @@ class BigProgressView(NSView):
     def drawRect_(self, rect: NSRect) -> None:
         bounds = self.bounds()
         split = self._percentage * (bounds.size.width)
-        self._leftColor.set()
-        fillRect(NSRect((0, 0), (split, bounds.size.height)))
-        self._rightColor.set()
-        fillRect(
-            NSRect((split, 0), (bounds.size.width - split, bounds.size.height))
+        NSRectFillListWithColorsUsingOperation(
+            [
+                NSRect((0, 0), (split, bounds.size.height)),
+                NSRect(
+                    (split, 0), (bounds.size.width - split, bounds.size.height)
+                ),
+            ],
+            [self._leftColor, self._rightColor],
+            2,
+            NSCompositingOperationCopy,
         )
 
     def canBecomeKeyView(self) -> bool:
@@ -114,6 +122,9 @@ class BigProgressView(NSView):
         return True
 
     def acceptsFirstResponder(self) -> bool:
+        return False
+
+    def wantsDefaultClipping(self) -> bool:
         return False
 
 
@@ -359,7 +370,10 @@ def makeOneWindow(contentView) -> HUDWindow:
     # - styleMask:(NSUInteger)windowStyle
     # - backing:(NSBackingStoreType)bufferingType defer:(BOOL)deferCreation
 
-    contentRect = NSRect((200, 200), (frame.size.width - (200 * 2), 200))
+    height = 50
+    padding = 500
+
+    contentRect = NSRect((padding, padding), (frame.size.width - (padding * 2), height))
     styleMask = NSBorderlessWindowMask
     backing = NSBackingStoreBuffered
     defer = False
@@ -539,7 +553,6 @@ class DayManager(object):
     progress: BigProgressView
     reactor: IReactorTCP
     day: Day = field(default_factory=lambda: newDay(date.today()))
-    loopingCall: Optional[LoopingCall] = field(default=None)
     screenReconfigurationTimer: Optional[DelayedCall] = None
     profile: Optional[Profile] = None
 
@@ -614,18 +627,21 @@ class DayManager(object):
 
         def update() -> None:
             try:
-                currentTimestamp = rawSeconds()
-                # presentDate = localDate(currentTimestamp).date()
-                presentDate = date.today()
-                if presentDate != self.day.startTime.date():
-                    self.day = newDay(presentDate)
-                self.day.advanceToTime(currentTimestamp, self.observer)
-                status.item.setTitle_(labelForDay(self.day))
-            except BaseException:
-                print(Failure().getTraceback())
-
-        self.loopingCall = LoopingCall(update)
-        self.loopingCall.start(1.0 / 24.0)
+                try:
+                    currentTimestamp = rawSeconds()
+                    # presentDate = localDate(currentTimestamp).date()
+                    presentDate = date.today()
+                    if presentDate != self.day.startTime.date():
+                        self.day = newDay(presentDate)
+                    self.day.advanceToTime(currentTimestamp, self.observer)
+                    status.item.setTitle_(labelForDay(self.day))
+                    finishTime = rawSeconds()
+                except BaseException:
+                    print(Failure().getTraceback())
+            finally:
+                # trying to stick to 1% CPU...
+                self.reactor.callLater((finishTime - currentTimestamp) * 75, update)
+        update()
 
     def setSuccess(self) -> None:
         pomsToEvaluate = self.day.unEvaluatedPomodoros()
