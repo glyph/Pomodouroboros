@@ -353,7 +353,7 @@ class Day(object):
         """
         Create a test day that starts around now and goes real fast.
         """
-        startTime = datetime.now(tz=tzlocal()) + timedelta(seconds=15)
+        startTime = datetime.now(tz=tzlocal()) + timedelta(seconds=3)
         return cls.new(
             startTimeOfDay=startTime.time(),
             endTimeOfDay=(startTime + timedelta(minutes=3)).time(),
