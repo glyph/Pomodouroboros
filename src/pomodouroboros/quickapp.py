@@ -1,9 +1,26 @@
 import os
 import sys
-import pipes
-import site
-from Foundation import NSBundle, NSObject
-from AppKit import NSApp, NSMenu, NSMenuItem, NSStatusBar, NSVariableStatusItemLength
+import traceback
+from twisted.internet.fdesc import setBlocking
+
+# Prevent tracebacks or other large messages from truncating when debugging
+# https://github.com/ronaldoussoren/py2app/issues/444
+setBlocking(0)
+setBlocking(1)
+
+from Foundation import NSObject, NSApplication
+from AppKit import (
+    NSApp,
+    NSMenu,
+    NSMenuItem,
+    NSStatusBar,
+    NSVariableStatusItemLength,
+)
+
+from PyObjCTools.Debugging import _run_atos, isPythonException
+from ExceptionHandling import (  # type:ignore
+    NSStackTraceKey,
+)
 
 
 class Actionable(NSObject):
@@ -38,8 +55,74 @@ class Status(object):
         self.item.setHighlightMode_(True)
 
     def menu(self, items):
-        m = menu(self.item.title(), items)
-        self.item.setMenu_(m)
+        self.item.setMenu_(menu(self.item.title(), items))
+
+
+def fmtPythonException(exception):
+    userInfo = exception.userInfo()
+    return "*** Python exception discarded!\n" + "".join(
+        traceback.format_exception(
+            userInfo["__pyobjc_exc_type__"],
+            userInfo["__pyobjc_exc_value__"],
+            userInfo["__pyobjc_exc_traceback__"],
+        )
+    )
+
+
+def fmtObjCException(exception):
+    stacktrace = None
+
+    try:
+        stacktrace = exception.callStackSymbols()
+
+    except AttributeError:
+        pass
+
+    if stacktrace is None:
+        stack = exception.callStackReturnAddresses()
+        if stack:
+            pipe = _run_atos(" ".join(hex(v) for v in stack))
+            if pipe is None:
+                return True
+
+            stacktrace = pipe.readlines()
+            stacktrace.reverse()
+            pipe.close()
+
+    if stacktrace is None:
+        userInfo = exception.userInfo()
+        stack = userInfo.get(NSStackTraceKey)
+        if not stack:
+            return True
+
+        pipe = _run_atos(stack)
+        if pipe is None:
+            return True
+
+        stacktrace = pipe.readlines()
+        stacktrace.reverse()
+        pipe.close()
+
+    return (
+        "*** ObjC exception '%s' (reason: '%s') discarded\n"
+        % (exception.name(), exception.reason())
+        + "Stack trace (most recent call last):\n"
+        + "\n".join(["  " + line for line in stacktrace])
+    )
+    return False
+
+
+class QuickApplication(NSApplication):
+    # def sendEvent_(self, event):
+    #     print("EVENT", event)
+    #     return super().sendEvent_(event)
+
+    def reportException_(self, exception):
+        if isPythonException(exception):
+            print(fmtPythonException(exception))
+        else:
+            print(fmtObjCException(exception))
+        sys.stdout.flush()
 
 
 def mainpoint():
@@ -47,16 +130,24 @@ def mainpoint():
         def doIt():
             from twisted.internet import cfreactor
             import PyObjCTools.AppHelper
-            from AppKit import NSApplication
 
-            app = NSApplication.sharedApplication()
-            reactor = cfreactor.install(runner=PyObjCTools.AppHelper.runEventLoop)
-            reactor.callWhenRunning(appmain, reactor)
+            QuickApplication.sharedApplication()
+
+            def myRunner():
+                PyObjCTools.Debugging.installVerboseExceptionHandler()
+                PyObjCTools.AppHelper.runEventLoop()
+
+            def myMain():
+                appmain(reactor)
+
+            reactor = cfreactor.install(runner=myRunner)
+            reactor.callWhenRunning(myMain)
             reactor.run()
             os._exit(0)
 
         appmain.runMain = doIt
         return appmain
+
     return wrapup
 
 

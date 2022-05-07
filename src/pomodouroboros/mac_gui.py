@@ -8,9 +8,9 @@ from time import time as rawSeconds
 from typing import Callable, ClassVar, Dict, List, Optional, Tuple
 
 from objc import IBOutlet, IBAction  # type: ignore
-from Foundation import NSRect, NSObject
+from Foundation import NSRect, NSObject, NSLog
 from Foundation import NSMutableDictionary
-from AppKit import NSNib
+from AppKit import NSNib, NSResponder
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IReactorTCP
 from twisted.python.failure import Failure
@@ -376,7 +376,9 @@ def makeOneWindow(contentView) -> HUDWindow:
     height = 50
     padding = 500
 
-    contentRect = NSRect((padding, padding), (frame.size.width - (padding * 2), height))
+    contentRect = NSRect(
+        (padding, padding), (frame.size.width - (padding * 2), height)
+    )
     styleMask = NSBorderlessWindowMask
     backing = NSBackingStoreBuffered
     defer = False
@@ -549,6 +551,29 @@ can = "🥫"
 tomato = "🍅"
 
 
+import traceback
+
+class MenuForwarder(NSResponder):
+    def initWithMenu_(self, menu):
+        """ """
+        self.menu = menu
+        return self
+
+    def performKeyEquivalent_(self, event):
+        """ """
+        print("pek", event)
+        handled = self.menu.performKeyEquivalent_(event)
+        if handled:
+            print("HANDLED")
+
+    def keyDown_(self, event):
+        handled = self.menu.performKeyEquivalent_(event)
+        if handled:
+            return
+        super().keyDown_(event)
+        print("made it out alive")
+
+
 @dataclass
 class DayManager(object):
     observer: MacPomObserver
@@ -616,6 +641,18 @@ class DayManager(object):
 
     def start(self) -> None:
         status = Status(can)
+
+        def doList():
+            self.editController.editorWindow.setIsVisible_(True)
+            NSApp().activateIgnoringOtherApps_(True)
+
+
+        def raiseException():
+            # from Foundation import NSException
+            # NSException.raise_format_("SampleException", "a thing happened")
+            print("raising...")
+            raise Exception("report this pls")
+
         status.menu(
             [
                 ("Intention", lambda: setIntention(self.day)),
@@ -626,9 +663,14 @@ class DayManager(object):
                 ("Evaluate", lambda: self.setSuccess()),
                 ("Start Profiling", lambda: self.startProfiling()),
                 ("Finish Profiling", lambda: self.stopProfiling()),
-                ("List Pomodoros", lambda: self.editController.editorWindow.setIsVisible_(True) or NSApp().activateIgnoringOtherApps_(True)),
+                ("List Pomodoros", doList),
+                ("Break", raiseException),
                 ("Quit", quit),
             ]
+        )
+
+        self.editController.editorWindow.setNextResponder_(
+            MenuForwarder.alloc().initWithMenu_(status.item.menu()).retain()
         )
 
         def update() -> None:
@@ -646,7 +688,10 @@ class DayManager(object):
                     print(Failure().getTraceback())
             finally:
                 # trying to stick to 1% CPU...
-                self.reactor.callLater((finishTime - currentTimestamp) * 75, update)
+                self.reactor.callLater(
+                    (finishTime - currentTimestamp) * 75, update
+                )
+
         update()
 
     def setSuccess(self) -> None:
@@ -687,7 +732,9 @@ def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
 
 
 class MyObserver(NSObject):
-    def observeValueForKeyPath_ofObject_change_context_(self, keyPath, ofObject, change, context):
+    def observeValueForKeyPath_ofObject_change_context_(
+        self, keyPath, ofObject, change, context
+    ):
         print("changed!", keyPath, ofObject, change, context)
 
 
@@ -705,22 +752,36 @@ class DayEditorController(NSObject):
 def main(reactor: IReactorTCP) -> None:
     import traceback, sys
     ctrl = DayEditorController.new()
-    stuff = list(NSNib.alloc().initWithNibNamed_bundle_("GoalListWindow.nib", None).instantiateWithOwner_topLevelObjects_(ctrl, None))
+    stuff = list(
+        NSNib.alloc()
+        .initWithNibNamed_bundle_("GoalListWindow.nib", None)
+        .instantiateWithOwner_topLevelObjects_(ctrl, None)
+    )
     observer = MyObserver.alloc().init().retain()
     setupNotifications()
     withdrawIntentPrompt()
     dayManager = DayManager.new(reactor, ctrl)
-    for i, pomOrBreak in enumerate(dayManager.day.elapsedIntervals + dayManager.day.pendingIntervals):
+    for i, pomOrBreak in enumerate(
+        dayManager.day.elapsedIntervals + dayManager.day.pendingIntervals
+    ):
         if isinstance(pomOrBreak, Pomodoro):
-            rowDict = NSMutableDictionary.dictionaryWithDictionary_({
-                "index": str(i),
-                "startTime": pomOrBreak.startTime.isoformat(),
-                "endTime": pomOrBreak.startTime.isoformat(),
-                "description": pomOrBreak.intention.description or "" if pomOrBreak.intention is not None else "",
-                "success": str(pomOrBreak.intention.wasSuccessful) if pomOrBreak.intention is not None else ""
-            })
+            rowDict = NSMutableDictionary.dictionaryWithDictionary_(
+                {
+                    "index": str(i),
+                    "startTime": pomOrBreak.startTime.isoformat(),
+                    "endTime": pomOrBreak.startTime.isoformat(),
+                    "description": pomOrBreak.intention.description or ""
+                    if pomOrBreak.intention is not None
+                    else "",
+                    "success": str(pomOrBreak.intention.wasSuccessful)
+                    if pomOrBreak.intention is not None
+                    else "",
+                }
+            )
             ctrl.arrayController.addObject_(rowDict)
-            rowDict.addObserver_forKeyPath_options_context_(observer, "description", 0xf, 0x020202)
+            rowDict.addObserver_forKeyPath_options_context_(
+                observer, "description", 0xF, 0x020202
+            )
     ctrl.tableView.reloadData()
     dayManager.start()
     callOnNotification(
