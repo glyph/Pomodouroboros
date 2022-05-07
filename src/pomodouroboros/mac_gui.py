@@ -7,7 +7,10 @@ from datetime import date, datetime
 from time import time as rawSeconds
 from typing import Callable, ClassVar, Dict, List, Optional, Tuple
 
-from Foundation import NSRect
+from objc import IBOutlet, IBAction  # type: ignore
+from Foundation import NSRect, NSObject
+from Foundation import NSMutableDictionary
+from AppKit import NSNib
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IReactorTCP
 from twisted.python.failure import Failure
@@ -552,12 +555,13 @@ class DayManager(object):
     window: HUDWindow
     progress: BigProgressView
     reactor: IReactorTCP
+    editController: DayEditorController
     day: Day = field(default_factory=lambda: newDay(date.today()))
     screenReconfigurationTimer: Optional[DelayedCall] = None
     profile: Optional[Profile] = None
 
     @classmethod
-    def new(cls, reactor) -> DayManager:
+    def new(cls, reactor, editController) -> DayManager:
         progressView = BigProgressView.alloc().init()
         window = makeOneWindow(progressView)
         observer = MacPomObserver(progressView, window)
@@ -566,6 +570,7 @@ class DayManager(object):
             window,
             progressView,
             reactor,
+            editController,
         )
 
     def screensChanged(self) -> None:
@@ -621,6 +626,7 @@ class DayManager(object):
                 ("Evaluate", lambda: self.setSuccess()),
                 ("Start Profiling", lambda: self.startProfiling()),
                 ("Finish Profiling", lambda: self.stopProfiling()),
+                ("List Pomodoros", lambda: self.editController.editorWindow.setIsVisible_(True) or NSApp().activateIgnoringOtherApps_(True)),
                 ("Quit", quit),
             ]
         )
@@ -680,11 +686,42 @@ def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
     )
 
 
+class MyObserver(NSObject):
+    def observeValueForKeyPath_ofObject_change_context_(self, keyPath, ofObject, change, context):
+        print("changed!", keyPath, ofObject, change, context)
+
+
+class DayEditorController(NSObject):
+    arrayController = IBOutlet()
+    editorWindow = IBOutlet()
+    tableView = IBOutlet()
+
+    @IBAction
+    def hideMe_(self, sender) -> None:
+        self.editorWindow.setIsVisible_(False)
+
+
 @mainpoint()
 def main(reactor: IReactorTCP) -> None:
+    import traceback, sys
+    ctrl = DayEditorController.new()
+    stuff = list(NSNib.alloc().initWithNibNamed_bundle_("GoalListWindow.nib", None).instantiateWithOwner_topLevelObjects_(ctrl, None))
+    observer = MyObserver.alloc().init().retain()
     setupNotifications()
     withdrawIntentPrompt()
-    dayManager = DayManager.new(reactor)
+    dayManager = DayManager.new(reactor, ctrl)
+    for i, pomOrBreak in enumerate(dayManager.day.elapsedIntervals + dayManager.day.pendingIntervals):
+        if isinstance(pomOrBreak, Pomodoro):
+            rowDict = NSMutableDictionary.dictionaryWithDictionary_({
+                "index": str(i),
+                "startTime": pomOrBreak.startTime.isoformat(),
+                "endTime": pomOrBreak.startTime.isoformat(),
+                "description": pomOrBreak.intention.description or "" if pomOrBreak.intention is not None else "",
+                "success": str(pomOrBreak.intention.wasSuccessful) if pomOrBreak.intention is not None else ""
+            })
+            ctrl.arrayController.addObject_(rowDict)
+            rowDict.addObserver_forKeyPath_options_context_(observer, "description", 0xf, 0x020202)
+    ctrl.tableView.reloadData()
     dayManager.start()
     callOnNotification(
         NSApplicationDidChangeScreenParametersNotification,

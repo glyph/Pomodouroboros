@@ -8,7 +8,7 @@ Usage:
 from setuptools import setup
 
 APP = ["mac/Pomodouroboros.py"]
-DATA_FILES = []
+DATA_FILES = ["IBFiles/GoalListWindow.xib"]
 OPTIONS = {
     "plist": {
         "LSUIElement": True,
