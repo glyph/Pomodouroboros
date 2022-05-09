@@ -364,7 +364,10 @@ class Day(object):
         )
 
     def expressIntention(
-        self, currentTimestamp: float, description: str
+        self,
+        currentTimestamp: float,
+        description: str,
+        specifiedPomodoro: Optional[Pomodoro] = None,
     ) -> IntentionResponse:
         """
         UIs should call this when the user decides what the current pomodoro is
@@ -373,20 +376,25 @@ class Day(object):
         if not self.pendingIntervals:
             return IntentionResponse.OnBreak
         currentInterval = self.pendingIntervals[0]
-        if isinstance(currentInterval, Break):
-            return IntentionResponse.OnBreak
-        elif isinstance(currentInterval, Pomodoro):
-            if currentInterval.intention is not None:
-                return IntentionResponse.AlreadySet
-            if (
-                currentTimestamp - self.intentionGracePeriod
-            ) > currentInterval.startTimestamp:
-                return IntentionResponse.TooLate
-            if description:
-                currentInterval.intention = Intention(description, None)
-            return IntentionResponse.WasSet
-        # unreachable, really
-        return IntentionResponse.OnBreak
+        if specifiedPomodoro is None:
+            if isinstance(currentInterval, Break):
+                return IntentionResponse.OnBreak
+            specifiedPomodoro = currentInterval
+
+        if (
+            currentTimestamp > specifiedPomodoro.startTimestamp
+            and specifiedPomodoro.intention is not None
+        ):
+            return IntentionResponse.AlreadySet
+
+        if (
+            currentTimestamp - self.intentionGracePeriod
+        ) > specifiedPomodoro.startTimestamp:
+            return IntentionResponse.TooLate
+
+        if description:
+            specifiedPomodoro.intention = Intention(description, None)
+        return IntentionResponse.WasSet
 
     def evaluateIntention(
         self, pomodoro: Pomodoro, success: IntentionSuccess

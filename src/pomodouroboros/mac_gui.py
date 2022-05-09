@@ -2,15 +2,23 @@
 from __future__ import annotations
 
 from cProfile import Profile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from time import time as rawSeconds
-from typing import Callable, ClassVar, Dict, List, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+)
 
-from objc import IBOutlet, IBAction  # type: ignore
-from Foundation import NSRect, NSObject, NSLog
-from Foundation import NSMutableDictionary
-from AppKit import NSNib, NSResponder
+from Foundation import NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IReactorTCP
 from twisted.python.failure import Failure
@@ -27,21 +35,24 @@ from AppKit import (
     NSBezierPath,
     NSBorderlessWindowMask,
     NSColor,
+    NSCompositingOperationCopy,
     NSEvent,
     NSFloatingWindowLevel,
+    NSFocusRingTypeNone,
+    NSNib,
     NSNotificationCenter,
+    NSRectFill,
+    NSRectFillListWithColorsUsingOperation,
+    NSResponder,
     NSScreen,
     NSTextField,
     NSView,
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
-    NSFocusRingTypeNone,
-    NSRectFill,
-    NSRectFillListWithColorsUsingOperation,
-    NSCompositingOperationCopy,
 )
 from dateutil.tz import tzlocal
+from objc import IBAction, IBOutlet  # type: ignore
 from pomodouroboros.notifs import (
     askForIntent,
     notify,
@@ -553,6 +564,7 @@ tomato = "🍅"
 
 import traceback
 
+
 class MenuForwarder(NSResponder):
     def initWithMenu_(self, menu):
         """ """
@@ -646,7 +658,6 @@ class DayManager(object):
             self.editController.editorWindow.setIsVisible_(True)
             NSApp().activateIgnoringOtherApps_(True)
 
-
         def raiseException():
             # from Foundation import NSException
             # NSException.raise_format_("SampleException", "a thing happened")
@@ -731,11 +742,60 @@ def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
     )
 
 
-class MyObserver(NSObject):
+class DescriptionChanger(NSObject):
+    observing = False
+
+    def initWithDay_(self, day: Day) -> DescriptionChanger:
+        self.day = day
+        return self
+
+    @contextmanager
+    def ignoreChanges(self) -> Iterator[None]:
+        self.observing = True
+        try:
+            yield
+        finally:
+            self.observing = False
+
     def observeValueForKeyPath_ofObject_change_context_(
-        self, keyPath, ofObject, change, context
-    ):
-        print("changed!", keyPath, ofObject, change, context)
+        self,
+        keyPath: str,
+        ofObject: Dict[str, Any],
+        change: Dict[str, Any],
+        context,
+    ) -> None:
+        print("chagne", ofObject, change)
+        if change.get("notificationIsPrior"):
+            print("ignoring prior")
+            return
+        if self.observing:
+            print("ignoring observing", ofObject, change, context)
+            return
+        with self.ignoreChanges():
+            print("ACTING")
+            assert keyPath == "description"
+            pom: Pomodoro = ofObject["pom"]
+            newDescription: str = change["new"]
+            result = self.day.expressIntention(
+                rawSeconds(), newDescription, pom
+            )
+            if result != IntentionResponse.WasSet:
+                print("WAS NOT SET, REVERSING")
+                reverseValue = change["old"]
+                from PyObjCTools.AppHelper import callLater
+
+                def later():
+                    print("DEFERRED CHANGE")
+                    with self.ignoreChanges():
+                        ofObject["description"] = reverseValue
+                    print("CHANG")
+
+                callLater(0.0, later)
+                print("REVERSED?", repr(ofObject["description"]))
+                return
+            print("changed description, saving", repr(newDescription))
+            saveDay(self.day)
+            print("saved.")
 
 
 class DayEditorController(NSObject):
@@ -751,37 +811,44 @@ class DayEditorController(NSObject):
 @mainpoint()
 def main(reactor: IReactorTCP) -> None:
     import traceback, sys
+
     ctrl = DayEditorController.new()
     stuff = list(
         NSNib.alloc()
         .initWithNibNamed_bundle_("GoalListWindow.nib", None)
         .instantiateWithOwner_topLevelObjects_(ctrl, None)
     )
-    observer = MyObserver.alloc().init().retain()
     setupNotifications()
     withdrawIntentPrompt()
     dayManager = DayManager.new(reactor, ctrl)
-    for i, pomOrBreak in enumerate(
-        dayManager.day.elapsedIntervals + dayManager.day.pendingIntervals
-    ):
-        if isinstance(pomOrBreak, Pomodoro):
-            rowDict = NSMutableDictionary.dictionaryWithDictionary_(
-                {
-                    "index": str(i),
-                    "startTime": pomOrBreak.startTime.isoformat(),
-                    "endTime": pomOrBreak.startTime.isoformat(),
-                    "description": pomOrBreak.intention.description or ""
-                    if pomOrBreak.intention is not None
-                    else "",
-                    "success": str(pomOrBreak.intention.wasSuccessful)
-                    if pomOrBreak.intention is not None
-                    else "",
-                }
-            )
-            ctrl.arrayController.addObject_(rowDict)
-            rowDict.addObserver_forKeyPath_options_context_(
-                observer, "description", 0xF, 0x020202
-            )
+    observer = DescriptionChanger.alloc().initWithDay_(dayManager.day).retain()
+    with observer.ignoreChanges():
+        for i, pomOrBreak in enumerate(
+            dayManager.day.elapsedIntervals + dayManager.day.pendingIntervals
+        ):
+            if isinstance(pomOrBreak, Pomodoro):
+                # todo: bind editability to one of these attributes so we can
+                # control it on a per-row basis
+                rowDict = NSMutableDictionary.dictionaryWithDictionary_(
+                    {
+                        "index": str(i),
+                        "startTime": pomOrBreak.startTime.isoformat(),
+                        "endTime": pomOrBreak.startTime.isoformat(),
+                        "description": pomOrBreak.intention.description or ""
+                        if pomOrBreak.intention is not None
+                        else "",
+                        "success": str(pomOrBreak.intention.wasSuccessful)
+                        if pomOrBreak.intention is not None
+                        else "Failed"
+                        if rawSeconds() > pomOrBreak.endTimestamp
+                        else "Not Started",
+                        "pom": pomOrBreak,
+                    }
+                )
+                ctrl.arrayController.addObject_(rowDict)
+                rowDict.addObserver_forKeyPath_options_context_(
+                    observer, "description", 0xF, 0x020202
+                )
     ctrl.tableView.reloadData()
     dayManager.start()
     callOnNotification(
