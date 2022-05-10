@@ -35,7 +35,6 @@ class Actionable(NSObject):
 def menu(title, items):
     result = NSMenu.alloc().initWithTitle_(title)
     for (subtitle, thunk) in items:
-        # print("Adding item: {} {}".format(subtitle, thunk))
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             subtitle, "doIt:", subtitle[0].lower()
         )
@@ -114,7 +113,6 @@ def fmtObjCException(exception):
 
 class QuickApplication(NSApplication):
     # def sendEvent_(self, event):
-    #     print("EVENT", event)
     #     return super().sendEvent_(event)
 
     def reportException_(self, exception):

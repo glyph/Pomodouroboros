@@ -403,9 +403,7 @@ class Day(object):
         Evaluate the given pomodoro's intention as successful or not.
         """
         if (intention := pomodoro.intention) is None:
-            print("intention is None, not setting")
             return
-        print("set to", success)
         intention.wasSuccessful = success
 
     def achievedPomodoros(self) -> Sequence[Pomodoro]:
@@ -559,7 +557,6 @@ class Day(object):
             newPomodoro.endTime, newPomodoro.endTime + breakLength
         )
         self.pendingIntervals[position] = [newPomodoro, newBreak]
-        print("created bonus", newPomodoro, newBreak)
         return newPomodoro
 
     def advanceToTime(

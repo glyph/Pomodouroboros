@@ -1,25 +1,10 @@
 from __future__ import annotations
 
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
+
 from Foundation import NSError, NSObject
 
-from UserNotifications import (
-    UNAuthorizationOptionNone,
-    # UNNotificationAction,
-    UNNotificationCategory,
-    UNNotificationRequest,
-    # UNNotificationTrigger,
-    UNTextInputNotificationAction,
-    UNTimeIntervalNotificationTrigger,
-    UNUserNotificationCenter,
-    # UNNotificationContent,
-    UNMutableNotificationContent,
-    # UNNotificationPresentationOptionNone,
-    UNNotificationPresentationOptionBanner,
-    UNNotification,
-    UNNotificationResponse,
-    UNTextInputNotificationResponse,
-)
+from UserNotifications import UNAuthorizationOptionNone, UNMutableNotificationContent, UNNotification, UNNotificationCategory, UNNotificationPresentationOptionBanner, UNNotificationRequest, UNNotificationResponse, UNTextInputNotificationAction, UNTextInputNotificationResponse, UNTimeIntervalNotificationTrigger, UNUserNotificationCenter
 
 
 class NotificationDelegate(NSObject):
@@ -33,7 +18,6 @@ class NotificationDelegate(NSObject):
         notification: UNNotification,
         completionHandler: Callable,
     ) -> None:
-        print("asking about presenting notification")
         completionHandler(UNNotificationPresentationOptionBanner)
 
     def userNotificationCenter_didReceiveNotificationResponse_withCompletionHandler_(
@@ -46,17 +30,13 @@ class NotificationDelegate(NSObject):
         handler = self.handlers.pop(
             notificationResponse.notification().request().identifier(), None
         )
-        if handler is None:
-            print("no handler")
-        else:
+        if handler is not None:
             if isinstance(
                 notificationResponse, UNTextInputNotificationResponse
             ):
                 userText = notificationResponse.userText()
-                print("received response", userText)
                 handler(userText)
-            else:
-                print("fail?")
+
         completionHandler()
 
 
@@ -89,8 +69,11 @@ def askForIntent(callback: Callable[[str], None]):
         setIntentionMessageIdentifier, content, trigger
     )
 
-    def notificationRequestCompleted(error: NSError) -> None:
-        print("notification requested", error)
+    def notificationRequestCompleted(error: Optional[NSError]) -> None:
+        """
+        Notification request completed, with an error passed if there was one.
+        """
+        # TODO: let the user know somehow if there was a problem
 
     notificationCenter.addNotificationRequest_withCompletionHandler_(
         request, notificationRequestCompleted
@@ -120,8 +103,11 @@ def notify(title="", subtitle="", informativeText=""):
         basicMessageIdentifier, content, trigger
     )
 
-    def notificationRequestCompleted(error: NSError) -> None:
-        print("notification requested", error)
+    def notificationRequestCompleted(error: Optional[NSError]) -> None:
+        """
+        Notification request completed, with an error passed if there was one.
+        """
+        # TODO: let the user know somehow if there was a problem
 
     notificationCenter.addNotificationRequest_withCompletionHandler_(
         request, notificationRequestCompleted
@@ -153,7 +139,11 @@ def setupNotifications():
     )
 
     def completionHandler(granted: bool, error: NSError) -> None:
-        print("unusernotificationcenter auth completed", granted, error)
+        """
+        Authentication to display user notifications completed.
+        """
+        # TODO: somehow let the user know that they're not going to see
+        # notifications if the permission wasn't granted
 
     notificationCenter.requestAuthorizationWithOptions_completionHandler_(
         UNAuthorizationOptionNone, completionHandler

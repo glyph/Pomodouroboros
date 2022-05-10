@@ -20,7 +20,6 @@ class DayTests(TestCase):
             timezone.utc,
             longBreaks=[5, 6],
         )
-        # print(simpleDay)
         self.assertEqual(
             len(simpleDay.pendingIntervals),
             (8 * 2 * 2)  # start with 8 hours broken into 2 poms, each pom
