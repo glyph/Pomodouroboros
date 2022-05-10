@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import os
 from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -234,7 +235,6 @@ class MacPomObserver(object):
     pulseMultiplier: float = 1.5
 
     def __post_init__(self):
-        print("post-init", self.active)
         self.window.setIsVisible_(self.active)
 
     def setWindow(self, newWindow: HUDWindow) -> None:
@@ -242,14 +242,12 @@ class MacPomObserver(object):
         Change the window to be the new window.
         """
         self.window = newWindow
-        print("set-window", self.active)
         newWindow.setIsVisible_(self.active)
 
     def breakStarting(self, startingBreak: Break) -> None:
         """
         A break is starting.
         """
-        print("break start")
         self.active = True
         self.window.setIsVisible_(True)
         notify("Starting Break", "Take it easy for a while.")
@@ -258,7 +256,6 @@ class MacPomObserver(object):
         """
         A pomodoro is starting; time to express an intention.
         """
-        print("pom start")
         self.active = True
         self.lastThreshold = 0.0
         self.window.setIsVisible_(True)
@@ -369,7 +366,6 @@ class MacPomObserver(object):
         The day is over, so there will be no more intervals.
         """
         self.active = False
-        print("The day is over. Goodbye.")
         self.window.setIsVisible_(False)
 
 
@@ -422,7 +418,6 @@ def expressIntention(day: Day, newIntention: str) -> None:
     Express the given intention to the given day.
     """
     intentionResult = day.expressIntention(rawSeconds(), newIntention)
-    print("IR", intentionResult)
     if intentionResult == IntentionResponse.WasSet:
         notify("Intention Set", f"“{newIntention}”")
     elif intentionResult == IntentionResponse.AlreadySet:
@@ -453,10 +448,7 @@ def expressIntention(day: Day, newIntention: str) -> None:
             "Internal Error",
             f"received {intentionResult}",
         )
-        print("very surprised:", intentionResult)
-    print("saving day")
     saveDay(day)
-    print("saved")
 
 
 def setIntention(day: Day) -> None:
@@ -466,9 +458,9 @@ def setIntention(day: Day) -> None:
             question="What is your intention?",
             defaultValue="",
         )
-        print("String Get")
         expressIntention(day, newIntention)
     except BaseException:
+        # TODO: roll up error reporting into common event-handler
         print(Failure().getTraceback())
 
 
@@ -481,6 +473,7 @@ def bonus(when: datetime, day: Day) -> None:
         day.bonusPomodoro(when)
         saveDay(day)
     except BaseException:
+        # TODO: roll up error reporting into common event-handler
         print(Failure().getTraceback())
 
 
@@ -535,10 +528,8 @@ def localDate(ts: float) -> datetime:
 
 def newDay(forDate: date) -> Day:
     if TEST_MODE:
-        print("Creating testing day")
         return Day.forTesting()
     else:
-        print("New production-mode date", forDate)
         return loadOrCreateDay(forDate)
 
 
@@ -566,24 +557,22 @@ import traceback
 
 
 class MenuForwarder(NSResponder):
+    """
+    Event responder for handling menu keyboard shortcuts defined in the
+    status-item menu.
+    """
     def initWithMenu_(self, menu):
-        """ """
         self.menu = menu
         return self
 
     def performKeyEquivalent_(self, event):
-        """ """
-        print("pek", event)
-        handled = self.menu.performKeyEquivalent_(event)
-        if handled:
-            print("HANDLED")
+        self.menu.performKeyEquivalent_(event)
 
     def keyDown_(self, event):
-        handled = self.menu.performKeyEquivalent_(event)
+        self.menu.performKeyEquivalent_(event)
         if handled:
             return
         super().keyDown_(event)
-        print("made it out alive")
 
 
 @dataclass
@@ -611,10 +600,8 @@ class DayManager(object):
         )
 
     def screensChanged(self) -> None:
-        print("screens changed...")
 
         def recreateWindow():
-            print("recreating window")
             self.screenReconfigurationTimer = None
             newWindow = makeOneWindow(self.progress)
             self.observer.setWindow(newWindow)
@@ -645,11 +632,7 @@ class DayManager(object):
         profile: Optional[Profile]
         profile, self.profile = self.profile, None
         assert profile is not None
-        print("stats?")
-        import os
-
         profile.dump_stats(os.path.expanduser("~/pom.pstats"))
-        print("stats.")
 
     def start(self) -> None:
         status = Status(can)
@@ -661,7 +644,6 @@ class DayManager(object):
         def raiseException():
             # from Foundation import NSException
             # NSException.raise_format_("SampleException", "a thing happened")
-            print("raising...")
             raise Exception("report this pls")
 
         status.menu(
@@ -764,15 +746,11 @@ class DescriptionChanger(NSObject):
         change: Dict[str, Any],
         context,
     ) -> None:
-        print("chagne", ofObject, change)
         if change.get("notificationIsPrior"):
-            print("ignoring prior")
             return
         if self.observing:
-            print("ignoring observing", ofObject, change, context)
             return
         with self.ignoreChanges():
-            print("ACTING")
             assert keyPath == "description"
             pom: Pomodoro = ofObject["pom"]
             newDescription: str = change["new"]
@@ -780,22 +758,16 @@ class DescriptionChanger(NSObject):
                 rawSeconds(), newDescription, pom
             )
             if result != IntentionResponse.WasSet:
-                print("WAS NOT SET, REVERSING")
                 reverseValue = change["old"]
                 from PyObjCTools.AppHelper import callLater
 
                 def later():
-                    print("DEFERRED CHANGE")
                     with self.ignoreChanges():
                         ofObject["description"] = reverseValue
-                    print("CHANG")
 
                 callLater(0.0, later)
-                print("REVERSED?", repr(ofObject["description"]))
                 return
-            print("changed description, saving", repr(newDescription))
             saveDay(self.day)
-            print("saved.")
 
 
 class DayEditorController(NSObject):
