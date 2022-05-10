@@ -27,6 +27,7 @@ from twisted.python.failure import Failure
 import math
 from AppKit import (
     NSAlert,
+    NSMenu,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
@@ -561,6 +562,7 @@ class MenuForwarder(NSResponder):
     Event responder for handling menu keyboard shortcuts defined in the
     status-item menu.
     """
+    menu: NSMenu
     def initWithMenu_(self, menu):
         self.menu = menu
         return self
@@ -569,7 +571,7 @@ class MenuForwarder(NSResponder):
         self.menu.performKeyEquivalent_(event)
 
     def keyDown_(self, event):
-        self.menu.performKeyEquivalent_(event)
+        handled = self.menu.performKeyEquivalent_(event)
         if handled:
             return
         super().keyDown_(event)
