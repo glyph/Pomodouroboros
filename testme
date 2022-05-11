@@ -1,6 +1,7 @@
 #!/bin/bash -ex
 
 mypy ./src;
-rm -fr ./dist;
+rm -fr ./dist/TestPomodouroboros.app;
+export TEST_MODE=YES;
 python setup.py py2app --alias;
-TEST_MODE=YES ./dist/Pomodouroboros.app/Contents/MacOS/Pomodouroboros;
+ ./dist/TestPomodouroboros.app/Contents/MacOS/TestPomodouroboros;
