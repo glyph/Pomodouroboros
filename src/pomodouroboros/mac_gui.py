@@ -19,7 +19,7 @@ from typing import (
     Tuple,
 )
 
-from Foundation import NSLog, NSMutableDictionary, NSObject, NSRect
+from Foundation import NSLog, NSMutableDictionary, NSObject, NSRect, NSIndexSet
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IReactorTCP
 from twisted.python.failure import Failure
@@ -222,6 +222,7 @@ class MacPomObserver(object):
 
     progressView: BigProgressView
     window: HUDWindow
+    refreshList: Callable[[], None]
     lastThreshold: float = field(default=0.0)
     thresholds: ClassVar[List[Tuple[float, str]]] = [
         (0.25, "Time to get started!"),
@@ -252,6 +253,7 @@ class MacPomObserver(object):
         self.active = True
         self.window.setIsVisible_(True)
         notify("Starting Break", "Take it easy for a while.")
+        self.refreshList()
 
     def pomodoroStarting(self, day: Day, startingPomodoro: Pomodoro) -> None:
         """
@@ -260,7 +262,17 @@ class MacPomObserver(object):
         self.active = True
         self.lastThreshold = 0.0
         self.window.setIsVisible_(True)
-        askForIntent(lambda userText: expressIntention(day, userText))
+        if (
+            startingPomodoro.intention is None
+            or startingPomodoro.intention.description is None
+        ):
+            def doExpressIntention(userText: str) -> None:
+                expressIntention(day, userText)
+                self.refreshList()
+            askForIntent(doExpressIntention)
+        else:
+            notify("Pomodoro Starting", startingPomodoro.intention.description)
+        self.refreshList()
 
     def elapsedWithNoIntention(self, pomodoro: Pomodoro) -> None:
         """
@@ -272,6 +284,7 @@ class MacPomObserver(object):
                 "The pomodoro elapsed with no intention specified."
             ),
         )
+        self.refreshList()
 
     responses: ClassVar[Dict[IntentionResponse, intcb]] = {}
 
@@ -354,6 +367,7 @@ class MacPomObserver(object):
         if canSetIntention != self.lastIntentionResponse:
             self.lastIntentionResponse = canSetIntention
             self.responses[canSetIntention](self, interval, percentageElapsed)
+            self.refreshList()
         self.progressView.setPercentage_(percentageElapsed)
         alphaValue = (
             math.sin(rawSeconds() * self.pulseMultiplier) * self.alphaVariance
@@ -368,6 +382,7 @@ class MacPomObserver(object):
         """
         self.active = False
         self.window.setIsVisible_(False)
+        self.refreshList()
 
 
 def makeOneWindow(contentView) -> HUDWindow:
@@ -562,7 +577,9 @@ class MenuForwarder(NSResponder):
     Event responder for handling menu keyboard shortcuts defined in the
     status-item menu.
     """
+
     menu: NSMenu
+
     def initWithMenu_(self, menu):
         self.menu = menu
         return self
@@ -592,17 +609,22 @@ class DayManager(object):
     def new(cls, reactor, editController) -> DayManager:
         progressView = BigProgressView.alloc().init()
         window = makeOneWindow(progressView)
-        observer = MacPomObserver(progressView, window)
-        return cls(
+
+        def listRefresher() -> None:
+            if editController.editorWindow.isVisible():
+                editController.refreshStatus_(self)
+
+        observer = MacPomObserver(progressView, window, listRefresher)
+        self = cls(
             observer,
             window,
             progressView,
             reactor,
             editController,
         )
+        return self
 
     def screensChanged(self) -> None:
-
         def recreateWindow():
             self.screenReconfigurationTimer = None
             newWindow = makeOneWindow(self.progress)
@@ -636,11 +658,20 @@ class DayManager(object):
         assert profile is not None
         profile.dump_stats(os.path.expanduser("~/pom.pstats"))
 
+    def addBonusPom(self) -> None:
+        bonus(localDate(rawSeconds()), self.day)
+        self.observer.refreshList()
+
+    def doSetIntention(self) -> None:
+        setIntention(self.day)
+        self.observer.refreshList()
+
     def start(self) -> None:
         status = Status(can)
 
         def doList():
             self.editController.editorWindow.setIsVisible_(True)
+            self.editController.refreshStatus_(self)
             NSApp().activateIgnoringOtherApps_(True)
 
         def raiseException():
@@ -650,10 +681,10 @@ class DayManager(object):
 
         status.menu(
             [
-                ("Intention", lambda: setIntention(self.day)),
+                ("Intention", self.doSetIntention),
                 (
                     "Bonus Pomodoro",
-                    lambda: bonus(localDate(rawSeconds()), self.day),
+                    self.addBonusPom,
                 ),
                 ("Evaluate", lambda: self.setSuccess()),
                 ("Start Profiling", lambda: self.startProfiling()),
@@ -677,12 +708,15 @@ class DayManager(object):
                     if presentDate != self.day.startTime.date():
                         self.day = newDay(presentDate)
                     self.day.advanceToTime(currentTimestamp, self.observer)
-                    status.item.setTitle_(labelForDay(self.day))
-                    finishTime = rawSeconds()
+                    label = labelForDay(self.day)
+                    if TEST_MODE:
+                        label = "🐇" + label
+                    status.item.setTitle_(label)
                 except BaseException:
                     print(Failure().getTraceback())
             finally:
                 # trying to stick to 1% CPU...
+                finishTime = rawSeconds()
                 self.reactor.callLater(
                     (finishTime - currentTimestamp) * 75, update
                 )
@@ -710,6 +744,7 @@ class DayManager(object):
         )
         adjective = "successful" if didIt else "failed"
         noun = "success" if didIt else "failure"
+        self.observer.refreshList()
         notify(
             f"pomodoro {noun}".title(),
             informativeText=f"Marked Pomodoro {adjective}.",
@@ -729,8 +764,12 @@ def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
 class DescriptionChanger(NSObject):
     observing = False
 
-    def initWithDay_(self, day: Day) -> DescriptionChanger:
-        self.day = day
+    def initWithDayManager_andController_(
+        self, mgr: DayManager, ctrl: DayEditorController
+    ) -> DescriptionChanger:
+        self.mgr = mgr
+        self.day = mgr.day
+        self.ctrl = ctrl
         return self
 
     @contextmanager
@@ -759,16 +798,9 @@ class DescriptionChanger(NSObject):
             result = self.day.expressIntention(
                 rawSeconds(), newDescription, pom
             )
-            if result != IntentionResponse.WasSet:
-                reverseValue = change["old"]
-                from PyObjCTools.AppHelper import callLater
+            from PyObjCTools.AppHelper import callLater
 
-                def later():
-                    with self.ignoreChanges():
-                        ofObject["description"] = reverseValue
-
-                callLater(0.0, later)
-                return
+            callLater(0.0, lambda: self.ctrl.refreshStatus_(self.mgr))
             saveDay(self.day)
 
 
@@ -776,10 +808,103 @@ class DayEditorController(NSObject):
     arrayController = IBOutlet()
     editorWindow = IBOutlet()
     tableView = IBOutlet()
+    observer = None
 
     @IBAction
     def hideMe_(self, sender) -> None:
         self.editorWindow.setIsVisible_(False)
+
+    def init(self) -> DayEditorController:
+        return self
+
+    def refreshStatus_(self, dayManager: DayManager) -> None:
+        previouslySelectedRow = self.tableView.selectedRow()
+        oldObserver = self.observer
+        if oldObserver is not None:
+            for eachPreviousDict in self.arrayController.arrangedObjects():
+                eachPreviousDict.removeObserver_forKeyPath_(
+                    oldObserver, "description"
+                )
+        observer = (
+            self.observer
+        ) = DescriptionChanger.alloc().initWithDayManager_andController_(
+            dayManager, self
+        )
+        now = rawSeconds()
+        hasCurrent = False
+        with observer.ignoreChanges():
+            self.arrayController.removeObjects_(
+                list(self.arrayController.arrangedObjects())
+            )
+            for i, pomOrBreak in enumerate(
+                [
+                    each
+                    for each in dayManager.day.elapsedIntervals
+                    + dayManager.day.pendingIntervals
+                    if isinstance(each, Pomodoro)
+                ]
+            ):
+                # todo: bind editability to one of these attributes so we can
+                # control it on a per-row basis
+                desc = (
+                    pomOrBreak.intention.description or ""
+                    if pomOrBreak.intention is not None
+                    else ""
+                )
+                canChange = (now < pomOrBreak.startTimestamp) or (
+                    (pomOrBreak.intention is None)
+                    and (
+                        now
+                        < (
+                            pomOrBreak.startTimestamp
+                            + dayManager.day.intentionGracePeriod
+                        )
+                    )
+                )
+                if not canChange:
+                    desc = "🔒 " + desc
+
+                isCurrent = False
+                if not hasCurrent:
+                    if now < pomOrBreak.endTimestamp:
+                        hasCurrent = isCurrent = True
+
+                rowDict = NSMutableDictionary.dictionaryWithDictionary_(
+                    {
+                        "index": f"{i}{'→' if isCurrent else ''}",
+                        "startTime": pomOrBreak.startTime.time().isoformat(
+                            timespec="minutes"
+                        ),
+                        "endTime": pomOrBreak.endTime.time().isoformat(
+                            timespec="minutes"
+                        ),
+                        "description": desc,
+                        "success": (
+                            "❌" if now > pomOrBreak.endTimestamp else "…"
+                        )
+                        if pomOrBreak.intention is None
+                        else {
+                            None: "…"
+                            if now < pomOrBreak.startTimestamp
+                            else "📝",
+                            IntentionSuccess.Achieved: "✅",
+                            IntentionSuccess.Focused: "🤔",
+                            IntentionSuccess.Distracted: "🦋",
+                            IntentionSuccess.NeverEvaluated: "👋",
+                            True: "✅",
+                            False: "🦋",
+                        }[pomOrBreak.intention.wasSuccessful],
+                        "pom": pomOrBreak,
+                    }
+                )
+                self.arrayController.addObject_(rowDict)
+                rowDict.addObserver_forKeyPath_options_context_(
+                    observer, "description", 0xF, 0x020202
+                )
+        self.tableView.reloadData()
+        self.tableView.selectRowIndexes_byExtendingSelection_(
+            NSIndexSet.indexSetWithIndex_(previouslySelectedRow), False
+        )
 
 
 @mainpoint()
@@ -795,35 +920,7 @@ def main(reactor: IReactorTCP) -> None:
     setupNotifications()
     withdrawIntentPrompt()
     dayManager = DayManager.new(reactor, ctrl)
-    observer = DescriptionChanger.alloc().initWithDay_(dayManager.day).retain()
-    with observer.ignoreChanges():
-        for i, pomOrBreak in enumerate(
-            dayManager.day.elapsedIntervals + dayManager.day.pendingIntervals
-        ):
-            if isinstance(pomOrBreak, Pomodoro):
-                # todo: bind editability to one of these attributes so we can
-                # control it on a per-row basis
-                rowDict = NSMutableDictionary.dictionaryWithDictionary_(
-                    {
-                        "index": str(i),
-                        "startTime": pomOrBreak.startTime.isoformat(),
-                        "endTime": pomOrBreak.startTime.isoformat(),
-                        "description": pomOrBreak.intention.description or ""
-                        if pomOrBreak.intention is not None
-                        else "",
-                        "success": str(pomOrBreak.intention.wasSuccessful)
-                        if pomOrBreak.intention is not None
-                        else "Failed"
-                        if rawSeconds() > pomOrBreak.endTimestamp
-                        else "Not Started",
-                        "pom": pomOrBreak,
-                    }
-                )
-                ctrl.arrayController.addObject_(rowDict)
-                rowDict.addObserver_forKeyPath_options_context_(
-                    observer, "description", 0xF, 0x020202
-                )
-    ctrl.tableView.reloadData()
+    ctrl.refreshStatus_(dayManager)
     dayManager.start()
     callOnNotification(
         NSApplicationDidChangeScreenParametersNotification,
