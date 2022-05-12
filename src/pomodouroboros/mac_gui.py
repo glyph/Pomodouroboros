@@ -6,7 +6,6 @@ from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from time import time as rawSeconds
 from typing import (
     Any,
     Callable,
@@ -19,15 +18,14 @@ from typing import (
     Tuple,
 )
 
-from Foundation import NSLog, NSMutableDictionary, NSObject, NSRect, NSIndexSet
+from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.base import DelayedCall
-from twisted.internet.interfaces import IReactorTCP
+from twisted.internet.interfaces import IDelayedCall, IReactorTime
 from twisted.python.failure import Failure
 
 import math
 from AppKit import (
     NSAlert,
-    NSMenu,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
@@ -41,6 +39,7 @@ from AppKit import (
     NSEvent,
     NSFloatingWindowLevel,
     NSFocusRingTypeNone,
+    NSMenu,
     NSNib,
     NSNotificationCenter,
     NSRectFill,
@@ -54,7 +53,9 @@ from AppKit import (
     NSWindowCollectionBehaviorStationary,
 )
 from dateutil.tz import tzlocal
-from objc import IBAction, IBOutlet  # type: ignore
+from objc import IBAction, IBOutlet
+from PyObjCTools.AppHelper import callLater
+
 from pomodouroboros.notifs import (
     askForIntent,
     notify,
@@ -223,6 +224,7 @@ class MacPomObserver(object):
     progressView: BigProgressView
     window: HUDWindow
     refreshList: Callable[[], None]
+    clock: IReactorTime
     lastThreshold: float = field(default=0.0)
     thresholds: ClassVar[List[Tuple[float, str]]] = [
         (0.25, "Time to get started!"),
@@ -266,9 +268,11 @@ class MacPomObserver(object):
             startingPomodoro.intention is None
             or startingPomodoro.intention.description is None
         ):
+
             def doExpressIntention(userText: str) -> None:
-                expressIntention(day, userText)
+                expressIntention(self.clock, day, userText)
                 self.refreshList()
+
             askForIntent(doExpressIntention)
         else:
             notify("Pomodoro Starting", startingPomodoro.intention.description)
@@ -370,7 +374,8 @@ class MacPomObserver(object):
             self.refreshList()
         self.progressView.setPercentage_(percentageElapsed)
         alphaValue = (
-            math.sin(rawSeconds() * self.pulseMultiplier) * self.alphaVariance
+            math.sin(self.clock.seconds() * self.pulseMultiplier)
+            * self.alphaVariance
         ) + self.baseAlphaValue
         self.active = True
         self.window.setIsVisible_(True)
@@ -429,11 +434,11 @@ def makeOneWindow(contentView) -> HUDWindow:
     return win
 
 
-def expressIntention(day: Day, newIntention: str) -> None:
+def expressIntention(clock: IReactorTime, day: Day, newIntention: str) -> None:
     """
     Express the given intention to the given day.
     """
-    intentionResult = day.expressIntention(rawSeconds(), newIntention)
+    intentionResult = day.expressIntention(clock.seconds(), newIntention)
     if intentionResult == IntentionResponse.WasSet:
         notify("Intention Set", f"“{newIntention}”")
     elif intentionResult == IntentionResponse.AlreadySet:
@@ -467,14 +472,14 @@ def expressIntention(day: Day, newIntention: str) -> None:
     saveDay(day)
 
 
-def setIntention(day: Day) -> None:
+def setIntention(clock: IReactorTime, day: Day) -> None:
     try:
         newIntention = getString(
             title="Set An Intention",
             question="What is your intention?",
             defaultValue="",
         )
-        expressIntention(day, newIntention)
+        expressIntention(clock, day, newIntention)
     except BaseException:
         # TODO: roll up error reporting into common event-handler
         print(Failure().getTraceback())
@@ -599,10 +604,10 @@ class DayManager(object):
     observer: MacPomObserver
     window: HUDWindow
     progress: BigProgressView
-    reactor: IReactorTCP
+    reactor: IReactorTime
     editController: DayEditorController
     day: Day = field(default_factory=lambda: newDay(date.today()))
-    screenReconfigurationTimer: Optional[DelayedCall] = None
+    screenReconfigurationTimer: Optional[IDelayedCall] = None
     profile: Optional[Profile] = None
 
     @classmethod
@@ -614,7 +619,7 @@ class DayManager(object):
             if editController.editorWindow.isVisible():
                 editController.refreshStatus_(self)
 
-        observer = MacPomObserver(progressView, window, listRefresher)
+        observer = MacPomObserver(progressView, window, listRefresher, reactor)
         self = cls(
             observer,
             window,
@@ -659,11 +664,11 @@ class DayManager(object):
         profile.dump_stats(os.path.expanduser("~/pom.pstats"))
 
     def addBonusPom(self) -> None:
-        bonus(localDate(rawSeconds()), self.day)
+        bonus(localDate(self.reactor.seconds()), self.day)
         self.observer.refreshList()
 
     def doSetIntention(self) -> None:
-        setIntention(self.day)
+        setIntention(self.reactor, self.day)
         self.observer.refreshList()
 
     def start(self) -> None:
@@ -702,7 +707,7 @@ class DayManager(object):
         def update() -> None:
             try:
                 try:
-                    currentTimestamp = rawSeconds()
+                    currentTimestamp = self.reactor.seconds()
                     # presentDate = localDate(currentTimestamp).date()
                     presentDate = date.today()
                     if presentDate != self.day.startTime.date():
@@ -716,7 +721,7 @@ class DayManager(object):
                     print(Failure().getTraceback())
             finally:
                 # trying to stick to 1% CPU...
-                finishTime = rawSeconds()
+                finishTime = self.reactor.seconds()
                 self.reactor.callLater(
                     (finishTime - currentTimestamp) * 75, update
                 )
@@ -796,10 +801,8 @@ class DescriptionChanger(NSObject):
             pom: Pomodoro = ofObject["pom"]
             newDescription: str = change["new"]
             result = self.day.expressIntention(
-                rawSeconds(), newDescription, pom
+                self.mgr.reactor.seconds(), newDescription, pom
             )
-            from PyObjCTools.AppHelper import callLater
-
             callLater(0.0, lambda: self.ctrl.refreshStatus_(self.mgr))
             saveDay(self.day)
 
@@ -814,7 +817,8 @@ class DayEditorController(NSObject):
     def hideMe_(self, sender) -> None:
         self.editorWindow.setIsVisible_(False)
 
-    def init(self) -> DayEditorController:
+    def initWithClock_(self, clock: IReactorTime) -> DayEditorController:
+        self.clock = clock
         return self
 
     def refreshStatus_(self, dayManager: DayManager) -> None:
@@ -830,7 +834,7 @@ class DayEditorController(NSObject):
         ) = DescriptionChanger.alloc().initWithDayManager_andController_(
             dayManager, self
         )
-        now = rawSeconds()
+        now = self.clock.seconds()
         hasCurrent = False
         with observer.ignoreChanges():
             self.arrayController.removeObjects_(
@@ -908,10 +912,10 @@ class DayEditorController(NSObject):
 
 
 @mainpoint()
-def main(reactor: IReactorTCP) -> None:
+def main(reactor: IReactorTime) -> None:
     import traceback, sys
 
-    ctrl = DayEditorController.new()
+    ctrl = DayEditorController.alloc().initWithClock_(reactor)
     stuff = list(
         NSNib.alloc()
         .initWithNibNamed_bundle_("GoalListWindow.nib", None)
