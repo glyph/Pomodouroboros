@@ -1,26 +1,26 @@
 # Pomodouroboros
 
-Most pomodoro trackers assume you're going to start them. But time and tide
+Most pomodoro trackers assume you’re going to start them. But time and tide
 wait for no one - the great pomodoro of the cosmos is cold and dark, and it
 goes on forever.
 
 For people with ADHD or other executive function disorders, time blindness is
 common; the inability to notice that time is passing or initiate tasks at an
-appropriate time.  It's easy to let half the day slip by before starting your
+appropriate time.  It’s easy to let half the day slip by before starting your
 first pomodoro.
 
-Pomodouroboros's goal is to:
+Pomodouroboros’s goal is to:
 
 1. stay constantly in your visual field so that you will ABSOLUTELY not forget
    to set some goals
 2. remind you that death stalks your every step, and the pomodoros are
-   happening whether you're making use of them or not
+   happening whether you’re making use of them or not
 
 The way it accomplishes this is to have a pre-existing schedule, where the
-pomodoros are always running, whether you've said what you're going to do with
-them or not.  There's a progress bar in the middle of your screen showing the
+pomodoros are always running, whether you’ve said what you’re going to do with
+them or not.  There’s a progress bar in the middle of your screen showing the
 progress of the current one on your main display, in different colors depending
-on whether you haven't set an intention yet:
+on whether you haven’t set an intention yet:
 
 ![](./screenshots/intention-not-set.png)
 
@@ -28,7 +28,7 @@ If you *have* set one for the current block:
 
 ![](./screenshots/intention-set-progress.png)
 
-Or if you're taking a break:
+Or if you’re taking a break:
 
 ![](./screenshots/break.png)
 
@@ -54,9 +54,18 @@ The status item in the menu bar shows 4 items:
 
 ## Status
 
-Currently, Pomodouroboros's implementation quality is very rough, and probably
+Currently, Pomodouroboros’s implementation quality is very rough, and probably
 not suitable for anyone other than people who know, or want to learn, Python,
 in order to help fix it up.  As such there is no packaged build for end-users
 yet.  However, hopefully in the [not too distant
 future](https://github.com/glyph/Pomodouroboros/issues/21), releases will be
-available from the "Releases" tab.
+available from the “Releases” tab.
+
+Right now there’s only a Mac frontend since that’s the platform I use
+day-to-day, but I’d really like to get Windows and Linux frontends as soon as
+possible.
+
+If “person with ADHD who knows or wants to learn Python” sounds like you, have
+a look at the [list of issues](https://github.com/glyph/Pomodouroboros/issues)
+to find something simple to contribute!  In order to run it, make a virtualenv,
+`pip install -Ur requirements.txt`, and then run `./runme`.
