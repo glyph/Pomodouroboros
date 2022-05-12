@@ -38,6 +38,20 @@ developing the app):
 
 ![](./screenshots/pomodoro-list-view.png)
 
+The status item in the menu bar shows 4 items:
+
+- A 🍅 (if your intentionality exceeds your distraction) or 🥫 (if you are
+  mostly distracted).  The point is to get the fresh tomato!
+- A number before a “✓” indicating how many “success points” you’ve got for the
+  current day, gained by focused or successful pomodoros, and for setting
+  intentions
+- A number before a “✕” indicating how many “distraction points” you’ve got for
+  the current day
+- A number before a “?” indicating how many completed or in-progress pomodoros
+  that you can currently evaluate for success.
+- A number before a “…” indicating how many pomodoros remain before the end of
+  the day.
+
 ## Status
 
 Currently, Pomodouroboros's implementation quality is very rough, and probably
