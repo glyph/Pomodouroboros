@@ -67,8 +67,12 @@ possible.
 
 If “person with ADHD who knows or wants to learn Python” sounds like you, have
 a look at the [list of issues](https://github.com/glyph/Pomodouroboros/issues)
-to find something simple to contribute!  In order to run it, make a virtualenv,
-`pip install -Ur requirements.txt`, and then run `./runme`.
+to find something simple to contribute!  In order to run it, make sure you have
+Xcode installed (like [actual, for-real
+Xcode](https://apps.apple.com/us/app/xcode/id497799835?mt=12), not the
+command-line tools; this is a GUI, not a command-line thing, so you need the
+GUI development tools) make a virtualenv, `pip install -Ur requirements.txt`,
+and then run `./runme`.
 
 Note that if you really want to keep using the app, `./testme` creates a
 different test bundle so you can run through some quick, fake test pomodoros
