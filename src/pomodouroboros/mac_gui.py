@@ -846,7 +846,8 @@ class DayEditorController(NSObject):
                     for each in dayManager.day.elapsedIntervals
                     + dayManager.day.pendingIntervals
                     if isinstance(each, Pomodoro)
-                ]
+                ],
+                start=1,
             ):
                 # todo: bind editability to one of these attributes so we can
                 # control it on a per-row basis
