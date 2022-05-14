@@ -2,6 +2,7 @@ import os
 import sys
 import traceback
 from twisted.internet.fdesc import setBlocking
+from objc import ivar
 
 # Prevent tracebacks or other large messages from truncating when debugging
 # https://github.com/ronaldoussoren/py2app/issues/444
@@ -11,6 +12,8 @@ setBlocking(1)
 from Foundation import NSObject, NSApplication
 from AppKit import (
     NSApp,
+    NSEvent,
+    NSResponder,
     NSMenu,
     NSMenuItem,
     NSStatusBar,
@@ -112,8 +115,13 @@ def fmtObjCException(exception):
 
 
 class QuickApplication(NSApplication):
-    # def sendEvent_(self, event):
-    #     return super().sendEvent_(event)
+    keyEquivalentHandler: NSResponder = ivar()
+
+    def sendEvent_(self, event: NSEvent) -> None:
+        if self.keyEquivalentHandler is not None:
+            if self.keyEquivalentHandler.performKeyEquivalent_(event):
+                return
+        super().sendEvent_(event)
 
     def reportException_(self, exception):
         if isPythonException(exception):

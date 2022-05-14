@@ -40,6 +40,7 @@ from AppKit import (
     NSFloatingWindowLevel,
     NSFocusRingTypeNone,
     NSMenu,
+    NSMenuItem,
     NSNib,
     NSNotificationCenter,
     NSRectFill,
@@ -583,20 +584,15 @@ class MenuForwarder(NSResponder):
     status-item menu.
     """
 
-    menu: NSMenu
+    myMenu: NSMenu = IBOutlet()
+    statusMenu: NSMenu = IBOutlet()
 
-    def initWithMenu_(self, menu):
-        self.menu = menu
-        return self
-
-    def performKeyEquivalent_(self, event):
-        self.menu.performKeyEquivalent_(event)
-
-    def keyDown_(self, event):
-        handled = self.menu.performKeyEquivalent_(event)
-        if handled:
-            return
-        super().keyDown_(event)
+    def performKeyEquivalent_(self, event: NSEvent) -> bool:
+        for menu in [self.statusMenu, self.myMenu]:
+            handled = menu.performKeyEquivalent_(event)
+            if handled:
+                return True
+        return super().performKeyEquivalent_(event)
 
 
 @dataclass
@@ -700,9 +696,21 @@ class DayManager(object):
             ]
         )
 
-        self.editController.editorWindow.setNextResponder_(
-            MenuForwarder.alloc().initWithMenu_(status.item.menu()).retain()
+        mf = MenuForwarder.alloc().init()
+
+        mf.statusMenu = status.item.menu()
+
+        (
+            NSNib.alloc()
+            .initWithNibNamed_bundle_("StandardMenus.nib", None)
+            .instantiateWithOwner_topLevelObjects_(mf, None)
         )
+
+        # TODO: this is wrong, we need the window to dispatch to the menus
+        # directly in sendEvent_ because we aren't the next responder when a
+        # table edit cell is focused for some reason (even though we are when
+        # the table is receiving key events to move the selection around?)
+        NSApp().keyEquivalentHandler = mf
 
         def update() -> None:
             try:

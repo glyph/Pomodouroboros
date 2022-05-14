@@ -15,6 +15,13 @@ class BigProgressView: NSObject {
     @IBAction func setRightColor(_ sender: NSObject) { }
 }
 
+class MenuForwarder: NSObject {
+    # Outlets
+    @IBOutlet var myMenu: id;
+    # Actions
+
+}
+
 class DayEditorController: NSObject {
     # Outlets
     @IBOutlet var arrayController: id;
@@ -22,5 +29,6 @@ class DayEditorController: NSObject {
     @IBOutlet var tableView: id;
     # Actions
     @IBAction func hideMe(_ sender: NSObject) { }
+    @IBAction func refreshStatus(_ sender: NSObject) { }
 }
 

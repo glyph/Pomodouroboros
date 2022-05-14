@@ -9,14 +9,17 @@ import os
 from setuptools import setup
 
 APP = [f"mac/{'Test' if os.environ.get('TEST_MODE') else ''}Pomodouroboros.py"]
-DATA_FILES = ["IBFiles/GoalListWindow.xib"]
+DATA_FILES = [
+    "IBFiles/GoalListWindow.xib",
+    "IBFiles/StandardMenus.xib",
+]
 OPTIONS = {
     "plist": {
         "LSUIElement": True,
         "NSRequiresAquaSystemAppearance": False,
         "CFBundleIdentifier": f"im.glyph.and.this.is.{'test' if os.environ.get('TEST_MODE') else ''}pomodouroboros",
     },
-    "iconfile": f"{'test' if os.environ.get('TEST_MODE') else ''}icon.icns"
+    "iconfile": f"{'test' if os.environ.get('TEST_MODE') else ''}icon.icns",
 }
 
 setup(

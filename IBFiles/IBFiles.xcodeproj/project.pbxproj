@@ -9,6 +9,7 @@
 /* Begin PBXFileReference section */
 		F08257CF2825F2C80007B95F /* GoalListWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = GoalListWindow.xib; sourceTree = "<group>"; };
 		F08257D0282620790007B95F /* python_classes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = python_classes.swift; sourceTree = "<group>"; };
+		F0EA07AC282E112D00E38FDF /* StandardMenus.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = StandardMenus.xib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -16,6 +17,7 @@
 			isa = PBXGroup;
 			children = (
 				F08257CF2825F2C80007B95F /* GoalListWindow.xib */,
+				F0EA07AC282E112D00E38FDF /* StandardMenus.xib */,
 				F08257D0282620790007B95F /* python_classes.swift */,
 			);
 			sourceTree = "<group>";
