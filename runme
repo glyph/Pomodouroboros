@@ -2,5 +2,6 @@
 
 mypy ./src;
 rm -fr ./dist;
-python setup.py py2app --alias;
+# https://github.com/ronaldoussoren/py2app/issues/444
+python setup.py py2app --alias | cat;
 ./dist/Pomodouroboros.app/Contents/MacOS/Pomodouroboros;

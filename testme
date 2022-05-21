@@ -3,5 +3,6 @@
 mypy ./src;
 rm -fr ./dist/TestPomodouroboros.app;
 export TEST_MODE=YES;
-python setup.py py2app --alias;
+# https://github.com/ronaldoussoren/py2app/issues/444
+python setup.py py2app --alias | cat;
  ./dist/TestPomodouroboros.app/Contents/MacOS/TestPomodouroboros;
