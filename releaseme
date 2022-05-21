@@ -11,7 +11,7 @@ cd dist;
 BUNDLE_ID='im.glyph.and.this.is.pomodouroboros';
 NAME='Pomodouroboros';
 
-# set IDENTITY and USERNAME
+# set IDENTITY and NOTARIZE_USERNAME
 . "${HOME}/.signing-vars.sh";
 
 find "${NAME}.app" -iname '*.so' -or -iname '*.dylib' |
@@ -42,7 +42,7 @@ xcrun altool \
       --notarize-app \
       --file "${NAME}.app.zip" \
       --type osx \
-      --username "${USERNAME}" \
+      --username "${NOTARIZE_USERNAME}" \
       --password "@keychain:NOTARIZE_KEY" \
       --primary-bundle-id="${BUNDLE_ID}";
 
