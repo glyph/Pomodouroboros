@@ -29,6 +29,7 @@ class DayEditorController: NSObject {
     @IBOutlet var editorWindow: id;
     @IBOutlet var tableView: id;
     @IBOutlet var datePickerCell: id;
+    @IBOutlet var dayLabelField: id;
     # Actions
     @IBAction func hideMe(_ sender: NSObject) { }
     @IBAction func dateWasSet(_ sender: NSObject) { }

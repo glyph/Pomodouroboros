@@ -38,7 +38,6 @@ class DayLoader:
         Load or create a day.
         """
         if date in self.cache:
-            print("cache hit", date, self.cache[date])
             return self.cache[date]
 
         dayPath = self.pathForDate(date)
@@ -49,6 +48,5 @@ class DayLoader:
             if dayPath.isfile()
             else Day.new(day=date)
         )
-        print("cache miss", date, loadedOrCreated)
         self.cache[date] = loadedOrCreated
         return loadedOrCreated

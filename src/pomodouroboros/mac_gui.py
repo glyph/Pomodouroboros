@@ -14,7 +14,7 @@ from twisted.internet.interfaces import IDelayedCall, IReactorTime
 from twisted.python.failure import Failure
 
 import math
-from AppKit import NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertThirdButtonReturn, NSApp, NSApplicationDidChangeScreenParametersNotification, NSBackingStoreBuffered, NSBezierPath, NSBorderlessWindowMask, NSCell, NSColor, NSCompositingOperationCopy, NSEvent, NSFloatingWindowLevel, NSFocusRingTypeNone, NSMenu, NSMenuItem, NSNib, NSNotificationCenter, NSRectFill, NSRectFillListWithColorsUsingOperation, NSResponder, NSScreen, NSTextField, NSView, NSWindow, NSWindowCollectionBehaviorCanJoinAllSpaces, NSWindowCollectionBehaviorStationary
+from AppKit import NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertThirdButtonReturn, NSApp, NSApplicationDidChangeScreenParametersNotification, NSBackingStoreBuffered, NSBezierPath, NSBorderlessWindowMask, NSCell, NSColor, NSCompositingOperationCopy, NSEvent, NSFloatingWindowLevel, NSFocusRingTypeNone, NSMenu, NSMenuItem, NSNib, NSNotificationCenter, NSRectFill, NSRectFillListWithColorsUsingOperation, NSResponder, NSScreen, NSTextField, NSTextFieldCell, NSView, NSWindow, NSWindowCollectionBehaviorCanJoinAllSpaces, NSWindowCollectionBehaviorStationary
 from PyObjCTools.AppHelper import callLater
 from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
@@ -833,6 +833,7 @@ class DayEditorController(NSObject):
     editorWindow = IBOutlet()
     tableView = IBOutlet()
     datePickerCell: Optional[NSCell] = IBOutlet()
+    dayLabelField: Optional[NSTextFieldCell] = IBOutlet()
     observer = None
     clock: IReactorTime
     dayLoader: DayLoader
@@ -863,6 +864,8 @@ class DayEditorController(NSObject):
 
     def refreshStatus_(self, day: Day) -> None:
         previouslySelectedRow = self.tableView.selectedRow()
+        assert self.dayLabelField is not None, "should be set by nib loading"
+        self.dayLabelField.setObjectValue_(labelForDay(day))
         oldObserver = self.observer
         if oldObserver is not None:
             for eachPreviousDict in self.arrayController.arrangedObjects():

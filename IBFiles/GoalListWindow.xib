@@ -9,6 +9,7 @@
             <connections>
                 <outlet property="arrayController" destination="XNf-x2-cC2" id="CNr-b8-QDs"/>
                 <outlet property="datePickerCell" destination="pDE-yo-jA2" id="Alz-bQ-Ao8"/>
+                <outlet property="dayLabelField" destination="5Vb-B2-HLs" id="Fgp-E9-lRf"/>
                 <outlet property="editorWindow" destination="QvC-M9-y7g" id="b7d-BX-RzA"/>
                 <outlet property="tableView" destination="A2B-RE-w6m" id="iG2-0M-vx9"/>
             </connections>
@@ -39,6 +40,15 @@
                             </connections>
                         </datePickerCell>
                     </datePicker>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="qnJ-g1-YqA">
+                        <rect key="frame" x="137" y="394" width="454" height="16"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <textFieldCell key="cell" lineBreakMode="clipping" title="Label" id="5Vb-B2-HLs">
+                            <font key="font" usesAppearanceFont="YES"/>
+                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                    </textField>
                     <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="KHb-kw-qIX">
                         <rect key="frame" x="-1" y="-1" width="942" height="383"/>
                         <clipView key="contentView" id="HUr-4c-jJd">
@@ -274,7 +284,7 @@
                     <constraint firstItem="KHb-kw-qIX" firstAttribute="top" secondItem="U6C-w5-wMP" secondAttribute="bottom" constant="8" symbolic="YES" id="vG6-i3-rfU"/>
                 </constraints>
             </view>
-            <point key="canvasLocation" x="356.5" y="151"/>
+            <point key="canvasLocation" x="356" y="151"/>
         </window>
         <arrayController id="XNf-x2-cC2"/>
     </objects>
