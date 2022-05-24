@@ -8,6 +8,7 @@
         <customObject id="-2" userLabel="File's Owner" customClass="DayEditorController">
             <connections>
                 <outlet property="arrayController" destination="XNf-x2-cC2" id="CNr-b8-QDs"/>
+                <outlet property="datePickerCell" destination="pDE-yo-jA2" id="Alz-bQ-Ao8"/>
                 <outlet property="editorWindow" destination="QvC-M9-y7g" id="b7d-BX-RzA"/>
                 <outlet property="tableView" destination="A2B-RE-w6m" id="iG2-0M-vx9"/>
             </connections>
@@ -28,11 +29,14 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="pDE-yo-jA2">
                             <font key="font" metaFont="system"/>
-                            <date key="date" timeIntervalSinceReferenceDate="674010420.64927399">
-                                <!--2022-05-12 01:07:00 +0000-->
+                            <date key="date" timeIntervalSinceReferenceDate="675072963.46867001">
+                                <!--2022-05-24 08:16:03 +0000-->
                             </date>
                             <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                            <connections>
+                                <action selector="dateWasSet:" target="-2" id="WvH-1M-rHr"/>
+                            </connections>
                         </datePickerCell>
                     </datePicker>
                     <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="KHb-kw-qIX">

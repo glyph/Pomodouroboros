@@ -18,6 +18,7 @@ class BigProgressView: NSObject {
 class MenuForwarder: NSObject {
     # Outlets
     @IBOutlet var myMenu: id;
+    @IBOutlet var statusMenu: id;
     # Actions
 
 }
@@ -27,8 +28,10 @@ class DayEditorController: NSObject {
     @IBOutlet var arrayController: id;
     @IBOutlet var editorWindow: id;
     @IBOutlet var tableView: id;
+    @IBOutlet var datePickerCell: id;
     # Actions
     @IBAction func hideMe(_ sender: NSObject) { }
+    @IBAction func dateWasSet(_ sender: NSObject) { }
     @IBAction func refreshStatus(_ sender: NSObject) { }
 }
 

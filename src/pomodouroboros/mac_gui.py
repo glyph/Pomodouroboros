@@ -6,17 +6,7 @@ from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-)
+from typing import Any, Callable, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple
 
 from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.base import DelayedCall
@@ -24,56 +14,14 @@ from twisted.internet.interfaces import IDelayedCall, IReactorTime
 from twisted.python.failure import Failure
 
 import math
-from AppKit import (
-    NSAlert,
-    NSAlertFirstButtonReturn,
-    NSAlertSecondButtonReturn,
-    NSAlertThirdButtonReturn,
-    NSApp,
-    NSApplicationDidChangeScreenParametersNotification,
-    NSBackingStoreBuffered,
-    NSBezierPath,
-    NSBorderlessWindowMask,
-    NSColor,
-    NSCompositingOperationCopy,
-    NSEvent,
-    NSFloatingWindowLevel,
-    NSFocusRingTypeNone,
-    NSMenu,
-    NSMenuItem,
-    NSNib,
-    NSNotificationCenter,
-    NSRectFill,
-    NSRectFillListWithColorsUsingOperation,
-    NSResponder,
-    NSScreen,
-    NSTextField,
-    NSView,
-    NSWindow,
-    NSWindowCollectionBehaviorCanJoinAllSpaces,
-    NSWindowCollectionBehaviorStationary,
-)
+from AppKit import NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertThirdButtonReturn, NSApp, NSApplicationDidChangeScreenParametersNotification, NSBackingStoreBuffered, NSBezierPath, NSBorderlessWindowMask, NSCell, NSColor, NSCompositingOperationCopy, NSEvent, NSFloatingWindowLevel, NSFocusRingTypeNone, NSMenu, NSMenuItem, NSNib, NSNotificationCenter, NSRectFill, NSRectFillListWithColorsUsingOperation, NSResponder, NSScreen, NSTextField, NSView, NSWindow, NSWindowCollectionBehaviorCanJoinAllSpaces, NSWindowCollectionBehaviorStationary
+from PyObjCTools.AppHelper import callLater
 from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
-from PyObjCTools.AppHelper import callLater
-
-from pomodouroboros.notifs import (
-    askForIntent,
-    notify,
-    setupNotifications,
-    withdrawIntentPrompt,
-)
-from pomodouroboros.pommodel import (
-    Break,
-    Day,
-    Intention,
-    IntentionResponse,
-    IntentionSuccess,
-    Interval,
-    Pomodoro,
-)
+from pomodouroboros.notifs import askForIntent, notify, setupNotifications, withdrawIntentPrompt
+from pomodouroboros.pommodel import Break, Day, Intention, IntentionResponse, IntentionSuccess, Interval, Pomodoro
 from pomodouroboros.quickapp import Actionable, Status, mainpoint, quit
-from pomodouroboros.storage import TEST_MODE, loadOrCreateDay, saveDay
+from pomodouroboros.storage import DayLoader, TEST_MODE
 
 
 # fillRect = NSBezierPath.fillRect_
@@ -226,6 +174,7 @@ class MacPomObserver(object):
     window: HUDWindow
     refreshList: Callable[[], None]
     clock: IReactorTime
+    dayLoader: DayLoader
     lastThreshold: float = field(default=0.0)
     thresholds: ClassVar[List[Tuple[float, str]]] = [
         (0.25, "Time to get started!"),
@@ -271,7 +220,7 @@ class MacPomObserver(object):
         ):
 
             def doExpressIntention(userText: str) -> None:
-                expressIntention(self.clock, day, userText)
+                expressIntention(self.clock, day, userText, self.dayLoader)
                 self.refreshList()
 
             askForIntent(doExpressIntention)
@@ -435,7 +384,9 @@ def makeOneWindow(contentView) -> HUDWindow:
     return win
 
 
-def expressIntention(clock: IReactorTime, day: Day, newIntention: str) -> None:
+def expressIntention(
+    clock: IReactorTime, day: Day, newIntention: str, dayLoader: DayLoader
+) -> None:
     """
     Express the given intention to the given day.
     """
@@ -470,30 +421,30 @@ def expressIntention(clock: IReactorTime, day: Day, newIntention: str) -> None:
             "Internal Error",
             f"received {intentionResult}",
         )
-    saveDay(day)
+    dayLoader.saveDay(day)
 
 
-def setIntention(clock: IReactorTime, day: Day) -> None:
+def setIntention(clock: IReactorTime, day: Day, dayLoader: DayLoader) -> None:
     try:
         newIntention = getString(
             title="Set An Intention",
             question="What is your intention?",
             defaultValue="",
         )
-        expressIntention(clock, day, newIntention)
+        expressIntention(clock, day, newIntention, dayLoader)
     except BaseException:
         # TODO: roll up error reporting into common event-handler
         print(Failure().getTraceback())
 
 
-def bonus(when: datetime, day: Day) -> None:
+def bonus(when: datetime, day: Day, dayLoader: DayLoader) -> None:
     """
     Start a new pom outside the usual bounds of pomodoro time, either before or
     after the end of the day.
     """
     try:
         day.bonusPomodoro(when)
-        saveDay(day)
+        dayLoader.saveDay(day)
     except BaseException:
         # TODO: roll up error reporting into common event-handler
         print(Failure().getTraceback())
@@ -531,11 +482,11 @@ nsDateNow = NSDate.date
 nsDateFromTimestamp = NSDate.dateWithTimeIntervalSince1970_
 
 
-def localDate(ts: float) -> datetime:
+def datetimeFromNSDate(nsdate: NSDate) -> datetime:
     """
-    Use Cocoa to compute a local datetime
+    Convert an NSDate to a Python datetime.
     """
-    components = fromDate(datetimeComponents, nsDateFromTimestamp(ts))
+    components = fromDate(datetimeComponents, nsdate)
     return datetime(
         year=components.year(),
         month=components.month(),
@@ -548,11 +499,11 @@ def localDate(ts: float) -> datetime:
     )
 
 
-def newDay(forDate: date) -> Day:
-    if TEST_MODE:
-        return Day.forTesting()
-    else:
-        return loadOrCreateDay(forDate)
+def localDate(ts: float) -> datetime:
+    """
+    Use Cocoa to compute a local datetime
+    """
+    return datetimeFromNSDate(nsDateFromTimestamp(ts))
 
 
 def labelForDay(day: Day) -> str:
@@ -602,26 +553,36 @@ class DayManager(object):
     progress: BigProgressView
     reactor: IReactorTime
     editController: DayEditorController
-    day: Day = field(default_factory=lambda: newDay(date.today()))
+    dayLoader: DayLoader
+    day: Day
     screenReconfigurationTimer: Optional[IDelayedCall] = None
     profile: Optional[Profile] = None
 
     @classmethod
-    def new(cls, reactor, editController) -> DayManager:
+    def new(
+        cls,
+        reactor: IReactorTime,
+        editController: DayEditorController,
+        dayLoader: DayLoader,
+    ) -> DayManager:
         progressView = BigProgressView.alloc().init()
         window = makeOneWindow(progressView)
 
         def listRefresher() -> None:
             if editController.editorWindow.isVisible():
-                editController.refreshStatus_(self)
+                editController.refreshStatus_(self.day)
 
-        observer = MacPomObserver(progressView, window, listRefresher, reactor)
+        observer = MacPomObserver(
+            progressView, window, listRefresher, reactor, dayLoader
+        )
         self = cls(
             observer,
             window,
             progressView,
             reactor,
             editController,
+            dayLoader,
+            dayLoader.loadOrCreateDay(date.fromtimestamp(reactor.seconds())),
         )
         return self
 
@@ -660,22 +621,22 @@ class DayManager(object):
         profile.dump_stats(os.path.expanduser("~/pom.pstats"))
 
     def addBonusPom(self) -> None:
-        bonus(localDate(self.reactor.seconds()), self.day)
+        bonus(localDate(self.reactor.seconds()), self.day, self.dayLoader)
         self.observer.refreshList()
 
     def doSetIntention(self) -> None:
-        setIntention(self.reactor, self.day)
+        setIntention(self.reactor, self.day, self.dayLoader)
         self.observer.refreshList()
 
     def start(self) -> None:
         status = Status(can)
 
-        def doList():
+        def doList() -> None:
             self.editController.editorWindow.setIsVisible_(True)
-            self.editController.refreshStatus_(self)
+            self.editController.refreshStatus_(self.day)
             NSApp().activateIgnoringOtherApps_(True)
 
-        def raiseException():
+        def raiseException() -> NoReturn:
             # from Foundation import NSException
             # NSException.raise_format_("SampleException", "a thing happened")
             raise Exception("report this pls")
@@ -719,7 +680,7 @@ class DayManager(object):
                     # presentDate = localDate(currentTimestamp).date()
                     presentDate = date.today()
                     if presentDate != self.day.startTime.date():
-                        self.day = newDay(presentDate)
+                        self.day = self.dayLoader.loadOrCreateDay(presentDate)
                     self.day.advanceToTime(currentTimestamp, self.observer)
                     label = labelForDay(self.day)
                     if TEST_MODE:
@@ -749,7 +710,7 @@ class DayManager(object):
         ), "unEvaluatedPomodoros scans this already"
         succeeded = getSuccess(aPom.intention)
         self.day.evaluateIntention(aPom, succeeded)
-        saveDay(self.day)
+        self.dayLoader.saveDay(self.day)
         didIt = aPom.intention.wasSuccessful not in (
             False,
             IntentionSuccess.Distracted,
@@ -777,11 +738,11 @@ def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
 class DescriptionChanger(NSObject):
     observing = False
 
-    def initWithDayManager_andController_(
-        self, mgr: DayManager, ctrl: DayEditorController
+    def initWithDay_clock_andController_(
+        self, day: Day, clock: IReactorTime, ctrl: DayEditorController
     ) -> DescriptionChanger:
-        self.mgr = mgr
-        self.day = mgr.day
+        self.day = day
+        self.clock = clock
         self.ctrl = ctrl
         return self
 
@@ -809,27 +770,98 @@ class DescriptionChanger(NSObject):
             pom: Pomodoro = ofObject["pom"]
             newDescription: str = change["new"]
             result = self.day.expressIntention(
-                self.mgr.reactor.seconds(), newDescription, pom
+                self.clock.seconds(), newDescription, pom
             )
-            callLater(0.0, lambda: self.ctrl.refreshStatus_(self.mgr))
-            saveDay(self.day)
+            callLater(0.0, lambda: self.ctrl.refreshStatus_(self.day))
+            self.ctrl.dayLoader.saveDay(self.day)
+
+
+def poms2Dicts(
+    day: Day, now: float, poms: Iterable[Pomodoro]
+) -> Iterable[Dict[str, object]]:
+    """
+    Convert a set of pomodoros to pretty-printed dictionaries for display with
+    respect to a given POSIX epoch timestamp.
+    """
+    # TODO: would this be useful for other frontends? Is it really
+    # mac-specific?
+    hasCurrent = False
+    for i, pomOrBreak in enumerate(poms, start=1):
+        # todo: bind editability to one of these attributes so we can
+        # control it on a per-row basis
+        desc = (
+            pomOrBreak.intention.description or ""
+            if pomOrBreak.intention is not None
+            else ""
+        )
+        canChange = (now < pomOrBreak.startTimestamp) or (
+            (pomOrBreak.intention is None)
+            and (now < (pomOrBreak.startTimestamp + day.intentionGracePeriod))
+        )
+        if not canChange:
+            desc = "🔒 " + desc
+
+        isCurrent = False
+        if not hasCurrent:
+            if now < pomOrBreak.endTimestamp:
+                hasCurrent = isCurrent = True
+
+        yield {
+            "index": f"{i}{'→' if isCurrent else ''}",
+            "startTime": pomOrBreak.startTime.time().isoformat(
+                timespec="minutes"
+            ),
+            "endTime": pomOrBreak.endTime.time().isoformat(timespec="minutes"),
+            "description": desc,
+            "success": ("❌" if now > pomOrBreak.endTimestamp else "…")
+            if pomOrBreak.intention is None
+            else {
+                None: "…" if now < pomOrBreak.startTimestamp else "📝",
+                IntentionSuccess.Achieved: "✅",
+                IntentionSuccess.Focused: "🤔",
+                IntentionSuccess.Distracted: "🦋",
+                IntentionSuccess.NeverEvaluated: "👋",
+                True: "✅",
+                False: "🦋",
+            }[pomOrBreak.intention.wasSuccessful],
+            "pom": pomOrBreak,
+        }
 
 
 class DayEditorController(NSObject):
     arrayController = IBOutlet()
     editorWindow = IBOutlet()
     tableView = IBOutlet()
+    datePickerCell: Optional[NSCell] = IBOutlet()
     observer = None
+    clock: IReactorTime
+    dayLoader: DayLoader
+
+    def initWithClock_andDayLoader_(
+        self, clock: IReactorTime, dayLoader: DayLoader
+    ) -> DayEditorController:
+        self.clock = clock
+        self.dayLoader = dayLoader
+        return self
 
     @IBAction
     def hideMe_(self, sender) -> None:
         self.editorWindow.setIsVisible_(False)
 
-    def initWithClock_(self, clock: IReactorTime) -> DayEditorController:
-        self.clock = clock
-        return self
+    @IBAction
+    def dateWasSet_(self, sender: object) -> None:
+        """
+        The date was set to a new value.
+        """
+        assert (
+            self.datePickerCell is not None
+        ), "The date picker cell should be set by nib loading."
+        dateValue = self.datePickerCell.dateValue()
+        self.refreshStatus_(
+            self.dayLoader.loadOrCreateDay(datetimeFromNSDate(dateValue).date())
+        )
 
-    def refreshStatus_(self, dayManager: DayManager) -> None:
+    def refreshStatus_(self, day: Day) -> None:
         previouslySelectedRow = self.tableView.selectedRow()
         oldObserver = self.observer
         if oldObserver is not None:
@@ -839,76 +871,22 @@ class DayEditorController(NSObject):
                 )
         observer = (
             self.observer
-        ) = DescriptionChanger.alloc().initWithDayManager_andController_(
-            dayManager, self
+        ) = DescriptionChanger.alloc().initWithDay_clock_andController_(
+            day, self.clock, self
         )
         now = self.clock.seconds()
-        hasCurrent = False
+        onlyPoms = [
+            each
+            for each in day.elapsedIntervals + day.pendingIntervals
+            if isinstance(each, Pomodoro)
+        ]
         with observer.ignoreChanges():
             self.arrayController.removeObjects_(
                 list(self.arrayController.arrangedObjects())
             )
-            for i, pomOrBreak in enumerate(
-                [
-                    each
-                    for each in dayManager.day.elapsedIntervals
-                    + dayManager.day.pendingIntervals
-                    if isinstance(each, Pomodoro)
-                ],
-                start=1,
-            ):
-                # todo: bind editability to one of these attributes so we can
-                # control it on a per-row basis
-                desc = (
-                    pomOrBreak.intention.description or ""
-                    if pomOrBreak.intention is not None
-                    else ""
-                )
-                canChange = (now < pomOrBreak.startTimestamp) or (
-                    (pomOrBreak.intention is None)
-                    and (
-                        now
-                        < (
-                            pomOrBreak.startTimestamp
-                            + dayManager.day.intentionGracePeriod
-                        )
-                    )
-                )
-                if not canChange:
-                    desc = "🔒 " + desc
-
-                isCurrent = False
-                if not hasCurrent:
-                    if now < pomOrBreak.endTimestamp:
-                        hasCurrent = isCurrent = True
-
+            for pomAsDict in poms2Dicts(day, now, onlyPoms):
                 rowDict = NSMutableDictionary.dictionaryWithDictionary_(
-                    {
-                        "index": f"{i}{'→' if isCurrent else ''}",
-                        "startTime": pomOrBreak.startTime.time().isoformat(
-                            timespec="minutes"
-                        ),
-                        "endTime": pomOrBreak.endTime.time().isoformat(
-                            timespec="minutes"
-                        ),
-                        "description": desc,
-                        "success": (
-                            "❌" if now > pomOrBreak.endTimestamp else "…"
-                        )
-                        if pomOrBreak.intention is None
-                        else {
-                            None: "…"
-                            if now < pomOrBreak.startTimestamp
-                            else "📝",
-                            IntentionSuccess.Achieved: "✅",
-                            IntentionSuccess.Focused: "🤔",
-                            IntentionSuccess.Distracted: "🦋",
-                            IntentionSuccess.NeverEvaluated: "👋",
-                            True: "✅",
-                            False: "🦋",
-                        }[pomOrBreak.intention.wasSuccessful],
-                        "pom": pomOrBreak,
-                    }
+                    pomAsDict
                 )
                 self.arrayController.addObject_(rowDict)
                 rowDict.addObserver_forKeyPath_options_context_(
@@ -924,7 +902,10 @@ class DayEditorController(NSObject):
 def main(reactor: IReactorTime) -> None:
     import traceback, sys
 
-    ctrl = DayEditorController.alloc().initWithClock_(reactor)
+    dayLoader = DayLoader()
+    ctrl = DayEditorController.alloc().initWithClock_andDayLoader_(
+        reactor, dayLoader
+    )
     stuff = list(
         NSNib.alloc()
         .initWithNibNamed_bundle_("GoalListWindow.nib", None)
@@ -932,8 +913,7 @@ def main(reactor: IReactorTime) -> None:
     )
     setupNotifications()
     withdrawIntentPrompt()
-    dayManager = DayManager.new(reactor, ctrl)
-    ctrl.refreshStatus_(dayManager)
+    dayManager = DayManager.new(reactor, ctrl, dayLoader)
     dayManager.start()
     callOnNotification(
         NSApplicationDidChangeScreenParametersNotification,
