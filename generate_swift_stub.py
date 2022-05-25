@@ -1,5 +1,5 @@
 from Foundation import NSObject
-from typing import Type, Iterable
+from typing import Type, Iterable, TypeVar
 
 from textwrap import dedent
 
@@ -42,18 +42,27 @@ def fakeSwiftClass(cls: Type[NSObject]) -> str:
         """
     )
 
+T = TypeVar("T")
+
+def uniq(stuff: Iterable[T]) -> Iterable[T]:
+    seen = set()
+    for each in stuff:
+        if each in seen:
+            continue
+        seen.add(each)
+        yield each
 
 def swiftFileForInterfaceBuilder(everything: Iterable[object]) -> str:
     return "".join(
         [
             "import Foundation\n",
-            *[
+            *uniq(
                 fakeSwiftClass(cls)
                 for cls in everything
                 if isinstance(cls, type)
                 and issubclass(cls, NSObject)
                 and cls is not NSObject
-            ],
+            ),
         ]
     )
 

@@ -9,9 +9,10 @@ from objc import ivar
 setBlocking(0)
 setBlocking(1)
 
-from Foundation import NSObject, NSApplication
+from Foundation import NSObject
 from AppKit import (
     NSApp,
+    NSApplication,
     NSEvent,
     NSResponder,
     NSMenu,
