@@ -4,7 +4,19 @@ from typing import Callable, Dict, Optional
 
 from Foundation import NSError, NSObject
 
-from UserNotifications import UNAuthorizationOptionNone, UNMutableNotificationContent, UNNotification, UNNotificationCategory, UNNotificationPresentationOptionBanner, UNNotificationRequest, UNNotificationResponse, UNTextInputNotificationAction, UNTextInputNotificationResponse, UNTimeIntervalNotificationTrigger, UNUserNotificationCenter
+from UserNotifications import (
+    UNAuthorizationOptionNone,
+    UNMutableNotificationContent,
+    UNNotification,
+    UNNotificationCategory,
+    UNNotificationPresentationOptionBanner,
+    UNNotificationRequest,
+    UNNotificationResponse,
+    UNTextInputNotificationAction,
+    UNTextInputNotificationResponse,
+    UNTimeIntervalNotificationTrigger,
+    UNUserNotificationCenter,
+)
 
 
 class NotificationDelegate(NSObject):
