@@ -6,7 +6,18 @@ from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Callable, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+)
 
 from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.base import DelayedCall
@@ -14,13 +25,61 @@ from twisted.internet.interfaces import IDelayedCall, IReactorTime
 from twisted.python.failure import Failure
 
 import math
-from AppKit import NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertThirdButtonReturn, NSApp, NSApplicationDidChangeScreenParametersNotification, NSBackingStoreBuffered, NSBezierPath, NSBorderlessWindowMask, NSCell, NSColor, NSCompositingOperationCopy, NSEvent, NSFloatingWindowLevel, NSFocusRingTypeNone, NSMenu, NSMenuItem, NSNib, NSNotificationCenter, NSRectFill, NSRectFillListWithColorsUsingOperation, NSResponder, NSScreen, NSTextField, NSTextFieldCell, NSView, NSWindow, NSWindowCollectionBehaviorCanJoinAllSpaces, NSWindowCollectionBehaviorStationary
+from AppKit import (
+    NSAlert,
+    NSAlertFirstButtonReturn,
+    NSAlertSecondButtonReturn,
+    NSAlertThirdButtonReturn,
+    NSApp,
+    NSApplicationDidChangeScreenParametersNotification,
+    NSBackingStoreBuffered,
+    NSBezierPath,
+    NSBorderlessWindowMask,
+    NSCell,
+    NSColor,
+    NSCompositingOperationCopy,
+    NSEvent,
+    NSFloatingWindowLevel,
+    NSFocusRingTypeNone,
+    NSMenu,
+    NSMenuItem,
+    NSNib,
+    NSNotificationCenter,
+    NSRectFill,
+    NSRectFillListWithColorsUsingOperation,
+    NSResponder,
+    NSScreen,
+    NSTextField,
+    NSTextFieldCell,
+    NSView,
+    NSWindow,
+    NSWindowCollectionBehaviorCanJoinAllSpaces,
+    NSWindowCollectionBehaviorStationary,
+)
 from PyObjCTools.AppHelper import callLater
 from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
-from pomodouroboros.notifs import askForIntent, notify, setupNotifications, withdrawIntentPrompt
-from pomodouroboros.pommodel import Break, Day, Intention, IntentionResponse, IntentionSuccess, Interval, Pomodoro
-from pomodouroboros.quickapp import Actionable, Status, mainpoint, quit
+from pomodouroboros.mac_utils import (
+    callOnNotification,
+    datetimeFromNSDate,
+    localDate,
+)
+from pomodouroboros.notifs import (
+    askForIntent,
+    notify,
+    setupNotifications,
+    withdrawIntentPrompt,
+)
+from pomodouroboros.pommodel import (
+    Break,
+    Day,
+    Intention,
+    IntentionResponse,
+    IntentionSuccess,
+    Interval,
+    Pomodoro,
+)
+from pomodouroboros.quickapp import Status, mainpoint, quit
 from pomodouroboros.storage import DayLoader, TEST_MODE
 
 
@@ -93,6 +152,40 @@ class BigProgressView(NSView):
     def wantsDefaultClipping(self) -> bool:
         return False
 
+    def createContainingWindow(self) -> HUDWindow:
+        app = NSApp()
+        mainScreen = NSScreen.mainScreen()
+        frame = mainScreen.frame()
+        height = 50
+        padding = 500
+        contentRect = NSRect(
+            (padding, padding), (frame.size.width - (padding * 2), height)
+        )
+        styleMask = NSBorderlessWindowMask
+        backing = NSBackingStoreBuffered
+        defer = False
+        win = (
+            HUDWindow.alloc()
+            .initWithContentRect_styleMask_backing_defer_(
+                contentRect,
+                styleMask,
+                backing,
+                defer,
+            )
+            .retain()
+        )
+        win.setCollectionBehavior_(
+            NSWindowCollectionBehaviorCanJoinAllSpaces
+            | NSWindowCollectionBehaviorStationary
+        )
+        win.setIgnoresMouseEvents_(True)
+        win.setAlphaValue_(0.1)
+        win.setContentView_(self)
+        win.setBackgroundColor_(NSColor.blackColor())
+        win.setLevel_(NSFloatingWindowLevel)
+        win.orderFront_(app)
+        return win
+
 
 class HUDWindow(NSWindow):
     """
@@ -162,6 +255,20 @@ def getString(title: str, question: str, defaultValue: str) -> str:
 
 
 intcb = Callable[["MacPomObserver", Interval, float], None]
+
+
+responses: Dict[IntentionResponse, intcb] = {}
+
+
+def _intention(
+    response: IntentionResponse,
+    responses: Dict[IntentionResponse, intcb] = responses,
+) -> Callable[[intcb], intcb]:
+    def decorator(f: intcb) -> intcb:
+        responses[response] = f
+        return f
+
+    return decorator
 
 
 @dataclass
@@ -240,18 +347,6 @@ class MacPomObserver(object):
         )
         self.refreshList()
 
-    responses: ClassVar[Dict[IntentionResponse, intcb]] = {}
-
-    def _intention(  # type: ignore
-        response: IntentionResponse,
-        responses: Dict[IntentionResponse, intcb] = responses,
-    ) -> Callable[[intcb], intcb]:
-        def decorator(f: intcb) -> intcb:
-            responses[response] = f
-            return f
-
-        return decorator
-
     @_intention(IntentionResponse.CanBeSet)
     def _canBeSet(self, interval: Interval, percentageElapsed: float) -> None:
         self.baseAlphaValue = MacPomObserver.baseAlphaValue + 0.1
@@ -305,8 +400,6 @@ class MacPomObserver(object):
         self.progressView.setLeftColor_(NSColor.orangeColor())
         self.progressView.setRightColor_(NSColor.redColor())
 
-    del _intention
-
     def progressUpdate(
         self,
         interval: Interval,
@@ -320,7 +413,7 @@ class MacPomObserver(object):
         """
         if canSetIntention != self.lastIntentionResponse:
             self.lastIntentionResponse = canSetIntention
-            self.responses[canSetIntention](self, interval, percentageElapsed)
+            responses[canSetIntention](self, interval, percentageElapsed)
             self.refreshList()
         self.progressView.setPercentage_(percentageElapsed)
         alphaValue = (
@@ -338,50 +431,6 @@ class MacPomObserver(object):
         self.active = False
         self.window.setIsVisible_(False)
         self.refreshList()
-
-
-def makeOneWindow(contentView) -> HUDWindow:
-    app = NSApp()
-    mainScreen = NSScreen.mainScreen()
-    frame = mainScreen.frame()
-
-    # build args for window initialization:
-    #
-    # - (instancetype)initWithContentRect:(NSRect)contentRect
-    # - styleMask:(NSUInteger)windowStyle
-    # - backing:(NSBackingStoreType)bufferingType defer:(BOOL)deferCreation
-
-    height = 50
-    padding = 500
-
-    contentRect = NSRect(
-        (padding, padding), (frame.size.width - (padding * 2), height)
-    )
-    styleMask = NSBorderlessWindowMask
-    backing = NSBackingStoreBuffered
-    defer = False
-
-    win = (
-        HUDWindow.alloc()
-        .initWithContentRect_styleMask_backing_defer_(
-            contentRect,
-            styleMask,
-            backing,
-            defer,
-        )
-        .retain()
-    )
-    win.setCollectionBehavior_(
-        NSWindowCollectionBehaviorCanJoinAllSpaces
-        | NSWindowCollectionBehaviorStationary
-    )
-    win.setIgnoresMouseEvents_(True)
-    win.setAlphaValue_(0.1)
-    win.setContentView_(contentView)
-    win.setBackgroundColor_(NSColor.blackColor())
-    win.setLevel_(NSFloatingWindowLevel)
-    win.orderFront_(app)
-    return win
 
 
 def expressIntention(
@@ -454,58 +503,6 @@ def nowNative() -> datetime:
     return datetime.now(tz=tzlocal())
 
 
-from Foundation import (
-    NSCalendarUnitYear,
-    NSCalendarUnitMonth,
-    NSCalendarUnitDay,
-    NSCalendarUnitHour,
-    NSCalendarUnitMinute,
-    NSCalendarUnitSecond,
-    NSCalendarUnitNanosecond,
-    NSCalendar,
-    NSDate,
-)
-
-datetimeComponents = (
-    NSCalendarUnitYear
-    | NSCalendarUnitMonth
-    | NSCalendarUnitDay
-    | NSCalendarUnitHour
-    | NSCalendarUnitMinute
-    | NSCalendarUnitSecond
-    | NSCalendarUnitNanosecond
-)
-
-fromDate = NSCalendar.currentCalendar().components_fromDate_
-localOffset = tzlocal()
-nsDateNow = NSDate.date
-nsDateFromTimestamp = NSDate.dateWithTimeIntervalSince1970_
-
-
-def datetimeFromNSDate(nsdate: NSDate) -> datetime:
-    """
-    Convert an NSDate to a Python datetime.
-    """
-    components = fromDate(datetimeComponents, nsdate)
-    return datetime(
-        year=components.year(),
-        month=components.month(),
-        day=components.day(),
-        hour=components.hour(),
-        minute=components.minute(),
-        second=components.second(),
-        microsecond=components.nanosecond() // 1000,
-        tzinfo=localOffset,
-    )
-
-
-def localDate(ts: float) -> datetime:
-    """
-    Use Cocoa to compute a local datetime
-    """
-    return datetimeFromNSDate(nsDateFromTimestamp(ts))
-
-
 def labelForDay(day: Day) -> str:
     """
     Generate a textual label representing the success proportion of the given
@@ -566,17 +563,16 @@ class DayManager(object):
         dayLoader: DayLoader,
     ) -> DayManager:
         progressView = BigProgressView.alloc().init()
-        window = makeOneWindow(progressView)
+        window = progressView.createContainingWindow()
 
         def listRefresher() -> None:
             if editController.editorWindow.isVisible():
                 editController.refreshStatus_(self.day)
 
-        observer = MacPomObserver(
-            progressView, window, listRefresher, reactor, dayLoader
-        )
         self = cls(
-            observer,
+            MacPomObserver(
+                progressView, window, listRefresher, reactor, dayLoader
+            ),
             window,
             progressView,
             reactor,
@@ -587,9 +583,9 @@ class DayManager(object):
         return self
 
     def screensChanged(self) -> None:
-        def recreateWindow():
+        def recreateWindow() -> None:
             self.screenReconfigurationTimer = None
-            newWindow = makeOneWindow(self.progress)
+            newWindow = self.progress.createContainingWindow()
             self.observer.setWindow(newWindow)
             self.window, oldWindow = newWindow, self.window
             oldWindow.close()
@@ -700,8 +696,10 @@ class DayManager(object):
     def setSuccess(self) -> None:
         pomsToEvaluate = self.day.unEvaluatedPomodoros()
         if not pomsToEvaluate:
-            notify("No Evaluations Pending")
-            notify("You've already evaluated everything you can.")
+            notify(
+                "No Evaluations Pending",
+                informativeText="You've already evaluated everything you can.",
+            )
             return
         aPom = pomsToEvaluate[0]
         # todo: teach mypy about this
@@ -724,15 +722,6 @@ class DayManager(object):
             informativeText=f"Marked Pomodoro {adjective}.",
         )
         return
-
-
-def callOnNotification(nsNotificationName: str, f: Callable[[], None]):
-    NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
-        Actionable.alloc().initWithFunction_(f).retain(),
-        "doIt:",
-        nsNotificationName,
-        None,
-    )
 
 
 class DescriptionChanger(NSObject):
@@ -859,7 +848,9 @@ class DayEditorController(NSObject):
         ), "The date picker cell should be set by nib loading."
         dateValue = self.datePickerCell.dateValue()
         self.refreshStatus_(
-            self.dayLoader.loadOrCreateDay(datetimeFromNSDate(dateValue).date())
+            self.dayLoader.loadOrCreateDay(
+                datetimeFromNSDate(dateValue).date()
+            )
         )
 
     def refreshStatus_(self, day: Day) -> None:
