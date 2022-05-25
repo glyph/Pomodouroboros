@@ -7,7 +7,7 @@ from typing import Dict
 
 from twisted.python.filepath import FilePath
 
-from pomodouroboros.pommodel import Day
+from .pommodel import Day
 
 
 TEST_MODE = bool(environ.get("TEST_MODE"))

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import math
 import os
 from cProfile import Profile
 from contextlib import contextmanager
@@ -19,12 +20,12 @@ from typing import (
     Tuple,
 )
 
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IDelayedCall, IReactorTime
 from twisted.python.failure import Failure
 
-import math
+from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
+
 from AppKit import (
     NSAlert,
     NSAlertFirstButtonReturn,
@@ -57,20 +58,24 @@ from AppKit import (
     NSWindowCollectionBehaviorStationary,
 )
 from PyObjCTools.AppHelper import callLater
-from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
-from pomodouroboros.mac_utils import (
+
+from dateutil.tz import tzlocal
+
+from .mac_utils import (
     callOnNotification,
     datetimeFromNSDate,
     localDate,
 )
-from pomodouroboros.notifs import (
+from .notifs import (
     askForIntent,
     notify,
     setupNotifications,
     withdrawIntentPrompt,
 )
-from pomodouroboros.pommodel import (
+from .quickapp import Status, mainpoint, quit
+
+from ..pommodel import (
     Break,
     Day,
     Intention,
@@ -79,8 +84,7 @@ from pomodouroboros.pommodel import (
     Interval,
     Pomodoro,
 )
-from pomodouroboros.quickapp import Status, mainpoint, quit
-from pomodouroboros.storage import DayLoader, TEST_MODE
+from ..storage import DayLoader, TEST_MODE
 
 
 # fillRect = NSBezierPath.fillRect_
