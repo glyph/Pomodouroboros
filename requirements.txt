@@ -1,6 +1,8 @@
 # requirements
-pyobjc
-twisted
+pyobjc-framework-Cocoa
+pyobjc-framework-ExceptionHandling
+pyobjc-framework-UserNotifications
+twisted[tls,macos_platform]
 mypy>=0.910
 mypy-zope
 python-dateutil
