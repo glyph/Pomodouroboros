@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import math
 import os
 from cProfile import Profile
 from contextlib import contextmanager
@@ -22,10 +21,28 @@ from typing import (
 
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IDelayedCall, IReactorTime
+from twisted.internet.task import LoopingCall
 from twisted.python.failure import Failure
 
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
-
+import math
+from ..pommodel import (
+    Break,
+    Day,
+    Intention,
+    IntentionResponse,
+    IntentionSuccess,
+    Interval,
+    Pomodoro,
+)
+from ..storage import DayLoader, TEST_MODE
+from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
+from .notifs import (
+    askForIntent,
+    notify,
+    setupNotifications,
+    withdrawIntentPrompt,
+)
+from .quickapp import Status, mainpoint, quit
 from AppKit import (
     NSAlert,
     NSAlertFirstButtonReturn,
@@ -57,34 +74,12 @@ from AppKit import (
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
 )
+
+from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
+
 from PyObjCTools.AppHelper import callLater
-from objc import IBAction, IBOutlet
-
 from dateutil.tz import tzlocal
-
-from .mac_utils import (
-    callOnNotification,
-    datetimeFromNSDate,
-    localDate,
-)
-from .notifs import (
-    askForIntent,
-    notify,
-    setupNotifications,
-    withdrawIntentPrompt,
-)
-from .quickapp import Status, mainpoint, quit
-
-from ..pommodel import (
-    Break,
-    Day,
-    Intention,
-    IntentionResponse,
-    IntentionSuccess,
-    Interval,
-    Pomodoro,
-)
-from ..storage import DayLoader, TEST_MODE
+from objc import IBAction, IBOutlet
 
 
 # fillRect = NSBezierPath.fillRect_
@@ -109,6 +104,9 @@ class BigProgressView(NSView):
     @classmethod
     def defaultFocusRingType(self) -> int:
         return NSFocusRingTypeNone
+
+    def percentage(self) -> float:
+        return self._percentage
 
     def setPercentage_(self, newPercentage: float) -> None:
         """
@@ -296,8 +294,9 @@ class MacPomObserver(object):
     active: bool = field(default=False)
     lastIntentionResponse: Optional[IntentionResponse] = None
     baseAlphaValue: float = 0.15
-    alphaVariance: float = 0.015
+    alphaVariance: float = 0.3
     pulseMultiplier: float = 1.5
+    pulseTime: float = 1.0
 
     def __post_init__(self):
         self.window.setIsVisible_(self.active)
@@ -419,14 +418,34 @@ class MacPomObserver(object):
             self.lastIntentionResponse = canSetIntention
             responses[canSetIntention](self, interval, percentageElapsed)
             self.refreshList()
-        self.progressView.setPercentage_(percentageElapsed)
-        alphaValue = (
-            math.sin(self.clock.seconds() * self.pulseMultiplier)
-            * self.alphaVariance
-        ) + self.baseAlphaValue
+
+        previousPercentageElapsed = self.progressView.percentage()
+        if percentageElapsed < previousPercentageElapsed:
+            previousPercentageElapsed = 0
+        elapsedDelta = percentageElapsed - previousPercentageElapsed
+        startTime = self.clock.seconds()
+
+        def updateSome() -> None:
+            now = self.clock.seconds()
+            percentDone = (now - startTime) / self.pulseTime
+            easedEven = math.sin((percentDone * math.pi))
+            easedUp = math.sin((percentDone * math.pi) / 2.0)
+            self.progressView.setPercentage_(
+                previousPercentageElapsed + (easedUp * elapsedDelta)
+            )
+            if percentDone >= 1.0:
+                alphaValue = self.baseAlphaValue
+                lc.stop()
+            else:
+                alphaValue = (
+                    easedEven * self.alphaVariance
+                ) + self.baseAlphaValue
+            self.window.setAlphaValue_(alphaValue)
+
+        lc = LoopingCall(updateSome)
+        lc.start(1.0 / 60.0)
         self.active = True
         self.window.setIsVisible_(True)
-        self.window.setAlphaValue_(alphaValue)
 
     def dayOver(self):
         """
@@ -689,11 +708,8 @@ class DayManager(object):
                 except BaseException:
                     print(Failure().getTraceback())
             finally:
-                # trying to stick to 1% CPU...
                 finishTime = self.reactor.seconds()
-                self.reactor.callLater(
-                    (finishTime - currentTimestamp) * 75, update
-                )
+                self.reactor.callLater(10.0, update)
 
         update()
 
