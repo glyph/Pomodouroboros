@@ -488,10 +488,16 @@ class Day(object):
             )
         ]
 
-    def currentIsFailed(self) -> bool:
+    def currentOrNextInterval(self) -> Optional[Interval]:
+        """
+        What's the next upcoming interval?
+        """
         if not self.pendingIntervals:
-            return False
-        current = self.pendingIntervals[0]
+            return None
+        return self.pendingIntervals[0]
+
+    def currentIsFailed(self) -> bool:
+        current = self.currentOrNextInterval()
         if not isinstance(current, Pomodoro):
             return False
         return current.intention is None and (
