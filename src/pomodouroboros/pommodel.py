@@ -530,22 +530,28 @@ class Day(object):
                 firstBreak = next(
                     each for each in iterIntervals if isinstance(each, Break)
                 )
+
+                # Variables
                 pomodoroLength = firstPom.endTime - firstPom.startTime
                 breakLength = firstBreak.endTime - firstBreak.startTime
-                potentialEnd = currentTime + pomodoroLength + breakLength
-                if potentialEnd < min(
-                    firstPom.startTime, firstBreak.startTime
-                ):
-                    startingPoint = currentTime
-                    position = slice(0, 0)
+                startingPoint = currentTime
+
+                for idx, anInterval in enumerate(allIntervals):
+                    position = slice(idx, 0)
+                    if anInterval.startTime > startingPoint:
+                        potentialEnd = startingPoint + pomodoroLength + breakLength
+                        if not anInterval.startTime < potentialEnd < anInterval.endTime:
+                            break
+                    startingPoint = anInterval.endTime
                 else:
-                    startingPoint = allIntervals[-1].endTime
+                    position = slice(len(self.pendingIntervals), 0)
             else:
-                # we need to save these attributes in the constructor so we
-                # don't need to synthesize defaults here.
-                startingPoint = self.endTime
+                # Variables (we need to save these attributes in the
+                # constructor so we don't need to synthesize defaults here.)
                 pomodoroLength = timedelta(minutes=25)
                 breakLength = timedelta(minutes=5)
+                startingPoint = self.endTime
+
             return position, startingPoint, pomodoroLength, breakLength
 
         position, startingPoint, pomodoroLength, breakLength = lengths()
