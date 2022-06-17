@@ -5,7 +5,7 @@ import os
 from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import (
     Any,
     Callable,
@@ -79,6 +79,7 @@ from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 
 from PyObjCTools.AppHelper import callLater
 from dateutil.tz import tzlocal
+from dateutil.relativedelta import relativedelta
 from objc import IBAction, IBOutlet
 
 
@@ -579,6 +580,8 @@ class DayManager(object):
     day: Day
     screenReconfigurationTimer: Optional[IDelayedCall] = None
     profile: Optional[Profile] = None
+    updateDelayedCall: Optional[IDelayedCall] = None
+    status: Optional[Status] = None
 
     @classmethod
     def new(
@@ -591,6 +594,7 @@ class DayManager(object):
         window = progressView.createContainingWindow()
 
         def listRefresher() -> None:
+            reactor.callLater(0, self.update)
             if editController.editorWindow.isVisible():
                 editController.refreshStatus_(self.day)
 
@@ -651,7 +655,7 @@ class DayManager(object):
         self.observer.refreshList()
 
     def start(self) -> None:
-        status = Status(can)
+        status = self.status = Status(can)
 
         def doList() -> None:
             self.editController.editorWindow.setIsVisible_(True)
@@ -696,26 +700,59 @@ class DayManager(object):
         # the table is receiving key events to move the selection around?)
         NSApp().keyEquivalentHandler = mf
 
-        def update() -> None:
-            try:
-                try:
-                    currentTimestamp = self.reactor.seconds()
-                    # presentDate = localDate(currentTimestamp).date()
-                    presentDate = date.today()
-                    if presentDate != self.day.startTime.date():
-                        self.day = self.dayLoader.loadOrCreateDay(presentDate)
-                    self.day.advanceToTime(currentTimestamp, self.observer)
-                    label = labelForDay(self.day)
-                    if TEST_MODE:
-                        label = "🐇" + label
-                    status.item.setTitle_(label)
-                except BaseException:
-                    print(Failure().getTraceback())
-            finally:
-                finishTime = self.reactor.seconds()
-                self.reactor.callLater(10.0, update)
+        self.update()
 
-        update()
+    def update(self) -> None:
+        pulseRate = 10.0
+        currentTimestamp = self.reactor.seconds()
+        presentDate = date.today()
+        if self.updateDelayedCall is not None:
+            self.updateDelayedCall.cancel()
+            self.updateDelayedCall = None
+        try:
+            # presentDate = localDate(currentTimestamp).date()
+            if presentDate != self.day.startTime.date():
+                self.day = self.dayLoader.loadOrCreateDay(presentDate)
+            self.day.advanceToTime(currentTimestamp, self.observer)
+            label = labelForDay(self.day)
+            if TEST_MODE:
+                label = "🐇" + label
+            if (status := self.status) is not None:
+                status.item.setTitle_(label)
+        except BaseException:
+            print(Failure().getTraceback())
+
+        try:
+            currentInterval = self.day.currentOrNextInterval()
+            howLong = (
+                (
+                    (
+                        self.day.startTime
+                        + relativedelta(hour=0, minute=0, second=1, days=1)
+                    ).timestamp()
+                    - currentTimestamp
+                )
+                if currentInterval is None
+                else (
+                    pulseRate
+                    - (
+                        (currentTimestamp - currentInterval.startTimestamp)
+                        % pulseRate
+                    )
+                    if currentTimestamp > currentInterval.startTimestamp
+                    else currentInterval.startTimestamp - currentTimestamp
+                )
+            )
+
+            def nextUpdate() -> None:
+                self.updateDelayedCall = None
+                self.update()
+
+            self.updateDelayedCall = self.reactor.callLater(
+                howLong, nextUpdate
+            )
+        except BaseException:
+            print(Failure().getTraceback())
 
     def setSuccess(self) -> None:
         pomsToEvaluate = self.day.unEvaluatedPomodoros()
