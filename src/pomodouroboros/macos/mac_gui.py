@@ -156,12 +156,14 @@ class BigProgressView(NSView):
 
     def createContainingWindow(self) -> HUDWindow:
         app = NSApp()
-        mainScreen = NSScreen.mainScreen()
+        mainScreen = NSScreen.screens()[0]
         frame = mainScreen.frame()
+        print("screen frame changeed", frame)
         height = 50
-        padding = 500
+        hpadding = frame.size.width // 10
+        vpadding = frame.size.height // 3
         contentRect = NSRect(
-            (padding, padding), (frame.size.width - (padding * 2), height)
+            (hpadding, vpadding), (frame.size.width - (hpadding * 2), height)
         )
         styleMask = NSBorderlessWindowMask
         backing = NSBackingStoreBuffered
@@ -613,7 +615,8 @@ class DayManager(object):
             self.window, oldWindow = newWindow, self.window
             oldWindow.close()
 
-        settleDelay = 3.0
+        recreateWindow()
+        settleDelay = 5.0
         if self.screenReconfigurationTimer is None:
             self.screenReconfigurationTimer = self.reactor.callLater(
                 settleDelay, recreateWindow
@@ -672,6 +675,7 @@ class DayManager(object):
                 ("Finish Profiling", lambda: self.stopProfiling()),
                 ("List Pomodoros", doList),
                 ("Break", raiseException),
+                ("Reposition Window", lambda: self.screensChanged()),
                 ("Quit", quit),
             ]
         )
