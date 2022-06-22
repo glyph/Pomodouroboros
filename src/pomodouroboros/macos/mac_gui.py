@@ -92,6 +92,7 @@ class ProgressController(object):
     """
     Coordinating object that maintains a set of BigProgressViews on each display.
     """
+
     percentage: float = 0.0
     leftColor: NSColor = NSColor.greenColor()
     rightColor: NSColor = NSColor.redColor()
@@ -107,7 +108,7 @@ class ProgressController(object):
         for eachView in self.progressViews:
             eachView.setPercentage_(percentage)
 
-    def setColors(self, left: NSColor, right: NSColor)-> None:
+    def setColors(self, left: NSColor, right: NSColor) -> None:
         """
         set the left and right colors
         """
@@ -127,7 +128,9 @@ class ProgressController(object):
     def redisplay(self) -> None:
         self.hide()
         for eachScreen in NSScreen.screens():
-            (win := hudWindowOn(eachScreen)).setContentView_(newProgressView := BigProgressView.alloc().init())
+            (win := hudWindowOn(eachScreen)).setContentView_(
+                newProgressView := BigProgressView.alloc().init()
+            )
             win.setAlphaValue_(self.alphaValue)
             newProgressView.setLeftColor_(self.leftColor)
             newProgressView.setRightColor_(self.rightColor)
@@ -147,6 +150,7 @@ class ProgressController(object):
         for eachWindow in self.hudWindows:
             eachWindow.setAlphaValue_(alphaValue)
 
+
 def hudWindowOn(screen: NSScreen) -> HUDWindow:
     app = NSApp()
     frame = screen.frame()
@@ -154,19 +158,17 @@ def hudWindowOn(screen: NSScreen) -> HUDWindow:
     hpadding = frame.size.width // 10
     vpadding = frame.size.height // 3
     contentRect = NSRect(
-        (hpadding + frame.origin[0], vpadding + frame.origin[1]), (frame.size.width - (hpadding * 2), height)
+        (hpadding + frame.origin[0], vpadding + frame.origin[1]),
+        (frame.size.width - (hpadding * 2), height),
     )
     styleMask = NSBorderlessWindowMask
     backing = NSBackingStoreBuffered
     defer = False
-    win = (
-        HUDWindow.alloc()
-        .initWithContentRect_styleMask_backing_defer_(
-            contentRect,
-            styleMask,
-            backing,
-            defer,
-        )
+    win = HUDWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        contentRect,
+        styleMask,
+        backing,
+        defer,
     )
     # Let python handle the refcounting thanks
     win.setReleasedWhenClosed_(False)
@@ -179,6 +181,7 @@ def hudWindowOn(screen: NSScreen) -> HUDWindow:
     win.setLevel_(NSFloatingWindowLevel)
     win.orderFront_(app)
     return win
+
 
 class BigProgressView(NSView):
     """
@@ -412,7 +415,9 @@ class MacPomObserver(object):
         self.alphaVariance = MacPomObserver.alphaVariance * 2
         self.pulseMultiplier = MacPomObserver.pulseMultiplier * 2
 
-        self.progressController.setColors(NSColor.yellowColor(), NSColor.purpleColor())
+        self.progressController.setColors(
+            NSColor.yellowColor(), NSColor.purpleColor()
+        )
         # boost the urgency on setting an intention
 
     @_intention(IntentionResponse.AlreadySet)
@@ -425,7 +430,9 @@ class MacPomObserver(object):
         self.pulseMultiplier = MacPomObserver.pulseMultiplier
         self.alphaVariance = MacPomObserver.alphaVariance
 
-        self.progressController.setColors(NSColor.greenColor(), NSColor.blueColor())
+        self.progressController.setColors(
+            NSColor.greenColor(), NSColor.blueColor()
+        )
         if isinstance(interval, Pomodoro) and interval.intention is not None:
             # TODO: maybe put reminder messages in the model?
             for pct, message in self.thresholds:
@@ -444,7 +451,9 @@ class MacPomObserver(object):
         self.pulseMultiplier = MacPomObserver.pulseMultiplier / 2
         self.alphaVariance = MacPomObserver.alphaVariance / 2
 
-        self.progressController.setColors(NSColor.lightGrayColor(),NSColor.darkGrayColor())
+        self.progressController.setColors(
+            NSColor.lightGrayColor(), NSColor.darkGrayColor()
+        )
 
     @_intention(IntentionResponse.TooLate)
     def _tooLate(self, interval: Interval, percentageElapsed: float) -> None:
@@ -453,7 +462,9 @@ class MacPomObserver(object):
         self.alphaVariance = MacPomObserver.alphaVariance
 
         # Angry "You forgot" colors for setting it too late
-        self.progressController.setColors(NSColor.orangeColor(), NSColor.redColor())
+        self.progressController.setColors(
+            NSColor.orangeColor(), NSColor.redColor()
+        )
 
     def progressUpdate(
         self,
@@ -642,6 +653,7 @@ class DayManager(object):
     ) -> DayManager:
 
         progressController = ProgressController()
+
         def listRefresher() -> None:
             reactor.callLater(0, self.update)
             if editController.editorWindow.isVisible():
