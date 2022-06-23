@@ -156,7 +156,7 @@ def hudWindowOn(screen: NSScreen) -> HUDWindow:
     frame = screen.frame()
     height = 50
     hpadding = frame.size.width // 10
-    vpadding = frame.size.height // 3
+    vpadding = frame.size.height // (4 if TEST_MODE else 3)
     contentRect = NSRect(
         (hpadding + frame.origin[0], vpadding + frame.origin[1]),
         (frame.size.width - (hpadding * 2), height),
