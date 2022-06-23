@@ -87,6 +87,16 @@ from objc import IBAction, IBOutlet
 fillRect = NSRectFill
 
 
+def _removeWindows(self: ProgressController) -> None:
+    """
+    Remove the progress views from the given ProgressController.
+    """
+    self.progressViews = []
+    self.hudWindows, oldHudWindows = [], self.hudWindows
+    for eachWindow in oldHudWindows:
+        eachWindow.close()
+        eachWindow.setContentView_(None)
+
 @dataclass
 class ProgressController(object):
     """
@@ -99,6 +109,7 @@ class ProgressController(object):
     progressViews: List[BigProgressView] = field(default_factory=list)
     hudWindows: List[HUDWindow] = field(default_factory=list)
     alphaValue: float = 0.1
+    shouldBeVisible: bool = False
 
     def setPercentage(self, percentage: float) -> None:
         """
@@ -122,28 +133,27 @@ class ProgressController(object):
         """
         Display this progress controller on all displays
         """
+        self.shouldBeVisible = True
         if not self.progressViews:
             self.redisplay()
 
     def redisplay(self) -> None:
-        self.hide()
-        for eachScreen in NSScreen.screens():
-            (win := hudWindowOn(eachScreen)).setContentView_(
-                newProgressView := BigProgressView.alloc().init()
-            )
-            win.setAlphaValue_(self.alphaValue)
-            newProgressView.setLeftColor_(self.leftColor)
-            newProgressView.setRightColor_(self.rightColor)
-            newProgressView.setPercentage_(self.percentage)
-            self.hudWindows.append(win)
-            self.progressViews.append(newProgressView)
+        if self.shouldBeVisible:
+            _removeWindows(self)
+            for eachScreen in NSScreen.screens():
+                (win := hudWindowOn(eachScreen)).setContentView_(
+                    newProgressView := BigProgressView.alloc().init()
+                )
+                win.setAlphaValue_(self.alphaValue)
+                newProgressView.setLeftColor_(self.leftColor)
+                newProgressView.setRightColor_(self.rightColor)
+                newProgressView.setPercentage_(self.percentage)
+                self.hudWindows.append(win)
+                self.progressViews.append(newProgressView)
 
     def hide(self) -> None:
-        self.progressViews = []
-        self.hudWindows, oldHudWindows = [], self.hudWindows
-        for eachWindow in oldHudWindows:
-            eachWindow.close()
-            eachWindow.setContentView_(None)
+        self.shouldBeVisible = False
+        _removeWindows(self)
 
     def setAlpha(self, alphaValue: float) -> None:
         self.alphaValue = alphaValue
