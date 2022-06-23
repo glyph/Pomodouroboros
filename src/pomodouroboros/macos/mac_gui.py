@@ -755,7 +755,9 @@ class DayManager(object):
         if self.updateDelayedCall is not None:
             self.updateDelayedCall.cancel()
             self.updateDelayedCall = None
+        intervalBeforeAdvancing = None
         try:
+            intervalBeforeAdvancing = self.day.currentOrNextInterval()
             # presentDate = localDate(currentTimestamp).date()
             if presentDate != self.day.startTime.date():
                 self.day = self.dayLoader.loadOrCreateDay(presentDate)
@@ -777,6 +779,11 @@ class DayManager(object):
                         + relativedelta(hour=0, minute=0, second=1, days=1)
                     ).timestamp()
                     - currentTimestamp
+                    # Make sure that we always schedule one more update past
+                    # the end of the day so that the progress bar properly
+                    # disappears.
+                    if intervalBeforeAdvancing is None
+                    else 1.0
                 )
                 if currentInterval is None
                 else (
