@@ -39,7 +39,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar, Generic, Protocol, Sequence, TypeVar
+from typing import ClassVar, Generic, Iterable, Iterator, Protocol, Sequence, TypeVar
+
 
 class IntervalType(Enum):
     """
@@ -213,6 +214,32 @@ class EvaluationScore:
 x = EvaluationScore
 
 
+@dataclass(frozen=True)
+class Duration:
+    intervalType: IntervalType
+    seconds: float
+
+
+@dataclass(frozen=True)
+class GameRules:
+    streakIntervalDurations: Iterable[Duration] = field(
+        default_factory=lambda: [
+            each
+            for pomMinutes, breakMinutes in [
+                (5, 5),
+                (10, 5),
+                (20, 5),
+                (30, 10),
+            ]
+            for each in [
+                Duration(IntervalType.Pomodoro, pomMinutes * 60),
+                Duration(IntervalType.Break, breakMinutes * 60),
+                Duration(IntervalType.GracePeriod, 5 * 60),
+            ]
+        ]
+    )
+
+
 @dataclass
 class TheUserModel:
     """
@@ -226,8 +253,11 @@ class TheUserModel:
     _score: list[ScoreEvent] = field(default_factory=list)
     _lastUpdateTime: float = field(init=False)
     _userInterface: AnUserInterface | None = None
+    _currentStreak: Iterator[Duration] | None = None
     # TODO: rollup of previous intentions / intervals for comparison so we
     # don't need to keep all of history in memory at all times
+
+    _rules: GameRules = GameRules()
 
     def __post_init__(self) -> None:
         self.advanceToTime(self._initialTime)
@@ -286,10 +316,20 @@ class TheUserModel:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
+        if self._currentStreak is not None:
+            # TODO: it's already running, implement this case
+            # - if a grace period is running then transition to the grace period
+            # - if a break is running then refuse
+            raise RuntimeError()
+        self._currentStreak = iter(self._rules.streakIntervalDurations)
+        nextDuration = next(self._currentStreak, None)
+        assert nextDuration is not None, "empty streak interval durations is invalid"
+        assert nextDuration.intervalType == IntervalType.Pomodoro, "streak must begin with a pomodoro"
         self.userInterface.intervalStart(IntervalType.Pomodoro)
         self._intervals.append(
             pomodoro := Pomodoro(
                 startTime=self._lastUpdateTime,
+                endTime=self._lastUpdateTime + nextDuration.seconds,
                 intention=intention,
             )
         )
