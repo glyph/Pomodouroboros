@@ -81,7 +81,7 @@ class ModelTests(TestCase):
         tui = TestUserInterface(c)
         userModel = TheUserModel(c.seconds(), tui.setIt)
 
-        def update(n: float)->None:
+        def update(n: float) -> None:
             c.advance(n)
             userModel.advanceToTime(c.seconds())
 
@@ -96,7 +96,12 @@ class ModelTests(TestCase):
         # Some time passes so we can set a baseline for pomodoro timing.
         update(3000)
         newPomodoro = userModel.startPomodoro(first)
-        self.assertEqual(newPomodoro, Pomodoro(startTime=4000.0, endTime=4000.0 + (5 * 60), intention=first))
+        self.assertEqual(
+            newPomodoro,
+            Pomodoro(
+                startTime=4000.0, endTime=4000.0 + (5 * 60), intention=first
+            ),
+        )
         self.assertEqual(
             tui.actions,
             [
@@ -109,3 +114,15 @@ class ModelTests(TestCase):
             ],
         )
         # time starts passing
+        update(4000.0 + (6 * 60))
+        self.assertEqual(
+            tui.actions,
+            [
+                TestInterval(
+                    Pomodoro.intervalType,
+                    startTime=4000.0,
+                    endTime=None,
+                    currentProgress=None,
+                )
+            ],
+        )

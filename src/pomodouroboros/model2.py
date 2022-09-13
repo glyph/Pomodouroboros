@@ -97,7 +97,7 @@ class Pomodoro:
 
     startTime: float
     intention: Intention
-    endTime: float | None = None
+    endTime: float
 
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
@@ -260,6 +260,7 @@ class TheUserModel:
     _rules: GameRules = GameRules()
 
     def __post_init__(self) -> None:
+        self._lastUpdateTime = 0.0
         self.advanceToTime(self._initialTime)
 
     @property
@@ -289,9 +290,16 @@ class TheUserModel:
         """
         Advance to the epoch time given.
         """
+        if newTime < self._lastUpdateTime:
+            # Should be impossible?
+            return
         self._lastUpdateTime = newTime
-        # Question: do I want to float the time to float?
-        # TODO: implement the time to advance to!!
+        if self._intervals:
+            # TODO: way too simplistic, not correct
+            endTime = self._intervals[-1].endTime
+            if newTime > endTime:
+                self.userInterface.intervalEnd()
+
 
     def addIntention(
         self, description: str, estimation: float | None
