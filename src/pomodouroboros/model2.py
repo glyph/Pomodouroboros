@@ -31,15 +31,33 @@ What events can occur?
 3 kinds of intervals
 
     - pomodoro
+
     - break
+
     - grace period
+
+Okay so what is the *alignment* on these grace periods?  Do they begin at the
+time when they are originally scheduled to start, or do they start only after
+the intention is set?
+
+I think it would make the most sense to have everything aligned up front, so
+you can have some visibility into the future, but to have the grace period
+itself.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar, Generic, Iterable, Iterator, Protocol, Sequence, TypeVar
+from typing import (
+    ClassVar,
+    Generic,
+    Iterable,
+    Iterator,
+    Protocol,
+    Sequence,
+    TypeVar,
+)
 
 
 class IntervalType(Enum):
@@ -57,15 +75,15 @@ class AnUserInterface(Protocol):
     Protocol that user interfaces must adhere to.
     """
 
+    def intervalStart(self, interval: AnyInterval) -> None:
+        """
+        Set the interval type to "pomodoro".
+        """
+
     def intervalProgress(self, percentComplete: float) -> None:
         """
         The active interval has progressed to C{percentComplete} percentage
         complete.
-        """
-
-    def intervalStart(self, intervalType: IntervalType) -> None:
-        """
-        Set the interval type to "pomodoro".
         """
 
     def intervalEnd(self) -> None:
@@ -152,12 +170,22 @@ class Intention(Generic[MaybeFloat]):
     An intention of something to do.
     """
 
-    model: TheUserModel
     description: str
     estimate: Estimate | None
 
 
 AnyInterval = Pomodoro | Break | GracePeriod
+"""
+Any interval at all.
+"""
+
+AnyRealInterval = Pomodoro | Break
+"""
+Grace periods aren't 'real' in the sense that they just represent the beginning
+of a pomodoro during that time where the its intention is not yet set.  If a
+grace period elapses, then it is deleted from history and its pomodoro (and
+subsequent pomodoros) don't happen.
+"""
 
 
 class IntentionSuccess(Enum):
@@ -186,6 +214,8 @@ class ScoreEvent(Protocol):
         The point in time where this scoring event occurred.
         """
 
+_is_score_event: type[ScoreEvent]
+
 
 @dataclass
 class IntentionScore:
@@ -195,10 +225,10 @@ class IntentionScore:
 
     intention: Intention
     time: float
-    points: int = 1
+    points: int = field(default=1, init=False)
 
 
-x: type[ScoreEvent] = IntentionScore
+_is_score_event = IntentionScore
 
 
 @dataclass
@@ -208,10 +238,10 @@ class EvaluationScore:
     """
 
     time: float
-    points: int = 1
+    points: int = field(default=1, init=False)
 
 
-x = EvaluationScore
+_is_score_event = EvaluationScore
 
 
 @dataclass(frozen=True)
@@ -293,13 +323,30 @@ class TheUserModel:
         if newTime < self._lastUpdateTime:
             # Should be impossible?
             return
-        self._lastUpdateTime = newTime
-        if self._intervals:
-            # TODO: way too simplistic, not correct
-            endTime = self._intervals[-1].endTime
-            if newTime > endTime:
-                self.userInterface.intervalEnd()
 
+        previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
+        for interval in self._intervals:
+            print('scanning interval', interval)
+            if (previousTime < interval.startTime):
+                if (
+                    newTime > interval.startTime
+                ):
+                    print("starting interval")
+                    self.userInterface.intervalStart(interval)
+            else:
+                if (
+                    previousTime < interval.endTime
+                ):
+                    current = newTime - interval.startTime
+                    total = interval.endTime - interval.startTime
+                    print("progressing interval", current, total, current / total)
+                    self.userInterface.intervalProgress(min(1.0, current / total))
+                if (
+                    (previousTime < interval.endTime)
+                    and (newTime > interval.endTime)
+                ):
+                    print("ending interval")
+                    self.userInterface.intervalEnd()
 
     def addIntention(
         self, description: str, estimation: float | None
@@ -309,7 +356,6 @@ class TheUserModel:
         """
         self._intentions.append(
             newIntention := Intention(
-                self,
                 description,
                 None
                 if estimation is None
@@ -319,7 +365,7 @@ class TheUserModel:
         self.userInterface.intentionAdded(newIntention)
         return newIntention
 
-    def startPomodoro(self, intention: Intention) -> Pomodoro:
+    def startPomodoro(self, intention: Intention) -> None:
         """
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
@@ -331,17 +377,19 @@ class TheUserModel:
             raise RuntimeError()
         self._currentStreak = iter(self._rules.streakIntervalDurations)
         nextDuration = next(self._currentStreak, None)
-        assert nextDuration is not None, "empty streak interval durations is invalid"
-        assert nextDuration.intervalType == IntervalType.Pomodoro, "streak must begin with a pomodoro"
-        self.userInterface.intervalStart(IntervalType.Pomodoro)
-        self._intervals.append(
-            pomodoro := Pomodoro(
-                startTime=self._lastUpdateTime,
-                endTime=self._lastUpdateTime + nextDuration.seconds,
-                intention=intention,
-            )
+        assert (
+            nextDuration is not None
+        ), "empty streak interval durations is invalid"
+        assert (
+            nextDuration.intervalType == IntervalType.Pomodoro
+        ), "streak must begin with a pomodoro"
+        newPomodoro = Pomodoro(
+            startTime=self._lastUpdateTime,
+            endTime=self._lastUpdateTime + nextDuration.seconds,
+            intention=intention,
         )
-        return pomodoro
+        self._intervals.append(newPomodoro)
+        self.userInterface.intervalStart(newPomodoro)
 
     def evaluatePomodoro(
         self, pomodoro: Pomodoro, success: IntentionSuccess

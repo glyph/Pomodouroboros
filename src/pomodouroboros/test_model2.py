@@ -6,7 +6,7 @@ from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
 from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel
-from pomodouroboros.model2 import Pomodoro
+from pomodouroboros.model2 import AnyInterval, GracePeriod, Pomodoro
 
 
 @dataclass
@@ -15,9 +15,9 @@ class TestInterval:
     A record of methods being called on L{TestUserInterface}
     """
 
-    intervalType: IntervalType
-    startTime: float | None = None
-    endTime: float | None = None
+    interval: AnyInterval
+    actualStartTime: float | None = None
+    actualEndTime: float | None = None
     currentProgress: float | None = None
 
 
@@ -42,16 +42,17 @@ class TestUserInterface:
         """
         self.actions[-1].currentProgress = percentComplete
 
-    def intervalStart(self, intervalType: IntervalType) -> None:
+    def intervalStart(self, interval: AnyInterval) -> None:
         """
         Set the interval type to "pomodoro".
         """
-        self.actions.append(TestInterval(intervalType, self.clock.seconds()))
+        self.actions.append(TestInterval(interval, self.clock.seconds()))
 
     def intervalEnd(self) -> None:
         """
         The interval has ended. Hide the progress bar.
         """
+        self.actions[-1].actualEndTime = self.clock.seconds()
 
     def intentionAdded(self, intention: Intention) -> None:
         """
@@ -76,6 +77,7 @@ class ModelTests(TestCase):
         """
         Full story testing all the features of a day of using Pomodouroboros.
         """
+        self.maxDiff = 99999
         c = Clock()
 
         tui = TestUserInterface(c)
@@ -95,34 +97,31 @@ class ModelTests(TestCase):
         self.assertEqual(userModel.intentions, tui.sawIntentions)
         # Some time passes so we can set a baseline for pomodoro timing.
         update(3000)
-        newPomodoro = userModel.startPomodoro(first)
-        self.assertEqual(
-            newPomodoro,
-            Pomodoro(
-                startTime=4000.0, endTime=4000.0 + (5 * 60), intention=first
-            ),
+        userModel.startPomodoro(first)
+        expectedFirstPom = Pomodoro(
+            startTime=4000.0, endTime=4000.0 + (5 * 60), intention=first
         )
         self.assertEqual(
             tui.actions,
             [
                 TestInterval(
-                    Pomodoro.intervalType,
-                    startTime=4000.0,
-                    endTime=None,
+                    expectedFirstPom,
+                    actualStartTime=4000.0,
+                    actualEndTime=None,
                     currentProgress=None,
                 )
             ],
         )
         # time starts passing
-        update(4000.0 + (6 * 60))
+        update(4000.0 + (5 * 60) + 3)
         self.assertEqual(
             tui.actions,
             [
                 TestInterval(
-                    Pomodoro.intervalType,
-                    startTime=4000.0,
-                    endTime=None,
-                    currentProgress=None,
+                    expectedFirstPom,
+                    actualStartTime=4000.0,
+                    actualEndTime=8303.0,
+                    currentProgress=1.0,
                 )
             ],
         )
