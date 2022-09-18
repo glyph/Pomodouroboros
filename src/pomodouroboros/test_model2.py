@@ -18,7 +18,7 @@ class TestInterval:
     interval: AnyInterval
     actualStartTime: float | None = None
     actualEndTime: float | None = None
-    currentProgress: float | None = None
+    currentProgress: list[float] = field(default_factory=list)
 
 
 T = TypeVar("T")
@@ -40,11 +40,11 @@ class TestUserInterface:
         The active interval has progressed to C{percentComplete} percentage
         complete.
         """
-        self.actions[-1].currentProgress = percentComplete
+        self.actions[-1].currentProgress.append(percentComplete)
 
     def intervalStart(self, interval: AnyInterval) -> None:
         """
-        Set the interval type to "pomodoro".
+        An interval has started, record it.
         """
         self.actions.append(TestInterval(interval, self.clock.seconds()))
 
@@ -96,10 +96,19 @@ class ModelTests(TestCase):
         self.assertEqual(userModel.intentions, [first, second, third])
         self.assertEqual(userModel.intentions, tui.sawIntentions)
         # Some time passes so we can set a baseline for pomodoro timing.
+        def progresses() -> list[float]:
+            return []
+
         update(3000)
         userModel.startPomodoro(first)
+        update(1)
+        update(1)
+        update(1)
+        expectedDuration = 5 * 60
         expectedFirstPom = Pomodoro(
-            startTime=4000.0, endTime=4000.0 + (5 * 60), intention=first
+            startTime=4000.0,
+            endTime=4000.0 + expectedDuration,
+            intention=first,
         )
         self.assertEqual(
             tui.actions,
@@ -108,7 +117,9 @@ class ModelTests(TestCase):
                     expectedFirstPom,
                     actualStartTime=4000.0,
                     actualEndTime=None,
-                    currentProgress=None,
+                    currentProgress=[
+                        (each / expectedDuration) for each in [1, 2, 3]
+                    ],
                 )
             ],
         )
@@ -120,8 +131,11 @@ class ModelTests(TestCase):
                 TestInterval(
                     expectedFirstPom,
                     actualStartTime=4000.0,
-                    actualEndTime=8303.0,
-                    currentProgress=1.0,
+                    actualEndTime=8306.0,
+                    currentProgress=[
+                        *[(each / expectedDuration) for each in [1, 2, 3]],
+                        1.0,
+                    ],
                 )
             ],
         )
