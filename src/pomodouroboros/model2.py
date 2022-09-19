@@ -264,7 +264,6 @@ class GameRules:
             for each in [
                 Duration(IntervalType.Pomodoro, pomMinutes * 60),
                 Duration(IntervalType.Break, breakMinutes * 60),
-                Duration(IntervalType.GracePeriod, 5 * 60),
             ]
         ]
     )
@@ -325,6 +324,7 @@ class TheUserModel:
             return
 
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
+        ended = False
         for interval in self._intervals:
             print('scanning interval', interval)
             if (previousTime < interval.startTime):
@@ -347,6 +347,22 @@ class TheUserModel:
                 ):
                     print("ending interval")
                     self.userInterface.intervalEnd()
+                    ended = True
+                    # TODO: enforce that this is the last interval, or that if
+                    # we've ended one it should be the last one?
+
+        if ended and self._currentStreak is not None:
+            nextDuration = next(self._currentStreak, None)
+            if nextDuration is not None:
+                startTime = interval.endTime
+                endTime = startTime + nextDuration.seconds
+                newInterval: AnyInterval
+                if nextDuration.intervalType == Pomodoro.intervalType:
+                    newInterval = GracePeriod(startTime=startTime, endTime=endTime)
+                if nextDuration.intervalType == Break.intervalType:
+                    newInterval = Break(startTime=startTime, endTime=endTime)
+                self._intervals.append(newInterval)
+
 
     def addIntention(
         self, description: str, estimation: float | None

@@ -6,7 +6,7 @@ from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
 from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel
-from pomodouroboros.model2 import AnyInterval, GracePeriod, Pomodoro
+from pomodouroboros.model2 import AnyInterval, Break, GracePeriod, Pomodoro
 
 
 @dataclass
@@ -124,18 +124,33 @@ class ModelTests(TestCase):
             ],
         )
         # time starts passing
-        update(4000.0 + (5 * 60) + 3)
-        self.assertEqual(
-            tui.actions,
-            [
-                TestInterval(
+        update((5 * 60) + 1)
+        finalFirstInterval = TestInterval(
                     expectedFirstPom,
                     actualStartTime=4000.0,
-                    actualEndTime=8306.0,
+                    actualEndTime=4304.0,
                     currentProgress=[
                         *[(each / expectedDuration) for each in [1, 2, 3]],
                         1.0,
                     ],
+                )
+        self.assertEqual(
+            tui.actions,
+            [
+                finalFirstInterval
+            ],
+        )
+        update(10)
+        expectedBreak = Break(startTime=4300.0, endTime=4600.0)
+        self.assertEqual(
+            tui.actions,
+            [
+                finalFirstInterval,
+                TestInterval(
+                    expectedBreak,
+                    actualStartTime=4303.0,
+                    actualEndTime=None,
+                    currentProgress=[],
                 )
             ],
         )
