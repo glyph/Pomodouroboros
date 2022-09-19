@@ -57,6 +57,7 @@ from typing import (
     Protocol,
     Sequence,
     TypeVar,
+    cast,
 )
 
 
@@ -214,6 +215,7 @@ class ScoreEvent(Protocol):
         The point in time where this scoring event occurred.
         """
 
+
 _is_score_event: type[ScoreEvent]
 
 
@@ -325,26 +327,21 @@ class TheUserModel:
 
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         for interval in self._intervals:
-            print('scanning interval', previousTime, newTime, interval)
-            if (previousTime < interval.startTime):
+            print("scanning interval", previousTime, newTime, interval)
+            if previousTime < interval.startTime:
                 print("previous time before")
-                if (
-                    newTime >= interval.startTime
-                ):
+                if newTime >= interval.startTime:
                     print("starting interval")
                     self.userInterface.intervalStart(interval)
                 else:
                     print("not starting")
-            if (
-                previousTime < interval.endTime
-            ):
+            if previousTime < interval.endTime:
                 current = newTime - interval.startTime
                 total = interval.endTime - interval.startTime
                 print("progressing interval", current, total, current / total)
                 self.userInterface.intervalProgress(min(1.0, current / total))
-            if (
-                (previousTime < interval.endTime)
-                and (newTime > interval.endTime)
+            if (previousTime < interval.endTime) and (
+                newTime > interval.endTime
             ):
                 print("ending interval")
                 self.userInterface.intervalEnd()
@@ -361,11 +358,14 @@ class TheUserModel:
                         endTime = startTime + nextDuration.seconds
                         newInterval: AnyInterval
                         if nextDuration.intervalType == Pomodoro.intervalType:
-                            newInterval = GracePeriod(startTime=startTime, endTime=endTime)
+                            newInterval = GracePeriod(
+                                startTime=startTime, endTime=endTime
+                            )
                         if nextDuration.intervalType == Break.intervalType:
-                            newInterval = Break(startTime=startTime, endTime=endTime)
+                            newInterval = Break(
+                                startTime=startTime, endTime=endTime
+                            )
                         self._intervals.append(newInterval)
-
 
     def addIntention(
         self, description: str, estimation: float | None
@@ -389,25 +389,34 @@ class TheUserModel:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        if self._currentStreak is not None:
+        if self._currentStreak is None:
             # TODO: it's already running, implement this case
             # - if a grace period is running then transition to the grace period
             # - if a break is running then refuse
-            raise RuntimeError()
-        self._currentStreak = iter(self._rules.streakIntervalDurations)
-        nextDuration = next(self._currentStreak, None)
-        assert (
-            nextDuration is not None
-        ), "empty streak interval durations is invalid"
-        assert (
-            nextDuration.intervalType == IntervalType.Pomodoro
-        ), "streak must begin with a pomodoro"
-        newPomodoro = Pomodoro(
-            startTime=self._lastUpdateTime,
-            endTime=self._lastUpdateTime + nextDuration.seconds,
-            intention=intention,
-        )
-        self._intervals.append(newPomodoro)
+            self._currentStreak = iter(self._rules.streakIntervalDurations)
+            nextDuration = next(self._currentStreak, None)
+            assert (
+                nextDuration is not None
+            ), "empty streak interval durations is invalid"
+            assert (
+                nextDuration.intervalType == IntervalType.Pomodoro
+            ), "streak must begin with a pomodoro"
+            newPomodoro = Pomodoro(
+                startTime=self._lastUpdateTime,
+                endTime=self._lastUpdateTime + nextDuration.seconds,
+                intention=intention,
+            )
+            self._intervals.append(newPomodoro)
+        else:
+            if self._intervals[-1].intervalType != GracePeriod.intervalType:
+                # not allowed. report some kind of error?
+                return
+            gracePeriod: GracePeriod = cast(GracePeriod, self._intervals[-1])
+            newPomodoro = self._intervals[-1] = Pomodoro(
+                startTime=gracePeriod.startTime,
+                endTime=gracePeriod.endTime,
+                intention=intention,
+            )
         self.userInterface.intervalStart(newPomodoro)
 
     def evaluatePomodoro(

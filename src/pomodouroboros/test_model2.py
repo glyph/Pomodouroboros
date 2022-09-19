@@ -65,6 +65,16 @@ class TestUserInterface:
         self.theModel = model
         return self
 
+    def clear(self) -> None:
+        """
+        Clear the actions log so we can assert about just the interesting
+        parts.
+        """
+        filtered = [
+            action for action in self.actions if action.actualEndTime is None
+        ]
+        self.actions[:] = filtered
+
 
 intention: Type[AnUserInterface] = TestUserInterface
 
@@ -126,20 +136,18 @@ class ModelTests(TestCase):
         )
         # time starts passing
         update((5 * 60) + 1)
-        finalFirstInterval = TestInterval(
-            expectedFirstPom,
-            actualStartTime=4000.0,
-            actualEndTime=4304.0,
-            currentProgress=[
-                *[(each / expectedDuration) for each in [1, 2, 3]],
-                1.0,
-            ],
-        )
         expectedBreak = Break(startTime=4300.0, endTime=4600.0)
-
         self.assertEqual(
             [
-                finalFirstInterval,
+                TestInterval(
+                    expectedFirstPom,
+                    actualStartTime=4000.0,
+                    actualEndTime=4304.0,
+                    currentProgress=[
+                        *[(each / expectedDuration) for each in [1, 2, 3]],
+                        1.0,
+                    ],
+                ),
                 TestInterval(
                     expectedBreak,
                     actualStartTime=4304.0,
@@ -149,10 +157,10 @@ class ModelTests(TestCase):
             ],
             tui.actions,
         )
+        tui.clear()
         update(10)
         self.assertEqual(
             [
-                finalFirstInterval,
                 TestInterval(
                     expectedBreak,
                     actualStartTime=4304.0,
@@ -165,20 +173,18 @@ class ModelTests(TestCase):
             tui.actions,
         )
         update((5 * 60) - 13)
-        finalBreak = TestInterval(
-            expectedBreak,
-            actualStartTime=4304.0,
-            actualEndTime=4300.0 + (5.0 * 60.0) + 1,
-            currentProgress=[
-                *[(each / expectedDuration) for each in [4, 14]],
-                1.0,
-            ],
-        )
         expectedGracePeriod = GracePeriod(4600.0, 5200.0)
         self.assertEqual(
             [
-                finalFirstInterval,
-                finalBreak,
+                TestInterval(
+                    expectedBreak,
+                    actualStartTime=4304.0,
+                    actualEndTime=4300.0 + (5.0 * 60.0) + 1,
+                    currentProgress=[
+                        *[(each / expectedDuration) for each in [4, 14]],
+                        1.0,
+                    ],
+                ),
                 TestInterval(
                     expectedGracePeriod,
                     actualStartTime=4601.0,
@@ -190,6 +196,87 @@ class ModelTests(TestCase):
                         )
                         for each in [1]
                     ],
+                ),
+            ],
+            tui.actions,
+        )
+        tui.clear()
+        update(10 * 60)
+        self.assertEqual(
+            [
+                TestInterval(
+                    expectedGracePeriod,
+                    actualStartTime=4601.0,
+                    currentProgress=[
+                        *(
+                            each
+                            / (
+                                expectedGracePeriod.endTime
+                                - expectedGracePeriod.startTime
+                            )
+                            for each in [1]
+                        ),
+                        1.0,
+                    ],
+                    actualEndTime=5201.0,
+                ),
+            ],
+            tui.actions,
+        )
+        tui.clear()
+        update(5000)
+        self.assertEqual([], tui.actions)
+        userModel.startPomodoro(second)
+        update((5 * 60) + 1.0)
+        update((5 * 60) + 1.0)
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=Pomodoro(
+                        startTime=10201.0,
+                        intention=Intention(
+                            description="second intention", estimate=None
+                        ),
+                        endTime=10501.0,
+                    ),
+                    actualStartTime=10201.0,
+                    actualEndTime=10502.0,
+                    currentProgress=[1.0],
+                ),
+                TestInterval(
+                    interval=Break(startTime=10501.0, endTime=10801.0),
+                    actualStartTime=10502.0,
+                    actualEndTime=10803.0,
+                    currentProgress=[0.0033333333333333335, 1.0],
+                ),
+                TestInterval(
+                    interval=GracePeriod(startTime=10801.0, endTime=11401.0),
+                    actualStartTime=10803.0,
+                    actualEndTime=None,
+                    currentProgress=[0.0033333333333333335],
+                ),
+            ],
+            tui.actions,
+        )
+        tui.clear()
+        userModel.startPomodoro(third)
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=GracePeriod(startTime=10801.0, endTime=11401.0),
+                    actualStartTime=10803.0,
+                    actualEndTime=None,  # period should probably end before pom starts
+                    currentProgress=[0.0033333333333333335],
+                ),
+                TestInterval(
+                    interval=Pomodoro(
+                        startTime=10801.0,
+                        intention=third,
+                        endTime=11401.0,
+                    ),
+                    actualStartTime=10803.0,
+                    actualEndTime=None,
+                    currentProgress=[],
                 ),
             ],
             tui.actions,
