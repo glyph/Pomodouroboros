@@ -46,6 +46,7 @@ class TestUserInterface:
         """
         An interval has started, record it.
         """
+        print("interval: start!", interval)
         self.actions.append(TestInterval(interval, self.clock.seconds()))
 
     def intervalEnd(self) -> None:
@@ -111,7 +112,6 @@ class ModelTests(TestCase):
             intention=first,
         )
         self.assertEqual(
-            tui.actions,
             [
                 TestInterval(
                     expectedFirstPom,
@@ -122,35 +122,75 @@ class ModelTests(TestCase):
                     ],
                 )
             ],
+            tui.actions,
         )
         # time starts passing
         update((5 * 60) + 1)
         finalFirstInterval = TestInterval(
-                    expectedFirstPom,
-                    actualStartTime=4000.0,
-                    actualEndTime=4304.0,
-                    currentProgress=[
-                        *[(each / expectedDuration) for each in [1, 2, 3]],
-                        1.0,
-                    ],
-                )
-        self.assertEqual(
-            tui.actions,
-            [
-                finalFirstInterval
+            expectedFirstPom,
+            actualStartTime=4000.0,
+            actualEndTime=4304.0,
+            currentProgress=[
+                *[(each / expectedDuration) for each in [1, 2, 3]],
+                1.0,
             ],
         )
-        update(10)
         expectedBreak = Break(startTime=4300.0, endTime=4600.0)
+
         self.assertEqual(
-            tui.actions,
             [
                 finalFirstInterval,
                 TestInterval(
                     expectedBreak,
-                    actualStartTime=4303.0,
+                    actualStartTime=4304.0,
                     actualEndTime=None,
-                    currentProgress=[],
-                )
+                    currentProgress=[4 / expectedDuration],
+                ),
             ],
+            tui.actions,
+        )
+        update(10)
+        self.assertEqual(
+            [
+                finalFirstInterval,
+                TestInterval(
+                    expectedBreak,
+                    actualStartTime=4304.0,
+                    actualEndTime=None,
+                    currentProgress=[
+                        (each / expectedDuration) for each in [4, 14]
+                    ],
+                ),
+            ],
+            tui.actions,
+        )
+        update((5 * 60) - 13)
+        finalBreak = TestInterval(
+            expectedBreak,
+            actualStartTime=4304.0,
+            actualEndTime=4300.0 + (5.0 * 60.0) + 1,
+            currentProgress=[
+                *[(each / expectedDuration) for each in [4, 14]],
+                1.0,
+            ],
+        )
+        expectedGracePeriod = GracePeriod(4600.0, 5200.0)
+        self.assertEqual(
+            [
+                finalFirstInterval,
+                finalBreak,
+                TestInterval(
+                    expectedGracePeriod,
+                    actualStartTime=4601.0,
+                    currentProgress=[
+                        each
+                        / (
+                            expectedGracePeriod.endTime
+                            - expectedGracePeriod.startTime
+                        )
+                        for each in [1]
+                    ],
+                ),
+            ],
+            tui.actions,
         )

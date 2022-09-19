@@ -324,44 +324,47 @@ class TheUserModel:
             return
 
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
-        ended = False
         for interval in self._intervals:
-            print('scanning interval', interval)
+            print('scanning interval', previousTime, newTime, interval)
             if (previousTime < interval.startTime):
+                print("previous time before")
                 if (
-                    newTime > interval.startTime
+                    newTime >= interval.startTime
                 ):
                     print("starting interval")
                     self.userInterface.intervalStart(interval)
-            else:
-                if (
-                    previousTime < interval.endTime
-                ):
-                    current = newTime - interval.startTime
-                    total = interval.endTime - interval.startTime
-                    print("progressing interval", current, total, current / total)
-                    self.userInterface.intervalProgress(min(1.0, current / total))
-                if (
-                    (previousTime < interval.endTime)
-                    and (newTime > interval.endTime)
-                ):
-                    print("ending interval")
-                    self.userInterface.intervalEnd()
-                    ended = True
-                    # TODO: enforce that this is the last interval, or that if
-                    # we've ended one it should be the last one?
+                else:
+                    print("not starting")
+            if (
+                previousTime < interval.endTime
+            ):
+                current = newTime - interval.startTime
+                total = interval.endTime - interval.startTime
+                print("progressing interval", current, total, current / total)
+                self.userInterface.intervalProgress(min(1.0, current / total))
+            if (
+                (previousTime < interval.endTime)
+                and (newTime > interval.endTime)
+            ):
+                print("ending interval")
+                self.userInterface.intervalEnd()
+                # TODO: enforce that this is the last interval, or that if
+                # we've ended one it should be the last one?
+                if interval.intervalType == GracePeriod.intervalType:
+                    # A grace period expired, so our current streak is now over.
+                    self._currentStreak = None
 
-        if ended and self._currentStreak is not None:
-            nextDuration = next(self._currentStreak, None)
-            if nextDuration is not None:
-                startTime = interval.endTime
-                endTime = startTime + nextDuration.seconds
-                newInterval: AnyInterval
-                if nextDuration.intervalType == Pomodoro.intervalType:
-                    newInterval = GracePeriod(startTime=startTime, endTime=endTime)
-                if nextDuration.intervalType == Break.intervalType:
-                    newInterval = Break(startTime=startTime, endTime=endTime)
-                self._intervals.append(newInterval)
+                if self._currentStreak is not None:
+                    nextDuration = next(self._currentStreak, None)
+                    if nextDuration is not None:
+                        startTime = interval.endTime
+                        endTime = startTime + nextDuration.seconds
+                        newInterval: AnyInterval
+                        if nextDuration.intervalType == Pomodoro.intervalType:
+                            newInterval = GracePeriod(startTime=startTime, endTime=endTime)
+                        if nextDuration.intervalType == Break.intervalType:
+                            newInterval = Break(startTime=startTime, endTime=endTime)
+                        self._intervals.append(newInterval)
 
 
     def addIntention(
