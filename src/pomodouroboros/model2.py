@@ -71,6 +71,26 @@ class IntervalType(Enum):
     Break = "Break"
 
 
+class PomStartResult(Enum):
+
+    Started = "Started"
+    """
+    The pomodoro was started, and with it, a new streak was started.
+    """
+
+    Continued = "Continued"
+    """
+    A pomodoro was started, and with it, an existing streak was continued.
+    """
+
+    OnBreak = "OnBreak"
+    AlreadyStarted = "AlreadyStarted"
+    """
+    The pomodoro could not be started, either because we were on break, or
+    because another pomodoro was already running.
+    """
+
+
 class AnUserInterface(Protocol):
     """
     Protocol that user interfaces must adhere to.
@@ -284,7 +304,7 @@ class TheUserModel:
     _score: list[ScoreEvent] = field(default_factory=list)
     _lastUpdateTime: float = field(init=False)
     _userInterface: AnUserInterface | None = None
-    _currentStreak: Iterator[Duration] | None = None
+    _upcomingDurations: Iterator[Duration] | None = None
     # TODO: rollup of previous intentions / intervals for comparison so we
     # don't need to keep all of history in memory at all times
 
@@ -321,20 +341,20 @@ class TheUserModel:
         """
         Advance to the epoch time given.
         """
-        if newTime < self._lastUpdateTime:
-            # Should be impossible?
-            return
-
+        assert newTime >= self._lastUpdateTime
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         for interval in self._intervals:
             print("scanning interval", previousTime, newTime, interval)
             if previousTime < interval.startTime:
                 print("previous time before")
-                if newTime >= interval.startTime:
-                    print("starting interval")
-                    self.userInterface.intervalStart(interval)
-                else:
-                    print("not starting")
+
+                # is there going to be a case where there's a new interval in
+                # _intervals, but we have *not* crossed into its range?  I
+                # can't think of a case yet
+                assert newTime >= interval.startTime
+
+                print("starting interval")
+                self.userInterface.intervalStart(interval)
             if previousTime < interval.endTime:
                 current = newTime - interval.startTime
                 total = interval.endTime - interval.startTime
@@ -349,10 +369,10 @@ class TheUserModel:
                 # we've ended one it should be the last one?
                 if interval.intervalType == GracePeriod.intervalType:
                     # A grace period expired, so our current streak is now over.
-                    self._currentStreak = None
+                    self._upcomingDurations = None
 
-                if self._currentStreak is not None:
-                    nextDuration = next(self._currentStreak, None)
+                if self._upcomingDurations is not None:
+                    nextDuration = next(self._upcomingDurations, None)
                     if nextDuration is not None:
                         startTime = interval.endTime
                         endTime = startTime + nextDuration.seconds
@@ -384,17 +404,17 @@ class TheUserModel:
         self.userInterface.intentionAdded(newIntention)
         return newIntention
 
-    def startPomodoro(self, intention: Intention) -> None:
+    def startPomodoro(self, intention: Intention) -> PomStartResult:
         """
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        if self._currentStreak is None:
+        if self._upcomingDurations is None:
             # TODO: it's already running, implement this case
             # - if a grace period is running then transition to the grace period
             # - if a break is running then refuse
-            self._currentStreak = iter(self._rules.streakIntervalDurations)
-            nextDuration = next(self._currentStreak, None)
+            self._upcomingDurations = iter(self._rules.streakIntervalDurations)
+            nextDuration = next(self._upcomingDurations, None)
             assert (
                 nextDuration is not None
             ), "empty streak interval durations is invalid"
@@ -407,17 +427,24 @@ class TheUserModel:
                 intention=intention,
             )
             self._intervals.append(newPomodoro)
+            result = PomStartResult.Started
+
         else:
-            if self._intervals[-1].intervalType != GracePeriod.intervalType:
-                # not allowed. report some kind of error?
-                return
+            runningIntervalType = self._intervals[-1].intervalType
+            if runningIntervalType == Pomodoro.intervalType:
+                return PomStartResult.AlreadyStarted
+            if runningIntervalType == Break.intervalType:
+                return PomStartResult.OnBreak
             gracePeriod: GracePeriod = cast(GracePeriod, self._intervals[-1])
             newPomodoro = self._intervals[-1] = Pomodoro(
                 startTime=gracePeriod.startTime,
                 endTime=gracePeriod.endTime,
                 intention=intention,
             )
+            result = PomStartResult.Continued
+
         self.userInterface.intervalStart(newPomodoro)
+        return result
 
     def evaluatePomodoro(
         self, pomodoro: Pomodoro, success: IntentionSuccess
