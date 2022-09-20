@@ -124,7 +124,7 @@ class UserInterfaceFactory(Protocol):
     """
 
     def __call__(self, model: TheUserModel) -> AnUserInterface:
-        ...
+        ...                     # pragma: no cover
 
 
 @dataclass
