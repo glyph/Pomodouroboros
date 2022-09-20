@@ -2,11 +2,16 @@ from dataclasses import dataclass, field
 from typing import Generic, Type, TypeVar, cast
 from unittest import TestCase
 
+from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel
+from pomodouroboros.model2 import (
+    AnyInterval,
+    Break,
+    GracePeriod,
+    PomStartResult,
+    Pomodoro,
+)
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
-
-from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel
-from pomodouroboros.model2 import AnyInterval, Break, GracePeriod, Pomodoro
 
 
 @dataclass
@@ -111,7 +116,12 @@ class ModelTests(TestCase):
             return []
 
         update(3000)
-        userModel.startPomodoro(first)
+        self.assertEqual(
+            userModel.startPomodoro(first), PomStartResult.Started
+        )
+        self.assertEqual(
+            userModel.startPomodoro(second), PomStartResult.AlreadyStarted
+        )
         update(1)
         update(1)
         update(1)
@@ -226,8 +236,13 @@ class ModelTests(TestCase):
         tui.clear()
         update(5000)
         self.assertEqual([], tui.actions)
-        userModel.startPomodoro(second)
+        self.assertEqual(
+            userModel.startPomodoro(second), PomStartResult.Started
+        )
         update((5 * 60) + 1.0)
+        self.assertEqual(
+            userModel.startPomodoro(second), PomStartResult.OnBreak
+        )
         update((5 * 60) + 1.0)
         self.assertEqual(
             [
@@ -259,7 +274,9 @@ class ModelTests(TestCase):
             tui.actions,
         )
         tui.clear()
-        userModel.startPomodoro(third)
+        self.assertEqual(
+            userModel.startPomodoro(third), PomStartResult.Continued
+        )
         self.assertEqual(
             [
                 TestInterval(
