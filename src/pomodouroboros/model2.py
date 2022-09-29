@@ -60,6 +60,12 @@ from typing import (
     cast,
 )
 
+def debug(*x: object) -> None:
+    """
+    Emit some messages while debugging.
+    """
+    if 0:
+        print(*x)
 
 class IntervalType(Enum):
     """
@@ -344,26 +350,26 @@ class TheUserModel:
         assert newTime >= self._lastUpdateTime
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         for interval in self._currentStreakIntervals:
-            print("scanning interval", previousTime, newTime, interval)
+            debug("scanning interval", previousTime, newTime, interval)
             if previousTime < interval.startTime:
-                print("previous time before")
+                debug("previous time before")
 
                 # is there going to be a case where there's a new interval in
                 # _currentStreakIntervals, but we have *not* crossed into its range?  I
                 # can't think of a case yet
                 assert newTime >= interval.startTime
 
-                print("starting interval")
+                debug("starting interval")
                 self.userInterface.intervalStart(interval)
             if previousTime < interval.endTime:
                 current = newTime - interval.startTime
                 total = interval.endTime - interval.startTime
-                print("progressing interval", current, total, current / total)
+                debug("progressing interval", current, total, current / total)
                 self.userInterface.intervalProgress(min(1.0, current / total))
             if (previousTime < interval.endTime) and (
                 newTime > interval.endTime
             ):
-                print("ending interval")
+                debug("ending interval")
                 self.userInterface.intervalEnd()
                 # TODO: enforce that this is the last interval, or that if
                 # we've ended one it should be the last one?

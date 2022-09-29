@@ -28,6 +28,7 @@ class TestInterval:
 
 T = TypeVar("T")
 
+DEBUG = False
 
 @dataclass
 class TestUserInterface:
@@ -51,7 +52,8 @@ class TestUserInterface:
         """
         An interval has started, record it.
         """
-        print("interval: start!", interval)
+        if DEBUG:
+            print("interval: start!", interval)
         self.actions.append(TestInterval(interval, self.clock.seconds()))
 
     def intervalEnd(self) -> None:
