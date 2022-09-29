@@ -300,7 +300,7 @@ class TheUserModel:
     _initialTime: float
     _interfaceFactory: UserInterfaceFactory
     _intentions: list[Intention] = field(default_factory=list)
-    _intervals: list[AnyInterval] = field(default_factory=list)
+    _currentStreakIntervals: list[AnyInterval] = field(default_factory=list)
     _score: list[ScoreEvent] = field(default_factory=list)
     _lastUpdateTime: float = field(init=False)
     _userInterface: AnUserInterface | None = None
@@ -343,13 +343,13 @@ class TheUserModel:
         """
         assert newTime >= self._lastUpdateTime
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
-        for interval in self._intervals:
+        for interval in self._currentStreakIntervals:
             print("scanning interval", previousTime, newTime, interval)
             if previousTime < interval.startTime:
                 print("previous time before")
 
                 # is there going to be a case where there's a new interval in
-                # _intervals, but we have *not* crossed into its range?  I
+                # _currentStreakIntervals, but we have *not* crossed into its range?  I
                 # can't think of a case yet
                 assert newTime >= interval.startTime
 
@@ -373,7 +373,9 @@ class TheUserModel:
 
                 if self._upcomingDurations is not None:
                     nextDuration = next(self._upcomingDurations, None)
-                    if nextDuration is not None:
+                    if nextDuration is None:
+                        self._upcomingDurations = None
+                    else:
                         startTime = interval.endTime
                         endTime = startTime + nextDuration.seconds
                         newInterval: AnyInterval
@@ -385,7 +387,7 @@ class TheUserModel:
                             newInterval = Break(
                                 startTime=startTime, endTime=endTime
                             )
-                        self._intervals.append(newInterval)
+                        self._currentStreakIntervals.append(newInterval)
 
     def addIntention(
         self, description: str, estimation: float | None
@@ -426,17 +428,21 @@ class TheUserModel:
                 endTime=self._lastUpdateTime + nextDuration.seconds,
                 intention=intention,
             )
-            self._intervals.append(newPomodoro)
+            self._currentStreakIntervals.append(newPomodoro)
             result = PomStartResult.Started
 
         else:
-            runningIntervalType = self._intervals[-1].intervalType
+            assert len(self._currentStreakIntervals) > 0, \
+                "If a streak is running, it must have intervals."
+            runningIntervalType = self._currentStreakIntervals[-1].intervalType
             if runningIntervalType == Pomodoro.intervalType:
                 return PomStartResult.AlreadyStarted
             if runningIntervalType == Break.intervalType:
                 return PomStartResult.OnBreak
-            gracePeriod: GracePeriod = cast(GracePeriod, self._intervals[-1])
-            newPomodoro = self._intervals[-1] = Pomodoro(
+            # TODO: possibly it would be neater to just dispatch on the literal
+            # type of the current running interval.
+            gracePeriod: GracePeriod = cast(GracePeriod, self._currentStreakIntervals[-1])
+            newPomodoro = self._currentStreakIntervals[-1] = Pomodoro(
                 startTime=gracePeriod.startTime,
                 endTime=gracePeriod.endTime,
                 intention=intention,
