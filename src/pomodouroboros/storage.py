@@ -23,7 +23,8 @@ class DayLoader:
     cache: Dict[Date, Day] = field(default_factory=dict)
 
     def pathForDate(self, date: Date) -> FilePath:
-        return self.baseLocation.child(date.isoformat() + ".pomday")
+        childPath: FilePath = self.baseLocation.child(date.isoformat() + ".pomday")
+        return childPath
 
     def saveDay(self, day: Day) -> None:
         """
@@ -41,7 +42,7 @@ class DayLoader:
             return self.cache[date]
 
         dayPath = self.pathForDate(date)
-        loadedOrCreated = (
+        loadedOrCreated: Day = (
             Day.forTesting()
             if TEST_MODE
             else loads(dayPath.getContent())

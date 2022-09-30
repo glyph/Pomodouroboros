@@ -67,6 +67,11 @@ class PomObserver(Protocol):
         A pomodoro completed, but no intention was specified.
         """
 
+    def tooLongToEvaluate(self, pomodoro: Pomodoro) -> None:
+        """
+        A pomodoro is no longer eligible to be evaluated
+        """
+
     def progressUpdate(
         self,
         interval: Interval,
@@ -125,7 +130,7 @@ class cproperty(Generic[T]):
         name = "_" + self.f.__name__
         cached = getattr(oself, name, None)
         if cached is not None:
-            return cached
+            return cached  # type: ignore
         new = self.f(oself)
         setattr(oself, name, new)
         return new
@@ -279,6 +284,22 @@ class Day(object):
             result.misses += misses
         result.remaining = Decimal(len(pending))
         return result
+
+    def label(self) -> str:
+        """
+        Generate a textual label representing the success proportion of the given
+        day.
+        """
+        can = "🥫"
+        tomato = "🍅"
+
+        score = self.score()
+        icon = tomato if score.hits > score.misses else can
+        unevaluated, q = (
+            (score.unevaluated, "?") if score.unevaluated else ("", "")
+        )
+        remaining, e = (score.remaining, "…") if score.remaining else ("", "")
+        return f"{icon}: {score.hits}✓ {score.misses}✗ {unevaluated}{q}{remaining}{e}"
 
     @classmethod
     def new(
@@ -477,7 +498,7 @@ class Day(object):
             if secondMostRecentlyElapsed is not None:
                 potentiallyEligible.insert(0, secondMostRecentlyElapsed)
 
-        return [
+        stillEligible = [
             pom
             for pom in potentiallyEligible
             if (
@@ -487,6 +508,8 @@ class Day(object):
                 and pom.intention.wasSuccessful is None
             )
         ]
+        stillEligible.sort(key=lambda pom: pom.startTime)
+        return stillEligible
 
     def currentOrNextInterval(self) -> Optional[Interval]:
         """
@@ -545,8 +568,14 @@ class Day(object):
                 for idx, anInterval in enumerate(allIntervals):
                     position = slice(idx, 0)
                     if anInterval.startTime > startingPoint:
-                        potentialEnd = startingPoint + pomodoroLength + breakLength
-                        if not anInterval.startTime < potentialEnd < anInterval.endTime:
+                        potentialEnd = (
+                            startingPoint + pomodoroLength + breakLength
+                        )
+                        if (
+                            not anInterval.startTime
+                            < potentialEnd
+                            < anInterval.endTime
+                        ):
                             break
                     startingPoint = anInterval.endTime
                 else:
@@ -578,6 +607,23 @@ class Day(object):
         Advance this Day to the given time, emitting observer notifications
         along the way.
         """
+        stillEligible = self.unEvaluatedPomodoros()
+        for interval in self.elapsedIntervals:
+            if not isinstance(interval, Pomodoro):
+                # skip
+                continue
+            isIntent = interval.intention is not None
+            if interval.intention is not None:
+                isNotSuccess = interval.intention.wasSuccessful is None
+            isNotEligible = interval not in stillEligible
+            if (
+                isIntent
+                and isNotSuccess
+                and isNotEligible
+            ):
+                assert interval.intention is not None
+                interval.intention.wasSuccessful = IntentionSuccess.NeverEvaluated
+                observer.tooLongToEvaluate(interval)
         if not self.pendingIntervals:
             # dayOver is emitted once, below.
             return
