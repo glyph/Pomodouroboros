@@ -307,14 +307,10 @@ class TheUserModel:
     _interfaceFactory: UserInterfaceFactory
     _intentions: list[Intention] = field(default_factory=list)
     _currentStreakIntervals: list[AnyInterval] = field(default_factory=list)
-    _score: list[ScoreEvent] = field(default_factory=list)
     _lastUpdateTime: float = field(init=False)
     _userInterface: AnUserInterface | None = None
     _upcomingDurations: Iterator[Duration] | None = None
-    # TODO: rollup of previous intentions / intervals for comparison so we
-    # don't need to keep all of history in memory at all times
-
-    _rules: GameRules = GameRules()
+    _rules: GameRules = field(default_factory=GameRules)
 
     def __post_init__(self) -> None:
         self._lastUpdateTime = 0.0
