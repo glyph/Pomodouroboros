@@ -146,6 +146,9 @@ class Pomodoro:
 
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        yield IntentionScore(self.intention, self.startTime, self.endTime - self.startTime)
+
 
 @dataclass
 class Break:
@@ -158,6 +161,9 @@ class Break:
     endTime: float
     intervalType: ClassVar[IntervalType] = IntervalType.Break
 
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        return ()
+
 
 @dataclass
 class GracePeriod:
@@ -169,6 +175,8 @@ class GracePeriod:
     startTime: float
     endTime: float
     intervalType: ClassVar[IntervalType] = IntervalType.GracePeriod
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        return ()
 
 
 MaybeFloat = TypeVar("MaybeFloat", float, None)
@@ -253,7 +261,19 @@ class IntentionScore:
 
     intention: Intention
     time: float
-    points: int = field(default=1, init=False)
+    duration: float
+    """
+    How long the intention was set for.
+    """
+
+    @property
+    def points(self) -> int:
+        """
+        Calculate points based on the duration of the pomodoro.  The idea here
+        is that we want later pomodoros to get exponentially more valuable so
+        there's an incentive to continue the streak.
+        """
+        return int((self.duration / 5) ** 2)
 
 
 _is_score_event = IntentionScore
@@ -312,9 +332,19 @@ class TheUserModel:
     _upcomingDurations: Iterator[Duration] | None = None
     _rules: GameRules = field(default_factory=GameRules)
 
+    _olderStreaks: list[list[AnyInterval]] = field(default_factory=list)
+
     def __post_init__(self) -> None:
         self._lastUpdateTime = 0.0
         self.advanceToTime(self._initialTime)
+
+    def scoreEventsSince(self, timestamp: float) -> Iterable[ScoreEvent]:
+        """
+        Get all score-relevant events since the given timestamp.
+        """
+        for streak in [self._currentStreakIntervals, *self._olderStreaks]:
+            for interval in streak:
+                yield from interval.scoreEvents()
 
     @property
     def userInterface(self) -> AnUserInterface:

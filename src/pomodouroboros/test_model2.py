@@ -300,3 +300,4 @@ class ModelTests(TestCase):
             ],
             tui.actions,
         )
+        self.assertEqual(sum(each.points for each in userModel.scoreEventsSince(0)), 0)
