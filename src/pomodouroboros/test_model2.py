@@ -30,6 +30,7 @@ T = TypeVar("T")
 
 DEBUG = False
 
+
 @dataclass
 class TestUserInterface:
     """
@@ -300,4 +301,10 @@ class ModelTests(TestCase):
             ],
             tui.actions,
         )
-        self.assertEqual(sum(each.points for each in userModel.scoreEventsSince(0)), 0)
+        events = list(userModel.scoreEventsSince(0))
+        points_for_first_interval = 1
+        points_for_second_interval = 4
+        self.assertEqual(
+            sum(each.points for each in events),
+            (points_for_first_interval * 2) + (points_for_second_interval),
+        )
