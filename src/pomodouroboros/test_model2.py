@@ -122,9 +122,11 @@ class ModelTests(TestCase):
         self.assertEqual(
             userModel.startPomodoro(first), PomStartResult.Started
         )
+        self.assertEqual(first.pomodoros, [tui.actions[0].interval])
         self.assertEqual(
             userModel.startPomodoro(second), PomStartResult.AlreadyStarted
         )
+        self.assertEqual(second.pomodoros, [])
         update(1)
         update(1)
         update(1)
@@ -252,9 +254,7 @@ class ModelTests(TestCase):
                 TestInterval(
                     interval=Pomodoro(
                         startTime=10201.0,
-                        intention=Intention(
-                            description="second intention", estimate=None
-                        ),
+                        intention=second,
                         endTime=10501.0,
                     ),
                     actualStartTime=10201.0,
@@ -302,8 +302,10 @@ class ModelTests(TestCase):
             tui.actions,
         )
         events = list(userModel.scoreEventsSince(0))
+
         points_for_first_interval = 1
         points_for_second_interval = 4
+
         self.assertEqual(
             sum(each.points for each in events),
             (points_for_first_interval * 2) + (points_for_second_interval),

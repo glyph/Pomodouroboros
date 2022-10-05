@@ -193,7 +193,8 @@ class Estimate:
     """
     The original estimate, in seconds.
     """
-    elapsed: float
+
+    elapsed: float = 0.0
     """
     The amount of time elapsed on this estimate thus far, in seconds.
     """
@@ -207,6 +208,7 @@ class Intention(Generic[MaybeFloat]):
 
     description: str
     estimate: Estimate | None
+    pomodoros: list[Pomodoro] = field(default_factory=list)
 
 
 AnyInterval = Pomodoro | Break | GracePeriod
@@ -432,7 +434,7 @@ class TheUserModel:
                 description,
                 None
                 if estimation is None
-                else Estimate(estimation, estimation),
+                else Estimate(estimation),
             )
         )
         self.userInterface.intentionAdded(newIntention)
@@ -481,6 +483,7 @@ class TheUserModel:
             )
             result = PomStartResult.Continued
 
+        intention.pomodoros.append(newPomodoro)
         self.userInterface.intervalStart(newPomodoro)
         return result
 
