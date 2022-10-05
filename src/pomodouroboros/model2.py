@@ -273,7 +273,7 @@ class IntentionScore:
         is that we want later pomodoros to get exponentially more valuable so
         there's an incentive to continue the streak.
         """
-        return int((self.duration / 5) ** 2)
+        return int((self.duration / (5 * 60)) ** 2)
 
 
 _is_score_event = IntentionScore
