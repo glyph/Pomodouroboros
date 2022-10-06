@@ -184,7 +184,8 @@ class Pomodoro:
     startTime: float
     intention: Intention
     endTime: float
-    evaluation: Evaluation | None
+
+    evaluation: Evaluation | None = None
 
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
