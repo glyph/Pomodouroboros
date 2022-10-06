@@ -60,12 +60,14 @@ from typing import (
     cast,
 )
 
+
 def debug(*x: object) -> None:
     """
     Emit some messages while debugging.
     """
     if 0:
         print(*x)
+
 
 class IntervalType(Enum):
     """
@@ -130,7 +132,46 @@ class UserInterfaceFactory(Protocol):
     """
 
     def __call__(self, model: TheUserModel) -> AnUserInterface:
-        ...                     # pragma: no cover
+        ...  # pragma: no cover
+
+
+class EvaluationResult(Enum):
+    """
+    How did a given Pomodoro go?
+    """
+
+    distracted = "distracted"
+    """
+    The user was distracted by something that they could have had control over,
+    and ideally would have ignored or noted for later.
+    """
+
+    interrupted = "interrupted"
+    """
+    The user was interrupted by something that was legitimately higher priority
+    than their specified intention.
+    """
+
+    focused = "focused"
+    """
+    The user was focused on the task at hand.
+    """
+
+    achieved = "achieved"
+    """
+    The intended goal of the pomodoro was achieved.
+    """
+
+
+@dataclass
+class Evaluation:
+    """
+    A decision by the user about the successfulness of the intention associated
+    with a pomodoro.
+    """
+
+    result: EvaluationResult
+    timestamp: float
 
 
 @dataclass
@@ -143,11 +184,32 @@ class Pomodoro:
     startTime: float
     intention: Intention
     endTime: float
+    evaluation: Evaluation | None
 
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
-        yield IntentionScore(self.intention, self.startTime, self.endTime - self.startTime)
+        yield IntentionScore(
+            self.intention, self.startTime, self.endTime - self.startTime
+        )
+
+    def evaluate(self, result: EvaluationResult, timestamp: float) -> None:
+        """
+        Evaluate the completion of this pomodoro.
+
+        Open questions:
+
+            - should there be a time limit on performing this evaluation?
+
+                - should evaluating after a certain amount of time be
+                  disallowed completely, or merely discouraged by a score
+                  reduction?
+
+            - should you be able to go backwards to "not evaluated at all"?
+
+            - should we have a discrete Evaluation object
+        """
+        self.evaluation = Evaluation(result, timestamp)
 
 
 @dataclass
@@ -175,29 +237,12 @@ class GracePeriod:
     startTime: float
     endTime: float
     intervalType: ClassVar[IntervalType] = IntervalType.GracePeriod
+
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
 
 
 MaybeFloat = TypeVar("MaybeFloat", float, None)
-
-
-@dataclass
-class Estimate:
-    """
-    An estimation of how long a given task will take, as well as the amount of
-    time already spent on it.
-    """
-
-    original: float
-    """
-    The original estimate, in seconds.
-    """
-
-    elapsed: float = 0.0
-    """
-    The amount of time elapsed on this estimate thus far, in seconds.
-    """
 
 
 @dataclass
@@ -207,7 +252,7 @@ class Intention(Generic[MaybeFloat]):
     """
 
     description: str
-    estimate: Estimate | None
+    estimate: float | None
     pomodoros: list[Pomodoro] = field(default_factory=list)
 
 
@@ -361,16 +406,6 @@ class TheUserModel:
     def intentions(self) -> Sequence[Intention]:
         return self._intentions
 
-    def nextInflectionPoint(self) -> float | None:
-        """
-        Get the next time at which something "interesting" will happen; i.e.
-        the time when the current pomodoro will end.
-
-        Sometimes there are no pending interesting events, in which case it
-        will return None.
-        """
-        # TODO: implement
-
     def advanceToTime(self, newTime: float) -> None:
         """
         Advance to the epoch time given.
@@ -430,12 +465,7 @@ class TheUserModel:
         Add an intention with the given description and time estimate.
         """
         self._intentions.append(
-            newIntention := Intention(
-                description,
-                None
-                if estimation is None
-                else Estimate(estimation),
-            )
+            newIntention := Intention(description, estimation)
         )
         self.userInterface.intentionAdded(newIntention)
         return newIntention
@@ -466,8 +496,9 @@ class TheUserModel:
             result = PomStartResult.Started
 
         else:
-            assert len(self._currentStreakIntervals) > 0, \
-                "If a streak is running, it must have intervals."
+            assert (
+                len(self._currentStreakIntervals) > 0
+            ), "If a streak is running, it must have intervals."
             runningIntervalType = self._currentStreakIntervals[-1].intervalType
             if runningIntervalType == Pomodoro.intervalType:
                 return PomStartResult.AlreadyStarted
@@ -475,7 +506,9 @@ class TheUserModel:
                 return PomStartResult.OnBreak
             # TODO: possibly it would be neater to just dispatch on the literal
             # type of the current running interval.
-            gracePeriod: GracePeriod = cast(GracePeriod, self._currentStreakIntervals[-1])
+            gracePeriod: GracePeriod = cast(
+                GracePeriod, self._currentStreakIntervals[-1]
+            )
             newPomodoro = self._currentStreakIntervals[-1] = Pomodoro(
                 startTime=gracePeriod.startTime,
                 endTime=gracePeriod.endTime,
