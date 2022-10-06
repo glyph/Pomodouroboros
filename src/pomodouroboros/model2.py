@@ -271,15 +271,6 @@ subsequent pomodoros) don't happen.
 """
 
 
-class IntentionSuccess(Enum):
-    Achieved = "Achieved"
-    "The goal described in the intention is finished."
-    Focused = "Focused"
-    "Good focus during the pomodoro, but the goal was not complete."
-    Distracted = "Distracted"
-    "Distracted during the pomodoro; not great progress."
-
-
 class ScoreEvent(Protocol):
     """
     An event that occurred that affected the users score.
@@ -522,9 +513,9 @@ class TheUserModel:
         return result
 
     def evaluatePomodoro(
-        self, pomodoro: Pomodoro, success: IntentionSuccess
+        self, pomodoro: Pomodoro, result: EvaluationResult
     ) -> None:
         """
         The user has determined the success criteria.
         """
-        # TODO: implement
+        pomodoro.evaluate(result, self._lastUpdateTime)
