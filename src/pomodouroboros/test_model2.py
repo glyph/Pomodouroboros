@@ -92,6 +92,28 @@ class ModelTests(TestCase):
     Model tests.
     """
 
+    def test_idealScore(self) -> None:
+        """
+        The ideal score should be the best sequence of events that the user
+        could execute.
+        """
+        self.maxDiff = 9999
+        c = Clock()
+        tui = TestUserInterface(c)
+        userModel = TheUserModel(c.seconds(), tui.setIt)
+        def update(n: float) -> None:
+            c.advance(n)
+            userModel.advanceToTime(c.seconds())
+        update(1000)
+        idealScore = userModel.idealScore(2000)
+        self.assertEqual(idealScore.pointsLost(), 4)
+        self.assertEqual(idealScore.nextPointLoss, 1600)
+        update(1600)
+        idealScore = userModel.idealScore(2000)
+        self.assertEqual(idealScore.pointsLost(), 0)
+        self.assertEqual(idealScore.nextPointLoss, None)
+
+
     def test_story(self) -> None:
         """
         Full story testing all the features of a day of using Pomodouroboros.

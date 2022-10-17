@@ -47,7 +47,7 @@ itself.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import (
     ClassVar,
@@ -124,6 +124,13 @@ class AnUserInterface(Protocol):
         """
         An intention was added to the set of intentions.
         """
+
+
+@dataclass
+class NoUserInterface(AnUserInterface):
+    """
+    Do-nothing implementation of a user interface.
+    """
 
 
 class UserInterfaceFactory(Protocol):
@@ -357,6 +364,27 @@ class GameRules:
 
 
 @dataclass
+class IdealScoreInfo:
+    """
+    Information about time remaining to the next ideal score loss.
+    """
+
+    now: float
+    workPeriodEnd: float
+    idealScoreNow: list[ScoreEvent]
+    nextPointLoss: float | None
+    idealScoreNext: list[ScoreEvent]
+
+    def pointsLost(self) -> int:
+        """
+        Compute, numerically, how many points will be lost at L{self.nextPointLoss}.
+        """
+        return sum(each.points for each in self.idealScoreNow) - sum(
+            each.points for each in self.idealScoreNext
+        )
+
+
+@dataclass
 class TheUserModel:
     """
     Model of the user's ongoing pomodoro experience.
@@ -366,24 +394,131 @@ class TheUserModel:
     _interfaceFactory: UserInterfaceFactory
     _intentions: list[Intention] = field(default_factory=list)
     _currentStreakIntervals: list[AnyInterval] = field(default_factory=list)
-    _lastUpdateTime: float = field(init=False)
+    """
+    The list of active streak intervals currently being worked on.
+    """
+
+    _lastUpdateTime: float = field(init=False, default=0.0)
     _userInterface: AnUserInterface | None = None
     _upcomingDurations: Iterator[Duration] | None = None
     _rules: GameRules = field(default_factory=GameRules)
 
     _olderStreaks: list[list[AnyInterval]] = field(default_factory=list)
+    """
+    The list of previous streaks, each one being a list of its intervals, that
+    are now completed.
+    """
 
     def __post_init__(self) -> None:
-        self._lastUpdateTime = 0.0
         self.advanceToTime(self._initialTime)
+
+    def idealFuture(
+        self, activityStart: float, workPeriodEnd: float
+    ) -> TheUserModel:
+        """
+        Compute the ideal score if we were to maintain focus through the end of
+        the given time period.
+
+        @param activityStart: The point at which the user begins taking their
+            next action to complete ideal future streaks.
+
+        @param workPeriodEnd: The point beyond which we will not count points
+            any more; i.e. the end of the work day.
+        """
+        upcomingDurations = (
+            list(self._upcomingDurations)
+            if self._upcomingDurations is not None
+            else None
+        )
+
+        def split() -> Iterator[Duration] | None:
+            return (
+                iter(upcomingDurations)
+                if upcomingDurations is not None
+                else None
+            )
+
+        self._upcomingDurations = split()
+        hypothetical = replace(
+            self,
+            _intentions=self._intentions[:],
+            _interfaceFactory=lambda whatever: NoUserInterface(),
+            _currentStreakIntervals=self._currentStreakIntervals[:],
+            _userInterface=NoUserInterface(),
+            _upcomingDurations=split(),
+        )
+
+        hypothetical.advanceToTime(activityStart)
+
+        while hypothetical._lastUpdateTime <= workPeriodEnd:
+            if hypothetical._currentStreakIntervals:
+                interval = hypothetical._currentStreakIntervals[-1]
+                hypothetical.advanceToTime(interval.endTime + 1)
+                if isinstance(interval, Pomodoro):
+                    hypothetical.evaluatePomodoro(
+                        interval, EvaluationResult.achieved
+                    )
+                # TODO: when estimation gets a score, make sure to put one that
+                # is exactly correct here.
+            if (not hypothetical._currentStreakIntervals) or isinstance(
+                hypothetical._currentStreakIntervals[-1], GracePeriod
+            ):
+                intention = hypothetical.addIntention("placeholder", None)
+                startResult = hypothetical.startPomodoro(intention)
+                assert startResult in {
+                    PomStartResult.Started,
+                    PomStartResult.Continued,
+                }, "invariant failed: could not actually start pomodoro"
+        return hypothetical
+
+    def idealScore(self, workPeriodEnd: float) -> IdealScoreInfo:
+        """
+        Compute the inflection point for the ideal score the user might
+        achieve.  We present two hypothetical futures: one where the user
+        executes perfectly, and the other where they wait long enough to lose
+        some element of that perfect score, and then begins executing
+        perfectly.
+        """
+        currentIdeal = self.idealFuture(self._lastUpdateTime, workPeriodEnd)
+
+        def scoreFilter(model: TheUserModel) -> Iterable[ScoreEvent]:
+            for each in model.scoreEventsSince(model._initialTime):
+                if each.time >= workPeriodEnd:
+                    break
+                yield each
+
+        idealScoreNow = list(scoreFilter(currentIdeal))
+        if not idealScoreNow:
+            return IdealScoreInfo(
+                now=self._lastUpdateTime,
+                idealScoreNow=idealScoreNow,
+                workPeriodEnd=workPeriodEnd,
+                nextPointLoss=None,
+                idealScoreNext=idealScoreNow,
+            )
+        pointLossTime = idealScoreNow[-1].time
+        futureIdeal = (
+            self.idealFuture(pointLossTime, workPeriodEnd)
+            if idealScoreNow
+            else currentIdeal
+        )
+        idealScoreNext = list(scoreFilter(futureIdeal))
+        return IdealScoreInfo(
+            now=self._lastUpdateTime,
+            idealScoreNow=idealScoreNow,
+            workPeriodEnd=workPeriodEnd,
+            nextPointLoss=pointLossTime,
+            idealScoreNext=idealScoreNext,
+        )
 
     def scoreEventsSince(self, timestamp: float) -> Iterable[ScoreEvent]:
         """
         Get all score-relevant events since the given timestamp.
         """
-        for streak in [self._currentStreakIntervals, *self._olderStreaks]:
+        for streak in [*self._olderStreaks, self._currentStreakIntervals]:
             for interval in streak:
-                yield from interval.scoreEvents()
+                if interval.startTime > timestamp:
+                    yield from interval.scoreEvents()
 
     @property
     def userInterface(self) -> AnUserInterface:
@@ -436,6 +571,11 @@ class TheUserModel:
                     nextDuration = next(self._upcomingDurations, None)
                     if nextDuration is None:
                         self._upcomingDurations = None
+                        old, self._currentStreakIntervals = (
+                            self._currentStreakIntervals,
+                            [],
+                        )
+                        self._olderStreaks.append(old)
                     else:
                         startTime = interval.endTime
                         endTime = startTime + nextDuration.seconds
