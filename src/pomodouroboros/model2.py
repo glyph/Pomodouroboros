@@ -77,6 +77,7 @@ class IntervalType(Enum):
     Pomodoro = "Pomodoro"
     GracePeriod = "GracePeriod"
     Break = "Break"
+    StartPrompt = "StartPrompt"
 
 
 class PomStartResult(Enum):
@@ -264,7 +265,24 @@ class Intention(Generic[MaybeFloat]):
     pomodoros: list[Pomodoro] = field(default_factory=list)
 
 
-AnyInterval = Pomodoro | Break | GracePeriod
+@dataclass
+class StartPrompt:
+    """
+    Interval where the user is not currently in a streak, and we are prompting
+    them to get started.
+    """
+
+    startTime: float
+    endTime: float
+    pointsLost: int
+
+    intervalType: ClassVar[IntervalType] = IntervalType.StartPrompt
+
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        return ()
+
+
+AnyInterval = Pomodoro | Break | GracePeriod | StartPrompt
 """
 Any interval at all.
 """
@@ -408,6 +426,7 @@ class TheUserModel:
     The list of previous streaks, each one being a list of its intervals, that
     are now completed.
     """
+    _sessions: list[tuple[float, float]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.advanceToTime(self._initialTime)
@@ -446,6 +465,7 @@ class TheUserModel:
             _currentStreakIntervals=self._currentStreakIntervals[:],
             _userInterface=NoUserInterface(),
             _upcomingDurations=split(),
+            _sessions=[],
         )
 
         hypothetical.advanceToTime(activityStart)
@@ -539,6 +559,7 @@ class TheUserModel:
         """
         assert newTime >= self._lastUpdateTime
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
+        currentInterval: AnyInterval | None = None
         for interval in self._currentStreakIntervals:
             debug("scanning interval", previousTime, newTime, interval)
             if previousTime < interval.startTime:
@@ -556,11 +577,13 @@ class TheUserModel:
                 total = interval.endTime - interval.startTime
                 debug("progressing interval", current, total, current / total)
                 self.userInterface.intervalProgress(min(1.0, current / total))
+                currentInterval = interval
             if (previousTime < interval.endTime) and (
                 newTime > interval.endTime
             ):
                 debug("ending interval")
                 self.userInterface.intervalEnd()
+                currentInterval = None
                 # TODO: enforce that this is the last interval, or that if
                 # we've ended one it should be the last one?
                 if interval.intervalType == GracePeriod.intervalType:
@@ -589,6 +612,28 @@ class TheUserModel:
                                 startTime=startTime, endTime=endTime
                             )
                         self._currentStreakIntervals.append(newInterval)
+                        # currentInterval = newInterval # ?
+
+        if currentInterval is None:
+            # We're not currently in an interval; i.e. we are idling.  If
+            # there's a work session active, then let's add a new special
+            # interval that tells us about the next point at which we will lose
+            # some potential points.
+            newSession = None
+            for (eachStart, eachEnd) in self._sessions:
+                if eachStart <= newTime < eachEnd:
+                    newSession = (eachStart, eachEnd)
+                    break
+            if newSession is not None:
+                sessionStart, sessionEnd = newSession
+                scoreInfo = self.idealScore(sessionEnd)
+                nextDrop = scoreInfo.nextPointLoss
+                if nextDrop is not None:
+                    newInterval = StartPrompt(
+                        newTime, nextDrop, scoreInfo.pointsLost()
+                    )
+                    self._currentStreakIntervals.append(newInterval)
+                    self.userInterface.intervalStart(newInterval)
 
     def addIntention(
         self, description: str, estimation: float | None
@@ -601,6 +646,14 @@ class TheUserModel:
         )
         self.userInterface.intentionAdded(newIntention)
         return newIntention
+
+    def addSession(self, startTime: float, endTime: float) -> None:
+        """
+        Add a 'work session'; a discrete interval where we will be scored, and
+        notified of potential drops to our score if we don't set intentions.
+        """
+        self._sessions.append((startTime, endTime))
+        self._sessions.sort()
 
     def startPomodoro(self, intention: Intention) -> PomStartResult:
         """

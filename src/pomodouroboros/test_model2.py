@@ -92,66 +92,76 @@ class ModelTests(TestCase):
     Model tests.
     """
 
+    def setUp(self) -> None:
+        """
+        Set up this test case.
+        """
+        self.maxDiff = 9999
+        self.clock = Clock()
+        self.testUI = TestUserInterface(self.clock)
+        self.userModel = TheUserModel(self.clock.seconds(), self.testUI.setIt)
+
+    def advanceTime(self, n: float) -> None:
+        self.clock.advance(n)
+        self.userModel.advanceToTime(self.clock.seconds())
+
+    def test_idealScoreNotifications(self) -> None:
+        """
+        When the user has a session started, they will receive notifications
+        telling them about decreases to their potential maximum score.
+        """
+        self.userModel.addSession(1000, 2000)
+        self.advanceTime(1100)
+        self.advanceTime(1)
+        self.advanceTime(1)
+        self.advanceTime(1)
+        self.advanceTime(1)
+        self.advanceTime(1)
+        self.advanceTime(1100)
+        print(self.testUI.actions)
+
     def test_idealScore(self) -> None:
         """
         The ideal score should be the best sequence of events that the user
         could execute.
         """
-        self.maxDiff = 9999
-        c = Clock()
-        tui = TestUserInterface(c)
-        userModel = TheUserModel(c.seconds(), tui.setIt)
-        def update(n: float) -> None:
-            c.advance(n)
-            userModel.advanceToTime(c.seconds())
-        update(1000)
-        idealScore = userModel.idealScore(2000)
+        self.advanceTime(1000)
+        idealScore = self.userModel.idealScore(2000)
         self.assertEqual(idealScore.pointsLost(), 4)
         self.assertEqual(idealScore.nextPointLoss, 1600)
-        update(1600)
-        idealScore = userModel.idealScore(2000)
+        self.advanceTime(1600)
+        idealScore = self.userModel.idealScore(2000)
         self.assertEqual(idealScore.pointsLost(), 0)
         self.assertEqual(idealScore.nextPointLoss, None)
-
 
     def test_story(self) -> None:
         """
         Full story testing all the features of a day of using Pomodouroboros.
         """
-        self.maxDiff = 99999
-        c = Clock()
-
-        tui = TestUserInterface(c)
-        userModel = TheUserModel(c.seconds(), tui.setIt)
-
-        def update(n: float) -> None:
-            c.advance(n)
-            userModel.advanceToTime(c.seconds())
-
-        update(1000)
+        self.advanceTime(1000)
         # User types in some intentions and sets estimates for some of them
         # TBD: should there be a prompt?
-        first = userModel.addIntention("first intention", 100.0)
-        second = userModel.addIntention("second intention", None)
-        third = userModel.addIntention("third intention", 50.0)
-        self.assertEqual(userModel.intentions, [first, second, third])
-        self.assertEqual(userModel.intentions, tui.sawIntentions)
+        first = self.userModel.addIntention("first intention", 100.0)
+        second = self.userModel.addIntention("second intention", None)
+        third = self.userModel.addIntention("third intention", 50.0)
+        self.assertEqual(self.userModel.intentions, [first, second, third])
+        self.assertEqual(self.userModel.intentions, self.testUI.sawIntentions)
         # Some time passes so we can set a baseline for pomodoro timing.
         def progresses() -> list[float]:
             return []
 
-        update(3000)
+        self.advanceTime(3000)
         self.assertEqual(
-            userModel.startPomodoro(first), PomStartResult.Started
+            self.userModel.startPomodoro(first), PomStartResult.Started
         )
-        self.assertEqual(first.pomodoros, [tui.actions[0].interval])
+        self.assertEqual(first.pomodoros, [self.testUI.actions[0].interval])
         self.assertEqual(
-            userModel.startPomodoro(second), PomStartResult.AlreadyStarted
+            self.userModel.startPomodoro(second), PomStartResult.AlreadyStarted
         )
         self.assertEqual(second.pomodoros, [])
-        update(1)
-        update(1)
-        update(1)
+        self.advanceTime(1)
+        self.advanceTime(1)
+        self.advanceTime(1)
         expectedDuration = 5 * 60
         expectedFirstPom = Pomodoro(
             startTime=4000.0,
@@ -169,10 +179,10 @@ class ModelTests(TestCase):
                     ],
                 )
             ],
-            tui.actions,
+            self.testUI.actions,
         )
         # time starts passing
-        update((5 * 60) + 1)
+        self.advanceTime((5 * 60) + 1)
         expectedBreak = Break(startTime=4300.0, endTime=4600.0)
         self.assertEqual(
             [
@@ -192,10 +202,10 @@ class ModelTests(TestCase):
                     currentProgress=[4 / expectedDuration],
                 ),
             ],
-            tui.actions,
+            self.testUI.actions,
         )
-        tui.clear()
-        update(10)
+        self.testUI.clear()
+        self.advanceTime(10)
         self.assertEqual(
             [
                 TestInterval(
@@ -207,9 +217,9 @@ class ModelTests(TestCase):
                     ],
                 ),
             ],
-            tui.actions,
+            self.testUI.actions,
         )
-        update((5 * 60) - 13)
+        self.advanceTime((5 * 60) - 13)
         expectedGracePeriod = GracePeriod(4600.0, 5200.0)
         self.assertEqual(
             [
@@ -235,10 +245,10 @@ class ModelTests(TestCase):
                     ],
                 ),
             ],
-            tui.actions,
+            self.testUI.actions,
         )
-        tui.clear()
-        update(10 * 60)
+        self.testUI.clear()
+        self.advanceTime(10 * 60)
         self.assertEqual(
             [
                 TestInterval(
@@ -258,19 +268,19 @@ class ModelTests(TestCase):
                     actualEndTime=5201.0,
                 ),
             ],
-            tui.actions,
+            self.testUI.actions,
         )
-        tui.clear()
-        update(5000)
-        self.assertEqual([], tui.actions)
+        self.testUI.clear()
+        self.advanceTime(5000)
+        self.assertEqual([], self.testUI.actions)
         self.assertEqual(
-            userModel.startPomodoro(second), PomStartResult.Started
+            self.userModel.startPomodoro(second), PomStartResult.Started
         )
-        update((5 * 60) + 1.0)
+        self.advanceTime((5 * 60) + 1.0)
         self.assertEqual(
-            userModel.startPomodoro(second), PomStartResult.OnBreak
+            self.userModel.startPomodoro(second), PomStartResult.OnBreak
         )
-        update((5 * 60) + 1.0)
+        self.advanceTime((5 * 60) + 1.0)
         self.assertEqual(
             [
                 TestInterval(
@@ -296,11 +306,11 @@ class ModelTests(TestCase):
                     currentProgress=[0.0033333333333333335],
                 ),
             ],
-            tui.actions,
+            self.testUI.actions,
         )
-        tui.clear()
+        self.testUI.clear()
         self.assertEqual(
-            userModel.startPomodoro(third), PomStartResult.Continued
+            self.userModel.startPomodoro(third), PomStartResult.Continued
         )
         self.assertEqual(
             [
@@ -321,9 +331,9 @@ class ModelTests(TestCase):
                     currentProgress=[],
                 ),
             ],
-            tui.actions,
+            self.testUI.actions,
         )
-        events = list(userModel.scoreEventsSince(0))
+        events = list(self.userModel.scoreEventsSince(0))
 
         points_for_first_interval = 1
         points_for_second_interval = 4
