@@ -691,12 +691,14 @@ class TheUserModel:
                 return PomStartResult.OnBreak
             # TODO: possibly it would be neater to just dispatch on the literal
             # type of the current running interval.
-            gracePeriod: GracePeriod = cast(
-                GracePeriod, self._currentStreakIntervals[-1]
-            )
+            assert runningIntervalType in {
+                GracePeriod.intervalType,
+                StartPrompt.intervalType,  # TODO this value is not tested
+            }
+            gracePeriodOrStartPrompt = self._currentStreakIntervals[-1]
             newPomodoro = self._currentStreakIntervals[-1] = Pomodoro(
-                startTime=gracePeriod.startTime,
-                endTime=gracePeriod.endTime,
+                startTime=gracePeriodOrStartPrompt.startTime,
+                endTime=gracePeriodOrStartPrompt.endTime,
                 intention=intention,
             )
             result = PomStartResult.Continued
