@@ -471,13 +471,15 @@ class TheUserModel:
         # because it's init=False we have to copy it manually
         hypothetical._lastUpdateTime = self._lastUpdateTime
 
-        print("advancing to activity start", activityStart)
+        debug(
+            "advancing to activity start", self._lastUpdateTime, activityStart
+        )
         hypothetical.advanceToTime(activityStart)
 
         while hypothetical._lastUpdateTime <= workPeriodEnd:
             if hypothetical._currentStreakIntervals:
                 interval = hypothetical._currentStreakIntervals[-1]
-                print("advancing to interval end")
+                debug("advancing to interval end")
                 hypothetical.advanceToTime(interval.endTime + 1)
                 if isinstance(interval, Pomodoro):
                     hypothetical.evaluatePomodoro(
@@ -504,7 +506,7 @@ class TheUserModel:
         some element of that perfect score, and then begins executing
         perfectly.
         """
-        print("ideal future 1")
+        debug("ideal future 1")
         currentIdeal = self.idealFuture(self._lastUpdateTime, workPeriodEnd)
 
         def scoreFilter(model: TheUserModel) -> Iterable[ScoreEvent]:
@@ -523,7 +525,7 @@ class TheUserModel:
                 idealScoreNext=idealScoreNow,
             )
         pointLossTime = idealScoreNow[-1].time
-        print("ideal future 2")
+        debug("ideal future 2")
         futureIdeal = (
             self.idealFuture(pointLossTime, workPeriodEnd)
             if idealScoreNow
@@ -564,8 +566,10 @@ class TheUserModel:
         """
         Advance to the epoch time given.
         """
-        assert newTime >= self._lastUpdateTime, f"{newTime} < {self._lastUpdateTime}"
-        print("advancing to", newTime, "from", self._lastUpdateTime)
+        assert (
+            newTime >= self._lastUpdateTime
+        ), f"{newTime} < {self._lastUpdateTime}"
+        debug("advancing to", newTime, "from", self._lastUpdateTime)
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         currentInterval: AnyInterval | None = None
         for interval in self._currentStreakIntervals:
@@ -576,7 +580,9 @@ class TheUserModel:
                 # is there going to be a case where there's a new interval in
                 # _currentStreakIntervals, but we have *not* crossed into its range?  I
                 # can't think of a case yet
-                assert newTime >= interval.startTime, f"{previousTime} {newTime} {interval.startTime} {self._currentStreakIntervals}"
+                assert (
+                    newTime >= interval.startTime
+                ), f"{previousTime} {newTime} {interval.startTime} {self._currentStreakIntervals}"
                 debug("starting interval")
                 self.userInterface.intervalStart(interval)
             if previousTime < interval.endTime:
@@ -594,32 +600,38 @@ class TheUserModel:
                 # TODO: enforce that this is the last interval, or that if
                 # we've ended one it should be the last one?
                 if interval.intervalType == GracePeriod.intervalType:
-                    # A grace period expired, so our current streak is now over.
+                    # A grace period expired, so our current streak is now
+                    # over, regardless of whether new intervals might be
+                    # produced.
                     self._upcomingDurations = None
 
                 if self._upcomingDurations is not None:
                     nextDuration = next(self._upcomingDurations, None)
                     if nextDuration is None:
                         self._upcomingDurations = None
-                        old, self._currentStreakIntervals = (
-                            self._currentStreakIntervals,
-                            [],
+                else:
+                    nextDuration = None
+
+                if nextDuration is None:
+                    old, self._currentStreakIntervals = (
+                        self._currentStreakIntervals,
+                        [],
+                    )
+                    self._olderStreaks.append(old)
+                else:
+                    startTime = interval.endTime
+                    endTime = startTime + nextDuration.seconds
+                    newInterval: AnyInterval
+                    if nextDuration.intervalType == Pomodoro.intervalType:
+                        newInterval = GracePeriod(
+                            startTime=startTime, endTime=endTime
                         )
-                        self._olderStreaks.append(old)
-                    else:
-                        startTime = interval.endTime
-                        endTime = startTime + nextDuration.seconds
-                        newInterval: AnyInterval
-                        if nextDuration.intervalType == Pomodoro.intervalType:
-                            newInterval = GracePeriod(
-                                startTime=startTime, endTime=endTime
-                            )
-                        if nextDuration.intervalType == Break.intervalType:
-                            newInterval = Break(
-                                startTime=startTime, endTime=endTime
-                            )
-                        self._currentStreakIntervals.append(newInterval)
-                        # currentInterval = newInterval # ?
+                    if nextDuration.intervalType == Break.intervalType:
+                        newInterval = Break(
+                            startTime=startTime, endTime=endTime
+                        )
+                    self._currentStreakIntervals.append(newInterval)
+                    # currentInterval = newInterval # ?
 
         if currentInterval is None:
             # We're not currently in an interval; i.e. we are idling.  If
@@ -641,6 +653,13 @@ class TheUserModel:
                     )
                     self._currentStreakIntervals.append(newInterval)
                     self.userInterface.intervalStart(newInterval)
+        if self._currentStreakIntervals:
+            # If there's an active streak, we definitionally should not have
+            # advanced past its end.
+            assert (
+                self._lastUpdateTime
+                <= self._currentStreakIntervals[-1].endTime
+            ), f"{self._upcomingDurations} {self._lastUpdateTime} {self._currentStreakIntervals[-1].endTime}"
 
     def addIntention(
         self, description: str, estimation: float | None

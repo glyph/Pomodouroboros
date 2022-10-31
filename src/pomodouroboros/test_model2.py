@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Generic, Type, TypeVar, cast
 from unittest import TestCase
 
-from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel
+from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel, debug
 from pomodouroboros.model2 import (
     AnyInterval,
     Break,
@@ -28,9 +28,6 @@ class TestInterval:
 
 T = TypeVar("T")
 
-DEBUG = False
-
-
 @dataclass
 class TestUserInterface:
     """
@@ -53,8 +50,7 @@ class TestUserInterface:
         """
         An interval has started, record it.
         """
-        if DEBUG:
-            print("interval: start!", interval)
+        debug("interval: start!", interval)
         self.actions.append(TestInterval(interval, self.clock.seconds()))
 
     def intervalEnd(self) -> None:
@@ -102,9 +98,9 @@ class ModelTests(TestCase):
         self.userModel = TheUserModel(self.clock.seconds(), self.testUI.setIt)
 
     def advanceTime(self, n: float) -> None:
-        print("advancing", n)
+        debug("advancing", n)
         self.clock.advance(n)
-        print("to", self.clock.seconds())
+        debug("to", self.clock.seconds())
         self.userModel.advanceToTime(self.clock.seconds())
 
     def test_idealScoreNotifications(self) -> None:
@@ -124,7 +120,7 @@ class ModelTests(TestCase):
         self.advanceTime(497)
         self.advanceTime(100)
         # self.advanceTime(1)
-        print(self.testUI.actions)  # TODO: assert something useful
+        debug(self.testUI.actions)  # TODO: assert something useful
 
     def test_idealScore(self) -> None:
         """
