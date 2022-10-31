@@ -102,7 +102,9 @@ class ModelTests(TestCase):
         self.userModel = TheUserModel(self.clock.seconds(), self.testUI.setIt)
 
     def advanceTime(self, n: float) -> None:
+        print("advancing", n)
         self.clock.advance(n)
+        print("to", self.clock.seconds())
         self.userModel.advanceToTime(self.clock.seconds())
 
     def test_idealScoreNotifications(self) -> None:
@@ -117,7 +119,11 @@ class ModelTests(TestCase):
         self.advanceTime(1)
         self.advanceTime(1)
         self.advanceTime(1)
-        self.advanceTime(1100)
+        # 496 -> infinite loop
+        # 497 -> traceback
+        self.advanceTime(497)
+        self.advanceTime(100)
+        # self.advanceTime(1)
         print(self.testUI.actions)  # TODO: assert something useful
 
     def test_idealScore(self) -> None:

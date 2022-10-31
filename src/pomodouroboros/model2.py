@@ -429,7 +429,8 @@ class TheUserModel:
     _sessions: list[tuple[float, float]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        self.advanceToTime(self._initialTime)
+        if self._initialTime > self._lastUpdateTime:
+            self.advanceToTime(self._initialTime)
 
     def idealFuture(
         self, activityStart: float, workPeriodEnd: float
@@ -467,12 +468,16 @@ class TheUserModel:
             _upcomingDurations=split(),
             _sessions=[],
         )
+        # because it's init=False we have to copy it manually
+        hypothetical._lastUpdateTime = self._lastUpdateTime
 
+        print("advancing to activity start", activityStart)
         hypothetical.advanceToTime(activityStart)
 
         while hypothetical._lastUpdateTime <= workPeriodEnd:
             if hypothetical._currentStreakIntervals:
                 interval = hypothetical._currentStreakIntervals[-1]
+                print("advancing to interval end")
                 hypothetical.advanceToTime(interval.endTime + 1)
                 if isinstance(interval, Pomodoro):
                     hypothetical.evaluatePomodoro(
@@ -499,6 +504,7 @@ class TheUserModel:
         some element of that perfect score, and then begins executing
         perfectly.
         """
+        print("ideal future 1")
         currentIdeal = self.idealFuture(self._lastUpdateTime, workPeriodEnd)
 
         def scoreFilter(model: TheUserModel) -> Iterable[ScoreEvent]:
@@ -517,6 +523,7 @@ class TheUserModel:
                 idealScoreNext=idealScoreNow,
             )
         pointLossTime = idealScoreNow[-1].time
+        print("ideal future 2")
         futureIdeal = (
             self.idealFuture(pointLossTime, workPeriodEnd)
             if idealScoreNow
@@ -557,7 +564,8 @@ class TheUserModel:
         """
         Advance to the epoch time given.
         """
-        assert newTime >= self._lastUpdateTime
+        assert newTime >= self._lastUpdateTime, f"{newTime} < {self._lastUpdateTime}"
+        print("advancing to", newTime, "from", self._lastUpdateTime)
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         currentInterval: AnyInterval | None = None
         for interval in self._currentStreakIntervals:
@@ -568,8 +576,7 @@ class TheUserModel:
                 # is there going to be a case where there's a new interval in
                 # _currentStreakIntervals, but we have *not* crossed into its range?  I
                 # can't think of a case yet
-                assert newTime >= interval.startTime
-
+                assert newTime >= interval.startTime, f"{previousTime} {newTime} {interval.startTime} {self._currentStreakIntervals}"
                 debug("starting interval")
                 self.userInterface.intervalStart(interval)
             if previousTime < interval.endTime:
