@@ -613,9 +613,9 @@ class TheUserModel:
                     nextDuration = None
 
                 if nextDuration is None:
-                    old, self._currentStreakIntervals = (
-                        self._currentStreakIntervals,
-                        [],
+                    old, self._currentStreakIntervals[:] = (
+                        self._currentStreakIntervals[:],
+                        (),
                     )
                     self._olderStreaks.append(old)
                 else:
