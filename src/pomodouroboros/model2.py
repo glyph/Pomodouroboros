@@ -402,6 +402,12 @@ class IdealScoreInfo:
         )
 
 
+preludeIntervalMap: dict[IntervalType, type[GracePeriod | Break]] = {
+    Pomodoro.intervalType: GracePeriod,
+    Break.intervalType: Break,
+}
+
+
 @dataclass
 class TheUserModel:
     """
@@ -569,9 +575,11 @@ class TheUserModel:
         assert (
             newTime >= self._lastUpdateTime
         ), f"{newTime} < {self._lastUpdateTime}"
+
         debug("advancing to", newTime, "from", self._lastUpdateTime)
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         currentInterval: AnyInterval | None = None
+
         for interval in self._currentStreakIntervals:
             debug("scanning interval", previousTime, newTime, interval)
             if previousTime < interval.startTime:
@@ -597,8 +605,7 @@ class TheUserModel:
                 debug("ending interval")
                 self.userInterface.intervalEnd()
                 currentInterval = None
-                # TODO: enforce that this is the last interval, or that if
-                # we've ended one it should be the last one?
+
                 if interval.intervalType == GracePeriod.intervalType:
                     # A grace period expired, so our current streak is now
                     # over, regardless of whether new intervals might be
@@ -619,19 +626,13 @@ class TheUserModel:
                     )
                     self._olderStreaks.append(old)
                 else:
-                    startTime = interval.endTime
-                    endTime = startTime + nextDuration.seconds
-                    newInterval: AnyInterval
-                    if nextDuration.intervalType == Pomodoro.intervalType:
-                        newInterval = GracePeriod(
-                            startTime=startTime, endTime=endTime
+                    # In-place modify the list so that we will continue to iterate through.
+                    self._currentStreakIntervals.append(
+                        preludeIntervalMap[nextDuration.intervalType](
+                            startTime=interval.endTime,
+                            endTime=interval.endTime + nextDuration.seconds,
                         )
-                    if nextDuration.intervalType == Break.intervalType:
-                        newInterval = Break(
-                            startTime=startTime, endTime=endTime
-                        )
-                    self._currentStreakIntervals.append(newInterval)
-                    # currentInterval = newInterval # ?
+                    )
 
         if currentInterval is None:
             # We're not currently in an interval; i.e. we are idling.  If
