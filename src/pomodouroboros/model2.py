@@ -320,7 +320,7 @@ _is_score_event: type[ScoreEvent]
 @dataclass
 class IntentionScore:
     """
-    Setting an intention gives a point.
+    Setting an intention gives some points.
     """
 
     intention: Intention
@@ -417,17 +417,17 @@ class TheUserModel:
     _initialTime: float
     _interfaceFactory: UserInterfaceFactory
     _intentions: list[Intention] = field(default_factory=list)
-    _currentStreakIntervals: list[AnyInterval] = field(default_factory=list)
+    _activeInterval: AnyInterval | None = None
     """
     The list of active streak intervals currently being worked on.
     """
 
     _lastUpdateTime: float = field(init=False, default=0.0)
     _userInterface: AnUserInterface | None = None
-    _upcomingDurations: Iterator[Duration] | None = None
+    _upcomingDurations: Iterator[Duration] = iter(())
     _rules: GameRules = field(default_factory=GameRules)
 
-    _olderStreaks: list[list[AnyInterval]] = field(default_factory=list)
+    _allStreaks: list[list[AnyInterval]] = field(default_factory=lambda: [[]])
     """
     The list of previous streaks, each one being a list of its intervals, that
     are now completed.
@@ -451,28 +451,20 @@ class TheUserModel:
         @param workPeriodEnd: The point beyond which we will not count points
             any more; i.e. the end of the work day.
         """
-        upcomingDurations = (
-            list(self._upcomingDurations)
-            if self._upcomingDurations is not None
-            else None
-        )
+        previouslyUpcoming = list(self._upcomingDurations)
 
-        def split() -> Iterator[Duration] | None:
-            return (
-                iter(upcomingDurations)
-                if upcomingDurations is not None
-                else None
-            )
+        def split() -> Iterator[Duration]:
+            return iter(previouslyUpcoming)
 
         self._upcomingDurations = split()
         hypothetical = replace(
             self,
             _intentions=self._intentions[:],
             _interfaceFactory=lambda whatever: NoUserInterface(),
-            _currentStreakIntervals=self._currentStreakIntervals[:],
             _userInterface=NoUserInterface(),
             _upcomingDurations=split(),
             _sessions=[],
+            _allStreaks=[each[:] for each in self._allStreaks],
         )
         # because it's init=False we have to copy it manually
         hypothetical._lastUpdateTime = self._lastUpdateTime
@@ -483,19 +475,23 @@ class TheUserModel:
         hypothetical.advanceToTime(activityStart)
 
         while hypothetical._lastUpdateTime <= workPeriodEnd:
-            if hypothetical._currentStreakIntervals:
-                interval = hypothetical._currentStreakIntervals[-1]
+            if hypothetical._activeInterval is not None:
                 debug("advancing to interval end")
-                hypothetical.advanceToTime(interval.endTime + 1)
-                if isinstance(interval, Pomodoro):
+                hypothetical.advanceToTime(
+                    hypothetical._activeInterval.endTime + 1
+                )
+                if isinstance(hypothetical._activeInterval, Pomodoro):
                     hypothetical.evaluatePomodoro(
-                        interval, EvaluationResult.achieved
+                        hypothetical._activeInterval, EvaluationResult.achieved
                     )
                 # TODO: when estimation gets a score, make sure to put one that
                 # is exactly correct here.
-            if (not hypothetical._currentStreakIntervals) or isinstance(
-                hypothetical._currentStreakIntervals[-1], GracePeriod
+            if isinstance(
+                hypothetical._activeInterval, (type(None), GracePeriod)
             ):
+                # We are either idle or in a grace period, so we should
+                # immediately start a pomodoro.
+
                 intention = hypothetical.addIntention("placeholder", None)
                 startResult = hypothetical.startPomodoro(intention)
                 assert startResult in {
@@ -550,7 +546,14 @@ class TheUserModel:
         """
         Get all score-relevant events since the given timestamp.
         """
-        for streak in [*self._olderStreaks, self._currentStreakIntervals]:
+        for streak in (
+            *self._allStreaks,
+            (
+                [self._activeInterval]
+                if self._activeInterval is not None
+                else ()
+            ),
+        ):
             for interval in streak:
                 if interval.startTime > timestamp:
                     yield from interval.scoreEvents()
@@ -578,19 +581,16 @@ class TheUserModel:
 
         debug("advancing to", newTime, "from", self._lastUpdateTime)
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
-        currentInterval: AnyInterval | None = None
-
-        for interval in self._currentStreakIntervals:
-            debug("scanning interval", previousTime, newTime, interval)
+        previousInterval = None
+        while ((interval := self._activeInterval) is not None) and (
+            interval != previousInterval
+        ):
+            previousInterval = interval
             if previousTime < interval.startTime:
                 debug("previous time before")
-
-                # is there going to be a case where there's a new interval in
-                # _currentStreakIntervals, but we have *not* crossed into its range?  I
-                # can't think of a case yet
                 assert (
                     newTime >= interval.startTime
-                ), f"{previousTime} {newTime} {interval.startTime} {self._currentStreakIntervals}"
+                ), f"{previousTime} {newTime} {interval.startTime}"
                 debug("starting interval")
                 self.userInterface.intervalStart(interval)
             if previousTime < interval.endTime:
@@ -598,43 +598,28 @@ class TheUserModel:
                 total = interval.endTime - interval.startTime
                 debug("progressing interval", current, total, current / total)
                 self.userInterface.intervalProgress(min(1.0, current / total))
-                currentInterval = interval
-            if (previousTime < interval.endTime) and (
-                newTime > interval.endTime
-            ):
+            if newTime > interval.endTime:
                 debug("ending interval")
                 self.userInterface.intervalEnd()
-                currentInterval = None
 
                 if interval.intervalType == GracePeriod.intervalType:
                     # A grace period expired, so our current streak is now
                     # over, regardless of whether new intervals might be
-                    # produced.
-                    self._upcomingDurations = None
+                    # produced for some reason.
+                    self._upcomingDurations = iter(())
 
-                if self._upcomingDurations is not None:
-                    nextDuration = next(self._upcomingDurations, None)
-                    if nextDuration is None:
-                        self._upcomingDurations = None
-                else:
-                    nextDuration = None
-
-                if nextDuration is None:
-                    old, self._currentStreakIntervals[:] = (
-                        self._currentStreakIntervals[:],
-                        (),
+                self._allStreaks[-1].append(interval)
+                self._activeInterval = (
+                    None
+                    if (nextDuration := next(self._upcomingDurations, None))
+                    is None
+                    else preludeIntervalMap[nextDuration.intervalType](
+                        startTime=interval.endTime,
+                        endTime=interval.endTime + nextDuration.seconds,
                     )
-                    self._olderStreaks.append(old)
-                else:
-                    # In-place modify the list so that we will continue to iterate through.
-                    self._currentStreakIntervals.append(
-                        preludeIntervalMap[nextDuration.intervalType](
-                            startTime=interval.endTime,
-                            endTime=interval.endTime + nextDuration.seconds,
-                        )
-                    )
+                )
 
-        if currentInterval is None:
+        if self._activeInterval is None:
             # We're not currently in an interval; i.e. we are idling.  If
             # there's a work session active, then let's add a new special
             # interval that tells us about the next point at which we will lose
@@ -652,15 +637,15 @@ class TheUserModel:
                     newInterval = StartPrompt(
                         newTime, nextDrop, scoreInfo.pointsLost()
                     )
-                    self._currentStreakIntervals.append(newInterval)
+                    self._activeInterval = newInterval
                     self.userInterface.intervalStart(newInterval)
-        if self._currentStreakIntervals:
+
+        if self._activeInterval:
             # If there's an active streak, we definitionally should not have
             # advanced past its end.
             assert (
-                self._lastUpdateTime
-                <= self._currentStreakIntervals[-1].endTime
-            ), f"{self._upcomingDurations} {self._lastUpdateTime} {self._currentStreakIntervals[-1].endTime}"
+                self._lastUpdateTime <= self._activeInterval.endTime
+            ), f"{self._upcomingDurations} {self._lastUpdateTime} {self._activeInterval.endTime}"
 
     def addIntention(
         self, description: str, estimation: float | None
@@ -687,10 +672,8 @@ class TheUserModel:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        if self._upcomingDurations is None:
-            # TODO: it's already running, implement this case
-            # - if a grace period is running then transition to the grace period
-            # - if a break is running then refuse
+        if self._activeInterval is None:
+            # We are idle: start a new streak.
             self._upcomingDurations = iter(self._rules.streakIntervalDurations)
             nextDuration = next(self._upcomingDurations, None)
             assert (
@@ -704,26 +687,24 @@ class TheUserModel:
                 endTime=self._lastUpdateTime + nextDuration.seconds,
                 intention=intention,
             )
-            self._currentStreakIntervals.append(newPomodoro)
             result = PomStartResult.Started
-
         else:
-            assert (
-                len(self._currentStreakIntervals) > 0
-            ), "If a streak is running, it must have intervals."
-            runningIntervalType = self._currentStreakIntervals[-1].intervalType
+            # We are running an interval; is it one of the types where we can
+            # start a new pomodoro?
+            runningIntervalType = self._activeInterval.intervalType
             if runningIntervalType == Pomodoro.intervalType:
                 return PomStartResult.AlreadyStarted
             if runningIntervalType == Break.intervalType:
                 return PomStartResult.OnBreak
+
             # TODO: possibly it would be neater to just dispatch on the literal
             # type of the current running interval.
             assert runningIntervalType in {
                 GracePeriod.intervalType,
                 StartPrompt.intervalType,  # TODO this value is not tested
             }
-            gracePeriodOrStartPrompt = self._currentStreakIntervals[-1]
-            newPomodoro = self._currentStreakIntervals[-1] = Pomodoro(
+            gracePeriodOrStartPrompt = self._activeInterval
+            newPomodoro = Pomodoro(
                 startTime=gracePeriodOrStartPrompt.startTime,
                 endTime=gracePeriodOrStartPrompt.endTime,
                 intention=intention,
@@ -731,6 +712,7 @@ class TheUserModel:
             result = PomStartResult.Continued
 
         intention.pomodoros.append(newPomodoro)
+        self._activeInterval = newPomodoro
         self.userInterface.intervalStart(newPomodoro)
         return result
 
