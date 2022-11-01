@@ -251,8 +251,15 @@ class GracePeriod:
     """
 
     startTime: float
-    endTime: float
+    originalPomEnd: float
     intervalType: ClassVar[IntervalType] = IntervalType.GracePeriod
+
+    @property
+    def endTime(self) -> float:
+        """
+        Compute the end time from the grace period.
+        """
+        return (self.startTime + ((self.originalPomEnd - self.startTime)/3))
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
@@ -434,8 +441,8 @@ def nextInterval(
         # We're in an interval. Chain on to the end of it, and start the next
         # duration.
         return preludeIntervalMap[duration.intervalType](
-            startTime=previousInterval.endTime,
-            endTime=previousInterval.endTime + duration.seconds,
+            previousInterval.endTime,
+            previousInterval.endTime + duration.seconds,
             # TODO: ^ WRONG: grace periods should *not* be the the same
             # duration as the pomodoro interval.
         )
@@ -616,10 +623,9 @@ class TheUserModel:
         assert (
             newTime >= self._lastUpdateTime
         ), f"Time cannot move backwards; past={newTime} < present={self._lastUpdateTime}"
-
         debug("advancing to", newTime, "from", self._lastUpdateTime)
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
-        previousInterval = None
+        previousInterval: AnyInterval | None = None
         while ((interval := self._activeInterval) is not None) and (
             interval != previousInterval
         ):
@@ -640,7 +646,6 @@ class TheUserModel:
             if newTime > interval.endTime:
                 debug("ending interval")
                 self.userInterface.intervalEnd()
-
                 if interval.intervalType == GracePeriod.intervalType:
                     # A grace period expired, so our current streak is now
                     # over, regardless of whether new intervals might be
@@ -691,8 +696,11 @@ class TheUserModel:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        if self._activeInterval is None:
-            # We are idle: start a new streak.
+        if self._activeInterval is None: # or isinstance(
+        #     self._activeInterval, StartPrompt
+        # )
+            # We are either idle because no interval is running or idle because
+            # the running interval is a prompt to start an intention.
             self._upcomingDurations = iter(self._rules.streakIntervalDurations)
             nextDuration = next(self._upcomingDurations, None)
             assert (
@@ -708,22 +716,16 @@ class TheUserModel:
             )
             result = PomStartResult.Started
         else:
-            # We are running an interval; is it one of the types where we can
-            # start a new pomodoro?
             interval = self._activeInterval
             if (earlyOut := interval.earlyOut()) is not None:
                 return earlyOut
-            # TODO: the following is WRONG: grace periods define the start time
-            # of their Pomodoros, but NOT their end time; the end time needs to
-            # be saved somewhere.  StartPrompt and GracePeriod should probably
-            # have an additional attribute that gives the potential pomodoro end time.
+            assert isinstance(interval, GracePeriod)
             newPomodoro = Pomodoro(
                 startTime=interval.startTime,
-                endTime=interval.endTime,
+                endTime=interval.originalPomEnd,
                 intention=intention,
             )
             result = PomStartResult.Continued
-
         intention.pomodoros.append(newPomodoro)
         self._activeInterval = newPomodoro
         self._allStreaks[-1].append(self._activeInterval)

@@ -298,10 +298,10 @@ class ModelTests(TestCase):
                     currentProgress=[0.0033333333333333335, 1.0],
                 ),
                 TestInterval(
-                    interval=GracePeriod(startTime=10801.0, endTime=11401.0),
+                    interval=GracePeriod(startTime=10801.0, originalPomEnd=11401.0),
                     actualStartTime=10803.0,
                     actualEndTime=None,
-                    currentProgress=[0.0033333333333333335],
+                    currentProgress=[0.01],
                 ),
             ],
             self.testUI.actions,
@@ -313,10 +313,10 @@ class ModelTests(TestCase):
         self.assertEqual(
             [
                 TestInterval(
-                    interval=GracePeriod(startTime=10801.0, endTime=11401.0),
+                    interval=GracePeriod(startTime=10801.0, originalPomEnd=11401.0),
                     actualStartTime=10803.0,
                     actualEndTime=None,  # period should probably end before pom starts
-                    currentProgress=[0.0033333333333333335],
+                    currentProgress=[0.01],
                 ),
                 TestInterval(
                     interval=Pomodoro(
