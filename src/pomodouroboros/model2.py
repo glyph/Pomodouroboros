@@ -259,7 +259,7 @@ class GracePeriod:
         """
         Compute the end time from the grace period.
         """
-        return (self.startTime + ((self.originalPomEnd - self.startTime)/3))
+        return self.startTime + ((self.originalPomEnd - self.startTime) / 3)
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
@@ -637,6 +637,8 @@ class TheUserModel:
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         previousInterval: AnyInterval | None = None
         if self._activeInterval is None:
+            # bootstrap our initial interval (specifically, this is where
+            # StartPrompt gets kicked off in an otherwise idle session)
             self._activeInterval = nextInterval(self, newTime, None)
         while ((interval := self._activeInterval) is not None) and (
             interval != previousInterval
@@ -666,7 +668,6 @@ class TheUserModel:
                     # When a grace period expires, a streak is broken, so we
                     # make a new one.
                     self._allStreaks.append([])
-
                 self._activeInterval = nextInterval(self, newTime, interval)
                 # Note that, having assigned this interval, if it's not None,
                 # we will now loop around (since self._activeInterval has
