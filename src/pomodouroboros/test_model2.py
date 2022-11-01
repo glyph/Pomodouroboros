@@ -2,21 +2,23 @@ from dataclasses import dataclass, field
 from typing import Generic, Type, TypeVar, cast
 from unittest import TestCase
 
+from twisted.internet.interfaces import IReactorTime
+from twisted.internet.task import Clock
+
 from .model2 import (
     AnUserInterface,
-    Intention,
-    IntervalType,
-    TheUserModel,
-    debug,
     AnyInterval,
     Break,
     GracePeriod,
+    Intention,
+    IntervalType,
     PomStartResult,
     Pomodoro,
+    TheUserModel,
+    debug,
     idealScore,
+    StartPrompt,
 )
-from twisted.internet.interfaces import IReactorTime
-from twisted.internet.task import Clock
 
 
 @dataclass
@@ -128,7 +130,28 @@ class ModelTests(TestCase):
         self.advanceTime(497)
         self.advanceTime(100)
         # self.advanceTime(1)
-        debug("actions", self.testUI.actions)  # TODO: assert something useful
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=StartPrompt(
+                        startTime=1100.0, endTime=1700.0, pointsLost=4
+                    ),
+                    actualStartTime=1100.0,
+                    actualEndTime=1702.0,
+                    currentProgress=[
+                        0.0,
+                        0.0016666666666666668,
+                        0.0033333333333333335,
+                        0.005,
+                        0.006666666666666667,
+                        0.008333333333333333,
+                        0.8366666666666667,
+                        1.0,
+                    ],
+                )
+            ],
+            self.testUI.actions,
+        )
 
     def test_idealScore(self) -> None:
         """
