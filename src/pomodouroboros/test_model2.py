@@ -144,10 +144,8 @@ class ModelTests(TestCase):
         third = self.userModel.addIntention("third intention", 50.0)
         self.assertEqual(self.userModel.intentions, [first, second, third])
         self.assertEqual(self.userModel.intentions, self.testUI.sawIntentions)
-        # Some time passes so we can set a baseline for pomodoro timing.
-        def progresses() -> list[float]:
-            return []
 
+        # Some time passes so we can set a baseline for pomodoro timing.
         self.advanceTime(3000)
         self.assertEqual(
             self.userModel.startPomodoro(first), PomStartResult.Started
