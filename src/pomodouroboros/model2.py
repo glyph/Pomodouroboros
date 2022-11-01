@@ -510,14 +510,7 @@ class TheUserModel:
         """
         debug("ideal future 1")
         currentIdeal = self.idealFuture(self._lastUpdateTime, workPeriodEnd)
-
-        def scoreFilter(model: TheUserModel) -> Iterable[ScoreEvent]:
-            for each in model.scoreEventsSince(model._initialTime):
-                if each.time >= workPeriodEnd:
-                    break
-                yield each
-
-        idealScoreNow = list(scoreFilter(currentIdeal))
+        idealScoreNow = list(currentIdeal.scoreEvents(endTime=workPeriodEnd))
         if not idealScoreNow:
             return IdealScoreInfo(
                 now=self._lastUpdateTime,
@@ -527,25 +520,24 @@ class TheUserModel:
                 idealScoreNext=idealScoreNow,
             )
         pointLossTime = idealScoreNow[-1].time
-        debug("ideal future 2")
-        futureIdeal = (
-            self.idealFuture(pointLossTime, workPeriodEnd)
-            if idealScoreNow
-            else currentIdeal
-        )
-        idealScoreNext = list(scoreFilter(futureIdeal))
         return IdealScoreInfo(
             now=self._lastUpdateTime,
             idealScoreNow=idealScoreNow,
             workPeriodEnd=workPeriodEnd,
             nextPointLoss=pointLossTime,
-            idealScoreNext=idealScoreNext,
+            idealScoreNext=list(
+                (self.idealFuture(pointLossTime, workPeriodEnd)
+                 if idealScoreNow
+                 else currentIdeal).scoreEvents(endTime=workPeriodEnd)
+            ),
         )
 
-    def scoreEventsSince(self, timestamp: float) -> Iterable[ScoreEvent]:
+    def scoreEvents(self, *, startTime: float | None=None, endTime: float=1e9999) -> Iterable[ScoreEvent]:
         """
         Get all score-relevant events since the given timestamp.
         """
+        if startTime is None:
+            startTime = self._initialTime
         for streak in (
             *self._allStreaks,
             (
@@ -555,8 +547,11 @@ class TheUserModel:
             ),
         ):
             for interval in streak:
-                if interval.startTime > timestamp:
-                    yield from interval.scoreEvents()
+                if interval.startTime > startTime:
+                    for event in interval.scoreEvents():
+                        if event.time >= endTime:
+                            break
+                        yield event
 
     @property
     def userInterface(self) -> AnUserInterface:

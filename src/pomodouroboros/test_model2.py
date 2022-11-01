@@ -335,7 +335,7 @@ class ModelTests(TestCase):
             ],
             self.testUI.actions,
         )
-        events = list(self.userModel.scoreEventsSince(0))
+        events = list(self.userModel.scoreEvents())
 
         points_for_first_interval = 1
         points_for_second_interval = 4
