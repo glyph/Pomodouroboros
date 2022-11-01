@@ -2,8 +2,19 @@ from dataclasses import dataclass, field
 from typing import Generic, Type, TypeVar, cast
 from unittest import TestCase
 
-from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel, debug
-from pomodouroboros.model2 import AnyInterval, Break, GracePeriod, PomStartResult, Pomodoro, idealScore
+from .model2 import (
+    AnUserInterface,
+    Intention,
+    IntervalType,
+    TheUserModel,
+    debug,
+    AnyInterval,
+    Break,
+    GracePeriod,
+    PomStartResult,
+    Pomodoro,
+    idealScore,
+)
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
@@ -21,6 +32,7 @@ class TestInterval:
 
 
 T = TypeVar("T")
+
 
 @dataclass
 class TestUserInterface:
@@ -296,7 +308,9 @@ class ModelTests(TestCase):
                     currentProgress=[0.0033333333333333335, 1.0],
                 ),
                 TestInterval(
-                    interval=GracePeriod(startTime=10801.0, originalPomEnd=11401.0),
+                    interval=GracePeriod(
+                        startTime=10801.0, originalPomEnd=11401.0
+                    ),
                     actualStartTime=10803.0,
                     actualEndTime=None,
                     currentProgress=[0.01],
@@ -311,7 +325,9 @@ class ModelTests(TestCase):
         self.assertEqual(
             [
                 TestInterval(
-                    interval=GracePeriod(startTime=10801.0, originalPomEnd=11401.0),
+                    interval=GracePeriod(
+                        startTime=10801.0, originalPomEnd=11401.0
+                    ),
                     actualStartTime=10803.0,
                     actualEndTime=None,  # period should probably end before pom starts
                     currentProgress=[0.01],
