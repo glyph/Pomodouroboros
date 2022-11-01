@@ -431,7 +431,7 @@ preludeIntervalMap: dict[IntervalType, type[GracePeriod | Break]] = {
 def nextInterval(
     model: TheUserModel,
     timestamp: float,
-    previousInterval: AnyInterval,
+    previousInterval: AnyInterval | None,
 ) -> AnyInterval | None:
     """
     Determine what the next interval should be.
@@ -440,6 +440,10 @@ def nextInterval(
     if duration is not None:
         # We're in an interval. Chain on to the end of it, and start the next
         # duration.
+        assert previousInterval is not None, (
+            "if we are starting a new duration then we ought "
+            "to be coming up on the back of an existing interval"
+        )
         return preludeIntervalMap[duration.intervalType](
             previousInterval.endTime,
             previousInterval.endTime + duration.seconds,
@@ -452,14 +456,20 @@ def nextInterval(
     # about the next point at which we will lose some potential points.
     for start, end in model._sessions:
         if start <= timestamp < end:
+            debug("session active", start, end)
             break
     else:
+        debug("no session")
         return None
 
     scoreInfo = idealScore(model, end)
     nextDrop = scoreInfo.nextPointLoss
+    debug(nextDrop)
     if nextDrop is None:
         return None
+    if nextDrop <= timestamp:
+        return None
+    debug(f"{timestamp=} {nextDrop=}")
     return StartPrompt(timestamp, nextDrop, scoreInfo.pointsLost())
 
 
@@ -626,6 +636,8 @@ class TheUserModel:
         debug("advancing to", newTime, "from", self._lastUpdateTime)
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         previousInterval: AnyInterval | None = None
+        if self._activeInterval is None:
+            self._activeInterval = nextInterval(self, newTime, None)
         while ((interval := self._activeInterval) is not None) and (
             interval != previousInterval
         ):

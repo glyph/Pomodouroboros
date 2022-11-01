@@ -116,7 +116,7 @@ class ModelTests(TestCase):
         self.advanceTime(497)
         self.advanceTime(100)
         # self.advanceTime(1)
-        debug(self.testUI.actions)  # TODO: assert something useful
+        debug("actions", self.testUI.actions)  # TODO: assert something useful
 
     def test_idealScore(self) -> None:
         """
