@@ -696,9 +696,9 @@ class TheUserModel:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        if self._activeInterval is None: # or isinstance(
-        #     self._activeInterval, StartPrompt
-        # )
+        if self._activeInterval is None:
+            # or isinstance(self._activeInterval, StartPrompt)
+
             # We are either idle because no interval is running or idle because
             # the running interval is a prompt to start an intention.
             self._upcomingDurations = iter(self._rules.streakIntervalDurations)
