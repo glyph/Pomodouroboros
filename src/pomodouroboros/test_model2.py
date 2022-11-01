@@ -3,13 +3,7 @@ from typing import Generic, Type, TypeVar, cast
 from unittest import TestCase
 
 from .model2 import AnUserInterface, Intention, IntervalType, TheUserModel, debug
-from pomodouroboros.model2 import (
-    AnyInterval,
-    Break,
-    GracePeriod,
-    PomStartResult,
-    Pomodoro,
-)
+from pomodouroboros.model2 import AnyInterval, Break, GracePeriod, PomStartResult, Pomodoro, idealScore
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
@@ -88,6 +82,8 @@ class ModelTests(TestCase):
     Model tests.
     """
 
+    userMode: TheUserModel
+
     def setUp(self) -> None:
         """
         Set up this test case.
@@ -128,13 +124,13 @@ class ModelTests(TestCase):
         could execute.
         """
         self.advanceTime(1000)
-        idealScore = self.userModel.idealScore(2000)
-        self.assertEqual(idealScore.pointsLost(), 4)
-        self.assertEqual(idealScore.nextPointLoss, 1600)
+        ideal = idealScore(self.userModel, 2000)
+        self.assertEqual(ideal.pointsLost(), 4)
+        self.assertEqual(ideal.nextPointLoss, 1600)
         self.advanceTime(1600)
-        idealScore = self.userModel.idealScore(2000)
-        self.assertEqual(idealScore.pointsLost(), 0)
-        self.assertEqual(idealScore.nextPointLoss, None)
+        ideal = idealScore(self.userModel, 2000)
+        self.assertEqual(ideal.pointsLost(), 0)
+        self.assertEqual(ideal.nextPointLoss, None)
 
     def test_story(self) -> None:
         """

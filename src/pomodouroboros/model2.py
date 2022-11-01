@@ -198,6 +198,9 @@ class Pomodoro:
 
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
+    def earlyOut(self) -> PomStartResult:
+        return PomStartResult.AlreadyStarted
+
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         yield IntentionScore(
             self.intention, self.startTime, self.endTime - self.startTime
@@ -236,6 +239,9 @@ class Break:
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
 
+    def earlyOut(self) -> PomStartResult:
+        return PomStartResult.OnBreak
+
 
 @dataclass
 class GracePeriod:
@@ -250,6 +256,9 @@ class GracePeriod:
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
+
+    def earlyOut(self) -> None:
+        return None
 
 
 MaybeFloat = TypeVar("MaybeFloat", float, None)
@@ -281,6 +290,9 @@ class StartPrompt:
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
+
+    def earlyOut(self) -> None:
+        return None
 
 
 AnyInterval = Pomodoro | Break | GracePeriod | StartPrompt
@@ -410,37 +422,132 @@ preludeIntervalMap: dict[IntervalType, type[GracePeriod | Break]] = {
 
 
 def nextInterval(
-    duration: Duration | None,
-    sessions: list[tuple[float, float]],
+    model: TheUserModel,
     timestamp: float,
-    idealScore: Callable[[float], IdealScoreInfo],
     previousInterval: AnyInterval,
 ) -> AnyInterval | None:
     """
     Determine what the next interval should be.
     """
+    duration = next(model._upcomingDurations, None)
     if duration is not None:
         # We're in an interval. Chain on to the end of it, and start the next
         # duration.
         return preludeIntervalMap[duration.intervalType](
             startTime=previousInterval.endTime,
             endTime=previousInterval.endTime + duration.seconds,
+            # TODO: ^ WRONG: grace periods should *not* be the the same
+            # duration as the pomodoro interval.
         )
 
     # We're not currently in an interval; i.e. we are idling.  If there's a
     # work session active, then let's add a new special interval that tells us
     # about the next point at which we will lose some potential points.
-    for start, end in sessions:
+    for start, end in model._sessions:
         if start <= timestamp < end:
             break
     else:
         return None
 
-    scoreInfo = idealScore(end)
+    scoreInfo = idealScore(model, end)
     nextDrop = scoreInfo.nextPointLoss
     if nextDrop is None:
         return None
     return StartPrompt(timestamp, nextDrop, scoreInfo.pointsLost())
+
+
+def idealFuture(
+    model: TheUserModel, activityStart: float, workPeriodEnd: float
+) -> TheUserModel:
+    """
+    Compute the ideal score if we were to maintain focus through the end of
+    the given time period.
+
+    @param activityStart: The point at which the user begins taking their
+        next action to complete ideal future streaks.
+
+    @param workPeriodEnd: The point beyond which we will not count points
+        any more; i.e. the end of the work day.
+    """
+    previouslyUpcoming = list(model._upcomingDurations)
+
+    def split() -> Iterator[Duration]:
+        return iter(previouslyUpcoming)
+
+    model._upcomingDurations = split()
+    hypothetical = replace(
+        model,
+        _intentions=model._intentions[:],
+        _interfaceFactory=lambda whatever: NoUserInterface(),
+        _userInterface=NoUserInterface(),
+        _upcomingDurations=split(),
+        _sessions=[],
+        _allStreaks=[each[:] for each in model._allStreaks],
+    )
+    # because it's init=False we have to copy it manually
+    hypothetical._lastUpdateTime = model._lastUpdateTime
+
+    debug("advancing to activity start", model._lastUpdateTime, activityStart)
+    hypothetical.advanceToTime(activityStart)
+
+    while hypothetical._lastUpdateTime <= workPeriodEnd:
+        if hypothetical._activeInterval is not None:
+            debug("advancing to interval end")
+            hypothetical.advanceToTime(
+                hypothetical._activeInterval.endTime + 1
+            )
+            if isinstance(hypothetical._activeInterval, Pomodoro):
+                hypothetical.evaluatePomodoro(
+                    hypothetical._activeInterval, EvaluationResult.achieved
+                )
+            # TODO: when estimation gets a score, make sure to put one that
+            # is exactly correct here.
+        if isinstance(hypothetical._activeInterval, (type(None), GracePeriod)):
+            # We are either idle or in a grace period, so we should
+            # immediately start a pomodoro.
+
+            intention = hypothetical.addIntention("placeholder", None)
+            startResult = hypothetical.startPomodoro(intention)
+            assert startResult in {
+                PomStartResult.Started,
+                PomStartResult.Continued,
+            }, "invariant failed: could not actually start pomodoro"
+    return hypothetical
+
+
+def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
+    """
+    Compute the inflection point for the ideal score the user might
+    achieve.  We present two hypothetical futures: one where the user
+    executes perfectly, and the other where they wait long enough to lose
+    some element of that perfect score, and then begins executing
+    perfectly.
+    """
+    debug("ideal future 1")
+    currentIdeal = idealFuture(model, model._lastUpdateTime, workPeriodEnd)
+    idealScoreNow = list(currentIdeal.scoreEvents(endTime=workPeriodEnd))
+    if not idealScoreNow:
+        return IdealScoreInfo(
+            now=model._lastUpdateTime,
+            idealScoreNow=idealScoreNow,
+            workPeriodEnd=workPeriodEnd,
+            nextPointLoss=None,
+            idealScoreNext=idealScoreNow,
+        )
+    pointLossTime = idealScoreNow[-1].time
+    return IdealScoreInfo(
+        now=model._lastUpdateTime,
+        idealScoreNow=idealScoreNow,
+        workPeriodEnd=workPeriodEnd,
+        nextPointLoss=pointLossTime,
+        idealScoreNext=list(
+            (
+                idealFuture(model, pointLossTime, workPeriodEnd)
+                if idealScoreNow
+                else currentIdeal
+            ).scoreEvents(endTime=workPeriodEnd)
+        ),
+    )
 
 
 @dataclass
@@ -473,102 +580,6 @@ class TheUserModel:
         if self._initialTime > self._lastUpdateTime:
             self.advanceToTime(self._initialTime)
 
-    def idealFuture(
-        self, activityStart: float, workPeriodEnd: float
-    ) -> TheUserModel:
-        """
-        Compute the ideal score if we were to maintain focus through the end of
-        the given time period.
-
-        @param activityStart: The point at which the user begins taking their
-            next action to complete ideal future streaks.
-
-        @param workPeriodEnd: The point beyond which we will not count points
-            any more; i.e. the end of the work day.
-        """
-        previouslyUpcoming = list(self._upcomingDurations)
-
-        def split() -> Iterator[Duration]:
-            return iter(previouslyUpcoming)
-
-        self._upcomingDurations = split()
-        hypothetical = replace(
-            self,
-            _intentions=self._intentions[:],
-            _interfaceFactory=lambda whatever: NoUserInterface(),
-            _userInterface=NoUserInterface(),
-            _upcomingDurations=split(),
-            _sessions=[],
-            _allStreaks=[each[:] for each in self._allStreaks],
-        )
-        # because it's init=False we have to copy it manually
-        hypothetical._lastUpdateTime = self._lastUpdateTime
-
-        debug(
-            "advancing to activity start", self._lastUpdateTime, activityStart
-        )
-        hypothetical.advanceToTime(activityStart)
-
-        while hypothetical._lastUpdateTime <= workPeriodEnd:
-            if hypothetical._activeInterval is not None:
-                debug("advancing to interval end")
-                hypothetical.advanceToTime(
-                    hypothetical._activeInterval.endTime + 1
-                )
-                if isinstance(hypothetical._activeInterval, Pomodoro):
-                    hypothetical.evaluatePomodoro(
-                        hypothetical._activeInterval, EvaluationResult.achieved
-                    )
-                # TODO: when estimation gets a score, make sure to put one that
-                # is exactly correct here.
-            if isinstance(
-                hypothetical._activeInterval, (type(None), GracePeriod)
-            ):
-                # We are either idle or in a grace period, so we should
-                # immediately start a pomodoro.
-
-                intention = hypothetical.addIntention("placeholder", None)
-                startResult = hypothetical.startPomodoro(intention)
-                assert startResult in {
-                    PomStartResult.Started,
-                    PomStartResult.Continued,
-                }, "invariant failed: could not actually start pomodoro"
-        return hypothetical
-
-    def idealScore(self, workPeriodEnd: float) -> IdealScoreInfo:
-        """
-        Compute the inflection point for the ideal score the user might
-        achieve.  We present two hypothetical futures: one where the user
-        executes perfectly, and the other where they wait long enough to lose
-        some element of that perfect score, and then begins executing
-        perfectly.
-        """
-        debug("ideal future 1")
-        currentIdeal = self.idealFuture(self._lastUpdateTime, workPeriodEnd)
-        idealScoreNow = list(currentIdeal.scoreEvents(endTime=workPeriodEnd))
-        if not idealScoreNow:
-            return IdealScoreInfo(
-                now=self._lastUpdateTime,
-                idealScoreNow=idealScoreNow,
-                workPeriodEnd=workPeriodEnd,
-                nextPointLoss=None,
-                idealScoreNext=idealScoreNow,
-            )
-        pointLossTime = idealScoreNow[-1].time
-        return IdealScoreInfo(
-            now=self._lastUpdateTime,
-            idealScoreNow=idealScoreNow,
-            workPeriodEnd=workPeriodEnd,
-            nextPointLoss=pointLossTime,
-            idealScoreNext=list(
-                (
-                    self.idealFuture(pointLossTime, workPeriodEnd)
-                    if idealScoreNow
-                    else currentIdeal
-                ).scoreEvents(endTime=workPeriodEnd)
-            ),
-        )
-
     def scoreEvents(
         self, *, startTime: float | None = None, endTime: float = 1e9999
     ) -> Iterable[ScoreEvent]:
@@ -577,14 +588,7 @@ class TheUserModel:
         """
         if startTime is None:
             startTime = self._initialTime
-        for streak in (
-            *self._allStreaks,
-            (
-                [self._activeInterval]
-                if self._activeInterval is not None
-                else ()
-            ),
-        ):
+        for streak in self._allStreaks:
             for interval in streak:
                 if interval.startTime > startTime:
                     for event in interval.scoreEvents():
@@ -611,7 +615,7 @@ class TheUserModel:
         """
         assert (
             newTime >= self._lastUpdateTime
-        ), f"{newTime} < {self._lastUpdateTime}"
+        ), f"Time cannot move backwards; past={newTime} < present={self._lastUpdateTime}"
 
         debug("advancing to", newTime, "from", self._lastUpdateTime)
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
@@ -622,9 +626,10 @@ class TheUserModel:
             previousInterval = interval
             if previousTime < interval.startTime:
                 debug("previous time before")
-                assert (
-                    newTime >= interval.startTime
-                ), f"{previousTime} {newTime} {interval.startTime}"
+                assert newTime >= interval.startTime, (
+                    f"If an interval exists, its start should be in the past; "
+                    f"past={previousTime} present={newTime} start={interval.startTime}"
+                )
                 debug("starting interval")
                 self.userInterface.intervalStart(interval)
             if previousTime < interval.endTime:
@@ -634,11 +639,6 @@ class TheUserModel:
                 self.userInterface.intervalProgress(min(1.0, current / total))
             if newTime > interval.endTime:
                 debug("ending interval")
-                # Add the current interval to history.
-                self._allStreaks[-1].append(interval)
-                # TODO: do score losses & grace periods belong in history?
-
-                # Notify the UI that it's over.
                 self.userInterface.intervalEnd()
 
                 if interval.intervalType == GracePeriod.intervalType:
@@ -650,23 +650,21 @@ class TheUserModel:
                     # make a new one.
                     self._allStreaks.append([])
 
-                self._activeInterval = nextInterval(
-                    next(self._upcomingDurations, None),
-                    self._sessions,
-                    newTime,
-                    self.idealScore,
-                    interval,
-                )
+                self._activeInterval = nextInterval(self, newTime, interval)
                 # Note that, having assigned this interval, if it's not None,
                 # we will now loop around (since self._activeInterval has
                 # changed) and process its start and end times as well.
 
-        if self._activeInterval:
-            # If there's an active streak, we definitionally should not have
-            # advanced past its end.
-            assert (
-                self._lastUpdateTime <= self._activeInterval.endTime
-            ), f"{self._upcomingDurations} {self._lastUpdateTime} {self._activeInterval.endTime}"
+        # If there's an active streak, we definitionally should not have
+        # advanced past its end.
+        assert (
+            self._activeInterval is None
+            or self._lastUpdateTime <= self._activeInterval.endTime
+        ), (
+            "Active interval should be in the present, not the past; "
+            f"present={self._lastUpdateTime} "
+            f"end={self._activeInterval.endTime}"
+        )
 
     def addIntention(
         self, description: str, estimation: float | None
@@ -712,28 +710,23 @@ class TheUserModel:
         else:
             # We are running an interval; is it one of the types where we can
             # start a new pomodoro?
-            runningIntervalType = self._activeInterval.intervalType
-            if runningIntervalType == Pomodoro.intervalType:
-                return PomStartResult.AlreadyStarted
-            if runningIntervalType == Break.intervalType:
-                return PomStartResult.OnBreak
-
-            # TODO: possibly it would be neater to just dispatch on the literal
-            # type of the current running interval.
-            assert runningIntervalType in {
-                GracePeriod.intervalType,
-                StartPrompt.intervalType,  # TODO this value is not tested
-            }
-            gracePeriodOrStartPrompt = self._activeInterval
+            interval = self._activeInterval
+            if (earlyOut := interval.earlyOut()) is not None:
+                return earlyOut
+            # TODO: the following is WRONG: grace periods define the start time
+            # of their Pomodoros, but NOT their end time; the end time needs to
+            # be saved somewhere.  StartPrompt and GracePeriod should probably
+            # have an additional attribute that gives the potential pomodoro end time.
             newPomodoro = Pomodoro(
-                startTime=gracePeriodOrStartPrompt.startTime,
-                endTime=gracePeriodOrStartPrompt.endTime,
+                startTime=interval.startTime,
+                endTime=interval.endTime,
                 intention=intention,
             )
             result = PomStartResult.Continued
 
         intention.pomodoros.append(newPomodoro)
         self._activeInterval = newPomodoro
+        self._allStreaks[-1].append(self._activeInterval)
         self.userInterface.intervalStart(newPomodoro)
         return result
 
