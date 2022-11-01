@@ -646,7 +646,8 @@ class TheUserModel:
                     # over, regardless of whether new intervals might be
                     # produced for some reason.
                     self._upcomingDurations = iter(())
-                    # When a grace period expires, a streak is broken.
+                    # When a grace period expires, a streak is broken, so we
+                    # make a new one.
                     self._allStreaks.append([])
 
                 self._activeInterval = nextInterval(
