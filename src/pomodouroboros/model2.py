@@ -50,6 +50,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import (
+    Callable,
     ClassVar,
     Generic,
     Iterable,
@@ -408,6 +409,40 @@ preludeIntervalMap: dict[IntervalType, type[GracePeriod | Break]] = {
 }
 
 
+def nextInterval(
+    duration: Duration | None,
+    sessions: list[tuple[float, float]],
+    timestamp: float,
+    idealScore: Callable[[float], IdealScoreInfo],
+    previousInterval: AnyInterval,
+) -> AnyInterval | None:
+    """
+    Determine what the next interval should be.
+    """
+    if duration is not None:
+        # We're in an interval. Chain on to the end of it, and start the next
+        # duration.
+        return preludeIntervalMap[duration.intervalType](
+            startTime=previousInterval.endTime,
+            endTime=previousInterval.endTime + duration.seconds,
+        )
+
+    # We're not currently in an interval; i.e. we are idling.  If there's a
+    # work session active, then let's add a new special interval that tells us
+    # about the next point at which we will lose some potential points.
+    for start, end in sessions:
+        if start <= timestamp < end:
+            break
+    else:
+        return None
+
+    scoreInfo = idealScore(end)
+    nextDrop = scoreInfo.nextPointLoss
+    if nextDrop is None:
+        return None
+    return StartPrompt(timestamp, nextDrop, scoreInfo.pointsLost())
+
+
 @dataclass
 class TheUserModel:
     """
@@ -526,13 +561,17 @@ class TheUserModel:
             workPeriodEnd=workPeriodEnd,
             nextPointLoss=pointLossTime,
             idealScoreNext=list(
-                (self.idealFuture(pointLossTime, workPeriodEnd)
-                 if idealScoreNow
-                 else currentIdeal).scoreEvents(endTime=workPeriodEnd)
+                (
+                    self.idealFuture(pointLossTime, workPeriodEnd)
+                    if idealScoreNow
+                    else currentIdeal
+                ).scoreEvents(endTime=workPeriodEnd)
             ),
         )
 
-    def scoreEvents(self, *, startTime: float | None=None, endTime: float=1e9999) -> Iterable[ScoreEvent]:
+    def scoreEvents(
+        self, *, startTime: float | None = None, endTime: float = 1e9999
+    ) -> Iterable[ScoreEvent]:
         """
         Get all score-relevant events since the given timestamp.
         """
@@ -604,36 +643,16 @@ class TheUserModel:
                     self._upcomingDurations = iter(())
 
                 self._allStreaks[-1].append(interval)
-                self._activeInterval = (
-                    None
-                    if (nextDuration := next(self._upcomingDurations, None))
-                    is None
-                    else preludeIntervalMap[nextDuration.intervalType](
-                        startTime=interval.endTime,
-                        endTime=interval.endTime + nextDuration.seconds,
-                    )
+                self._activeInterval = nextInterval(
+                    next(self._upcomingDurations, None),
+                    self._sessions,
+                    newTime,
+                    self.idealScore,
+                    interval,
                 )
-
-        if self._activeInterval is None:
-            # We're not currently in an interval; i.e. we are idling.  If
-            # there's a work session active, then let's add a new special
-            # interval that tells us about the next point at which we will lose
-            # some potential points.
-            newSession = None
-            for (eachStart, eachEnd) in self._sessions:
-                if eachStart <= newTime < eachEnd:
-                    newSession = (eachStart, eachEnd)
-                    break
-            if newSession is not None:
-                sessionStart, sessionEnd = newSession
-                scoreInfo = self.idealScore(sessionEnd)
-                nextDrop = scoreInfo.nextPointLoss
-                if nextDrop is not None:
-                    newInterval = StartPrompt(
-                        newTime, nextDrop, scoreInfo.pointsLost()
-                    )
-                    self._activeInterval = newInterval
-                    self.userInterface.intervalStart(newInterval)
+                # Note that, having assigned this interval, if it's not None,
+                # we will now loop around (since self._activeInterval has
+                # changed) and process its start and end times as well.
 
         if self._activeInterval:
             # If there's an active streak, we definitionally should not have
