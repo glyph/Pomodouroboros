@@ -634,6 +634,11 @@ class TheUserModel:
                 self.userInterface.intervalProgress(min(1.0, current / total))
             if newTime > interval.endTime:
                 debug("ending interval")
+                # Add the current interval to history.
+                self._allStreaks[-1].append(interval)
+                # TODO: do score losses & grace periods belong in history?
+
+                # Notify the UI that it's over.
                 self.userInterface.intervalEnd()
 
                 if interval.intervalType == GracePeriod.intervalType:
@@ -641,8 +646,9 @@ class TheUserModel:
                     # over, regardless of whether new intervals might be
                     # produced for some reason.
                     self._upcomingDurations = iter(())
+                    # When a grace period expires, a streak is broken.
+                    self._allStreaks.append([])
 
-                self._allStreaks[-1].append(interval)
                 self._activeInterval = nextInterval(
                     next(self._upcomingDurations, None),
                     self._sessions,
