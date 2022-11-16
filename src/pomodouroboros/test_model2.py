@@ -171,7 +171,11 @@ class ModelTests(TestCase):
         """
         Full story testing all the features of a day of using Pomodouroboros.
         """
+        # Some time passes before intentions are added.  Nothing should really
+        # happen (but if we add a discrete timestamp for logging intention
+        # creations, this will be when it is).
         self.advanceTime(1000)
+
         # User types in some intentions and sets estimates for some of them
         # TBD: should there be a prompt?
         first = self.userModel.addIntention("first intention", 100.0)
@@ -180,19 +184,29 @@ class ModelTests(TestCase):
         self.assertEqual(self.userModel.intentions, [first, second, third])
         self.assertEqual(self.userModel.intentions, self.testUI.sawIntentions)
 
-        # Some time passes so we can set a baseline for pomodoro timing.
+        # Some time passes so we can set a baseline for pomodoro timing
+        # (i.e. our story doesn't start at time 0).
         self.advanceTime(3000)
+
+        # Start our first pomodoro with our first intention.
         self.assertEqual(
             self.userModel.startPomodoro(first), PomStartResult.Started
         )
         self.assertEqual(first.pomodoros, [self.testUI.actions[0].interval])
+
+        # No time has passed. We can't start another pomodoro; the first one is
+        # already running.
         self.assertEqual(
             self.userModel.startPomodoro(second), PomStartResult.AlreadyStarted
         )
         self.assertEqual(second.pomodoros, [])
+
+        # Advance time 3 times, creating 3 records of progress.
         self.advanceTime(1)
         self.advanceTime(1)
         self.advanceTime(1)
+
+        # We expect our first pomodoro to be 5 minutes long.
         expectedDuration = 5 * 60
         expectedFirstPom = Pomodoro(
             startTime=4000.0,
@@ -212,8 +226,11 @@ class ModelTests(TestCase):
             ],
             self.testUI.actions,
         )
-        # time starts passing
+
+        # Advance past the end of the pomodoro, into a break.
         self.advanceTime((5 * 60) + 1)
+
+        # This is the break we expect to see; also 5 minutes.
         expectedBreak = Break(startTime=4300.0, endTime=4600.0)
         self.assertEqual(
             [
@@ -236,6 +253,9 @@ class ModelTests(TestCase):
             self.testUI.actions,
         )
         self.testUI.clear()
+
+        # Move past the end of the break, into a grace period at the beginning
+        # of the next pomodoro.
         self.advanceTime(10)
         self.assertEqual(
             [
@@ -250,6 +270,9 @@ class ModelTests(TestCase):
             ],
             self.testUI.actions,
         )
+
+        # Advance into the grace period, but not past the end of the grace
+        # period
         self.advanceTime((5 * 60) - 13)
         expectedGracePeriod = GracePeriod(4600.0, 5200.0)
         self.assertEqual(
@@ -257,7 +280,7 @@ class ModelTests(TestCase):
                 TestInterval(
                     expectedBreak,
                     actualStartTime=4304.0,
-                    actualEndTime=4300.0 + (5.0 * 60.0) + 1,
+                    actualEndTime=4300.0 + (5.0 * 60.0) + 1,  # break is over
                     currentProgress=[
                         *[(each / expectedDuration) for each in [4, 14]],
                         1.0,
@@ -279,6 +302,8 @@ class ModelTests(TestCase):
             self.testUI.actions,
         )
         self.testUI.clear()
+
+        # Advance past the end of the grace period.
         self.advanceTime(10 * 60)
         self.assertEqual(
             [
@@ -296,21 +321,32 @@ class ModelTests(TestCase):
                         ),
                         1.0,
                     ],
-                    actualEndTime=5201.0,
+                    actualEndTime=5201.0,  # Grace period is over.
                 ),
             ],
             self.testUI.actions,
         )
         self.testUI.clear()
+
+        # Advance really far to offset our second streak.
         self.advanceTime(5000)
+        # Nothing happens despite the >80 minutes passing, as time is advancing
+        # outside of a streak or session.
         self.assertEqual([], self.testUI.actions)
+
+        # OK, start a second streak.
         self.assertEqual(
             self.userModel.startPomodoro(second), PomStartResult.Started
         )
+
+        # Advance past the end of the pomodoro, into the break.
         self.advanceTime((5 * 60) + 1.0)
+        # Try to start a second pomodoro during the break; you can't. You're on
+        # a break.
         self.assertEqual(
             self.userModel.startPomodoro(second), PomStartResult.OnBreak
         )
+        # Advance out of the end of the break, into the next pomodoro
         self.advanceTime((5 * 60) + 1.0)
         self.assertEqual(
             [
@@ -322,12 +358,15 @@ class ModelTests(TestCase):
                     ),
                     actualStartTime=10201.0,
                     actualEndTime=10502.0,
+                    # No progress, since we skipped the whole thing.
                     currentProgress=[1.0],
                 ),
                 TestInterval(
                     interval=Break(startTime=10501.0, endTime=10801.0),
                     actualStartTime=10502.0,
                     actualEndTime=10803.0,
+                    # Jumped in right at the beginning, went way out past the
+                    # end
                     currentProgress=[0.0033333333333333335, 1.0],
                 ),
                 TestInterval(
@@ -336,12 +375,16 @@ class ModelTests(TestCase):
                     ),
                     actualStartTime=10803.0,
                     actualEndTime=None,
+                    # Grace period has just started, it has not ended yet
                     currentProgress=[0.01],
                 ),
             ],
             self.testUI.actions,
         )
         self.testUI.clear()
+
+        # For the first time we're starting a pomdoro from *within* a grace
+        # period, so we are continuing a streak.
         self.assertEqual(
             self.userModel.startPomodoro(third), PomStartResult.Continued
         )
@@ -357,7 +400,9 @@ class ModelTests(TestCase):
                 ),
                 TestInterval(
                     interval=Pomodoro(
-                        startTime=10801.0,
+                        startTime=10801.0,  # the "start time" of the pomodoro
+                                            # actually *matches* that of the
+                                            # grace period.
                         intention=third,
                         endTime=11401.0,
                     ),
@@ -368,12 +413,20 @@ class ModelTests(TestCase):
             ],
             self.testUI.actions,
         )
+
+        # test for scoring
         events = list(self.userModel.scoreEvents())
 
+        # currently the score is 1 point for the first pomdoro in a streak and
+        # 4 points for the second
         points_for_first_interval = 1
         points_for_second_interval = 4
 
         self.assertEqual(
             sum(each.points for each in events),
+            # 2 first-in-streak pomodoros, 1 second-in-streak
             (points_for_first_interval * 2) + (points_for_second_interval),
         )
+
+        # todo: scoring of evaluations
+        # estimation right/wrong points?
