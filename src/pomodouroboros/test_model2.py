@@ -428,5 +428,22 @@ class ModelTests(TestCase):
             (points_for_first_interval * 2) + (points_for_second_interval),
         )
 
-        # todo: scoring of evaluations
-        # estimation right/wrong points?
+        # 1. if I evaluate during a pomodoro, that pomodoro should really be
+        # marked as over / successful, and the next break should be extended to
+        # cover the balance of the remaining time. if the pomodoro is fully
+        # over then it's over
+
+        # 2. evaluating a pomodoro should grant some points.
+        #  - more if focused
+        #  - even more if successful
+
+        # 3. adding an estimate to a pomodoro should grant some points as well,
+        # possibly only once evaluated
+
+        # 4. estimating & evaluating a pomodoro should grant some points
+        # regardless of how long things are taking, but getting the estimate
+        # correct should be a big bonus
+
+        # ?: should the ideal score be calculated to include estimations?
+        # (should it have multiple modes? par & birdie?)
+
