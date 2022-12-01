@@ -207,7 +207,6 @@ class Pomodoro:
         )
 
 
-
 @dataclass
 class Break:
     """
@@ -616,7 +615,9 @@ class TheUserModel:
         """
         Create the next interval.
         """
-        new = self._activeInterval = nextInterval(self, newTime, self._activeInterval)
+        new = self._activeInterval = nextInterval(
+            self, newTime, self._activeInterval
+        )
         if new is not None:
             self._allStreaks[-1].append(new)
             self.userInterface.intervalStart(new)
@@ -738,7 +739,10 @@ class TheUserModel:
         The user has determined the success criteria.
         """
         timestamp = self._lastUpdateTime
-        if result == EvaluationResult.achieved and timestamp < pomodoro.endTime:
+        if (
+            result == EvaluationResult.achieved
+            and timestamp < pomodoro.endTime
+        ):
             assert pomodoro is self._activeInterval
             pomodoro.endTime = timestamp
             # We now need to advance back to the current time since we've

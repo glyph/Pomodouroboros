@@ -5,7 +5,20 @@ from unittest import TestCase
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
-from .model2 import AnUserInterface, AnyInterval, Break, GracePeriod, Intention, IntervalType, PomStartResult, Pomodoro, StartPrompt, TheUserModel, debug, idealScore
+from .model2 import (
+    AnUserInterface,
+    AnyInterval,
+    Break,
+    GracePeriod,
+    Intention,
+    IntervalType,
+    PomStartResult,
+    Pomodoro,
+    StartPrompt,
+    TheUserModel,
+    debug,
+    idealScore,
+)
 from pomodouroboros.model2 import Evaluation, EvaluationResult
 
 
@@ -165,33 +178,29 @@ class ModelTests(TestCase):
         should work ok.
         """
 
-        self.advanceTime(5.)
+        self.advanceTime(5.0)
         i = self.userModel.addIntention("i", None)
         self.userModel.startPomodoro(i)
-        self.advanceTime(5 * 60.)
+        self.advanceTime(5 * 60.0)
         self.assertEqual(
             [
                 TestInterval(
-                    Pomodoro(5., i, 5 + 5.*60),
+                    Pomodoro(5.0, i, 5 + 5.0 * 60),
                     actualStartTime=5.0,
-                    actualEndTime=(5. + 5*60),
-                    currentProgress=[
-                        1.0
-                    ],
+                    actualEndTime=(5.0 + 5 * 60),
+                    currentProgress=[1.0],
                 ),
                 TestInterval(
-                    Break(5 + 5.*60, 5 + (5 * 60. * 2)),
-                    actualStartTime=5 + 5.*60,
+                    Break(5 + 5.0 * 60, 5 + (5 * 60.0 * 2)),
+                    actualStartTime=5 + 5.0 * 60,
                     actualEndTime=None,
                     currentProgress=[
                         0.0,
                     ],
-                )
+                ),
             ],
             self.testUI.actions,
         )
-
-
 
     def test_story(self) -> None:
         """
@@ -431,8 +440,8 @@ class ModelTests(TestCase):
                 TestInterval(
                     interval=Pomodoro(
                         startTime=10801.0,  # the "start time" of the pomodoro
-                                            # actually *matches* that of the
-                                            # grace period.
+                        # actually *matches* that of the
+                        # grace period.
                         intention=third,
                         endTime=11401.0,
                     ),
@@ -458,7 +467,6 @@ class ModelTests(TestCase):
             (points_for_first_interval * 2) + (points_for_second_interval),
         )
 
-
         # 2. evaluating a pomodoro should grant some points.
         #  - more if focused
         #  - even more if successful
@@ -482,12 +490,16 @@ class ModelTests(TestCase):
         START_TIME = 1234.0
         self.advanceTime(START_TIME)
 
-        intent = self.userModel.addIntention("early completion intention", None)
+        intent = self.userModel.addIntention(
+            "early completion intention", None
+        )
 
-        self.assertEqual(self.userModel.startPomodoro(intent), PomStartResult.Started)
+        self.assertEqual(
+            self.userModel.startPomodoro(intent), PomStartResult.Started
+        )
 
-        DEFAULT_DURATION = (5. * 60.)
-        EARLY_COMPLETION = (DEFAULT_DURATION / 3)
+        DEFAULT_DURATION = 5.0 * 60.0
+        EARLY_COMPLETION = DEFAULT_DURATION / 3
 
         self.advanceTime(EARLY_COMPLETION)
         action = self.testUI.actions[0].interval
@@ -499,24 +511,32 @@ class ModelTests(TestCase):
                 TestInterval(
                     interval=Pomodoro(
                         startTime=START_TIME,  # the "start time" of the pomodoro
-                                            # actually *matches* that of the
-                                            # grace period.
+                        # actually *matches* that of the
+                        # grace period.
                         intention=intent,
                         endTime=START_TIME + EARLY_COMPLETION,
-                        evaluation=Evaluation(EvaluationResult.achieved, START_TIME + EARLY_COMPLETION),
+                        evaluation=Evaluation(
+                            EvaluationResult.achieved,
+                            START_TIME + EARLY_COMPLETION,
+                        ),
                     ),
                     actualStartTime=START_TIME,
                     actualEndTime=START_TIME + EARLY_COMPLETION,
-                    currentProgress=[1/3, 1.0],
+                    currentProgress=[1 / 3, 1.0],
                 ),
                 TestInterval(
-                    interval=Break(startTime=START_TIME + EARLY_COMPLETION, endTime=START_TIME + EARLY_COMPLETION + DEFAULT_DURATION),
+                    interval=Break(
+                        startTime=START_TIME + EARLY_COMPLETION,
+                        endTime=START_TIME
+                        + EARLY_COMPLETION
+                        + DEFAULT_DURATION,
+                    ),
                     actualStartTime=START_TIME + EARLY_COMPLETION,
                     actualEndTime=None,
                     # Jumped in right at the beginning, went way out past the
                     # end
                     currentProgress=[
-                        0.0,    # is this desirable?
+                        0.0,  # is this desirable?
                         0.0033333333333333335,
                     ],
                 ),
@@ -525,12 +545,8 @@ class ModelTests(TestCase):
         )
         self.assertEqual(len(self.testUI.actions), 2)
 
-
     def test_evaluatedNotAchievedEarly(self) -> None:
         """
         Evaluating an ongoing pomodoro as some other status will not stop it
         early.
         """
-
-
-
