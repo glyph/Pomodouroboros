@@ -543,10 +543,48 @@ class ModelTests(TestCase):
             ],
             self.testUI.actions,
         )
-        self.assertEqual(len(self.testUI.actions), 2)
 
     def test_evaluatedNotAchievedEarly(self) -> None:
         """
-        Evaluating an ongoing pomodoro as some other status will not stop it
-        early.
+        Evaluating an ongoing pomodoro as some other status besides 'achieved'
+        will not stop it early.
         """
+        START_TIME = 1234.0
+        self.advanceTime(START_TIME)
+
+        intent = self.userModel.addIntention(
+            "early completion intention", None
+        )
+
+        self.assertEqual(
+            self.userModel.startPomodoro(intent), PomStartResult.Started
+        )
+
+        DEFAULT_DURATION = 5.0 * 60.0
+        EARLY_COMPLETION = DEFAULT_DURATION / 3
+
+        self.advanceTime(EARLY_COMPLETION)
+        action = self.testUI.actions[0].interval
+        assert isinstance(action, Pomodoro)
+        self.userModel.evaluatePomodoro(action, EvaluationResult.distracted)
+        self.advanceTime(1)
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=Pomodoro(
+                        startTime=START_TIME,
+                        intention=intent,
+                        endTime=START_TIME + DEFAULT_DURATION,
+                        evaluation=Evaluation(
+                            EvaluationResult.distracted,
+                            START_TIME + EARLY_COMPLETION,
+                        ),
+                    ),
+                    actualStartTime=START_TIME,
+                    actualEndTime=None,
+                    currentProgress=[1 / 3, (1./3)+(1/(5.*60))],
+                ),
+            ],
+            self.testUI.actions,
+        )
+
