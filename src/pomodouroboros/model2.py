@@ -206,23 +206,6 @@ class Pomodoro:
             self.intention, self.startTime, self.endTime - self.startTime
         )
 
-    def evaluate(self, result: EvaluationResult, timestamp: float) -> None:
-        """
-        Evaluate the completion of this pomodoro.
-
-        Open questions:
-
-            - should there be a time limit on performing this evaluation?
-
-                - should evaluating after a certain amount of time be
-                  disallowed completely, or merely discouraged by a score
-                  reduction?
-
-            - should you be able to go backwards to "not evaluated at all"?
-
-            - should we have a discrete Evaluation object
-        """
-        self.evaluation = Evaluation(result, timestamp)
 
 
 @dataclass
@@ -437,6 +420,7 @@ def nextInterval(
     Determine what the next interval should be.
     """
     duration = next(model._upcomingDurations, None)
+    debug("new duration", duration)
     if duration is not None:
         # We're in an interval. Chain on to the end of it, and start the next
         # duration.
@@ -444,12 +428,14 @@ def nextInterval(
             "if we are starting a new duration then we ought "
             "to be coming up on the back of an existing interval"
         )
-        return preludeIntervalMap[duration.intervalType](
+        newInterval = preludeIntervalMap[duration.intervalType](
             previousInterval.endTime,
             previousInterval.endTime + duration.seconds,
             # TODO: ^ WRONG: grace periods should *not* be the the same
             # duration as the pomodoro interval.
         )
+        debug("creating interval", newInterval)
+        return newInterval
 
     # We're not currently in an interval; i.e. we are idling.  If there's a
     # work session active, then let's add a new special interval that tells us
@@ -626,6 +612,15 @@ class TheUserModel:
     def intentions(self) -> Sequence[Intention]:
         return self._intentions
 
+    def _makeNextInterval(self, newTime: float) -> None:
+        """
+        Create the next interval.
+        """
+        new = self._activeInterval = nextInterval(self, newTime, self._activeInterval)
+        if new is not None:
+            self._allStreaks[-1].append(new)
+            self.userInterface.intervalStart(new)
+
     def advanceToTime(self, newTime: float) -> None:
         """
         Advance to the epoch time given.
@@ -639,25 +634,16 @@ class TheUserModel:
         if self._activeInterval is None:
             # bootstrap our initial interval (specifically, this is where
             # StartPrompt gets kicked off in an otherwise idle session)
-            self._activeInterval = nextInterval(self, newTime, None)
+            self._makeNextInterval(newTime)
         while ((interval := self._activeInterval) is not None) and (
             interval != previousInterval
         ):
             previousInterval = interval
-            if previousTime < interval.startTime:
-                debug("previous time before")
-                assert newTime >= interval.startTime, (
-                    f"If an interval exists, its start should be in the past; "
-                    f"past={previousTime} present={newTime} start={interval.startTime}"
-                )
-                debug("starting interval")
-                self.userInterface.intervalStart(interval)
-            if previousTime < interval.endTime:
-                current = newTime - interval.startTime
-                total = interval.endTime - interval.startTime
-                debug("progressing interval", current, total, current / total)
-                self.userInterface.intervalProgress(min(1.0, current / total))
-            if newTime > interval.endTime:
+            current = newTime - interval.startTime
+            total = interval.endTime - interval.startTime
+            debug("progressing interval", current, total, current / total)
+            self.userInterface.intervalProgress(min(1.0, current / total))
+            if newTime >= interval.endTime:
                 debug("ending interval")
                 self.userInterface.intervalEnd()
                 if interval.intervalType == GracePeriod.intervalType:
@@ -668,10 +654,7 @@ class TheUserModel:
                     # When a grace period expires, a streak is broken, so we
                     # make a new one.
                     self._allStreaks.append([])
-                self._activeInterval = nextInterval(self, newTime, interval)
-                # Note that, having assigned this interval, if it's not None,
-                # we will now loop around (since self._activeInterval has
-                # changed) and process its start and end times as well.
+                self._makeNextInterval(newTime)
 
         # If there's an active streak, we definitionally should not have
         # advanced past its end.
@@ -733,6 +716,9 @@ class TheUserModel:
             if (earlyOut := interval.earlyOut()) is not None:
                 return earlyOut
             assert isinstance(interval, GracePeriod)
+            # if it's a grace period then we're going to replace it, same start
+            # time, same original end time (the grace period itself may be
+            # shorter)
             newPomodoro = Pomodoro(
                 startTime=interval.startTime,
                 endTime=interval.originalPomEnd,
@@ -751,4 +737,13 @@ class TheUserModel:
         """
         The user has determined the success criteria.
         """
-        pomodoro.evaluate(result, self._lastUpdateTime)
+        timestamp = self._lastUpdateTime
+        if result == EvaluationResult.achieved and timestamp < pomodoro.endTime:
+            assert pomodoro is self._activeInterval
+            pomodoro.endTime = timestamp
+            # We now need to advance back to the current time since we've
+            # changed the landscape; there's a new interval that now starts
+            # there, and we need to emit our final progress notification and
+            # build that new interval.
+            self.advanceToTime(self._lastUpdateTime)
+        pomodoro.evaluation = Evaluation(result, timestamp)
