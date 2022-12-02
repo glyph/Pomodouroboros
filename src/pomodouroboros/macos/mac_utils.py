@@ -37,6 +37,7 @@ def callOnNotification(nsNotificationName: str, f: Callable[[], None]) -> Remove
     """
     defaultCenter = NSNotificationCenter.defaultCenter()
     observer = Actionable.alloc().initWithFunction_(f)
+    # lifecycle management: paired with the observer.release() in releaser
     observer.retain()
     sender = None
     defaultCenter.addObserver_selector_name_object_(
