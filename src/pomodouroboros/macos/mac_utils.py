@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
-from Foundation import NSCalendar, NSCalendarUnitDay, NSCalendarUnitHour, NSCalendarUnitMinute, NSCalendarUnitMonth, NSCalendarUnitNanosecond, NSCalendarUnitSecond, NSCalendarUnitYear, NSDate
+from Foundation import NSCalendar, NSCalendarUnitDay, NSCalendarUnitHour, NSCalendarUnitMinute, NSCalendarUnitMonth, NSCalendarUnitNanosecond, NSCalendarUnitSecond, NSCalendarUnitYear, NSDate, NSObject
 
 from .quickapp import Actionable
 from AppKit import NSNotificationCenter
@@ -17,11 +17,17 @@ from dateutil.tz import tzlocal
 class Remover:
     center: NSNotificationCenter
     name: str
-    observer: object
-    sender: object
+    observer: NSObject
+    sender: NSObject | None
 
     def removeObserver(self) -> None:
-        self.center.removeObserver_name_object_(self.observer, self.name, self.sender)
+        # lifecycle management: paired with observer.retain() in callOnNotification
+        self.observer.release()
+        if self.sender is not None:
+            # Unused, but lifecycle management would demand sender be retained
+            # by any observer-adding code as well.
+            self.sender.release()
+        self.center.removeObserver_name_object_(self.observer, self.name, )
 
 
 def callOnNotification(nsNotificationName: str, f: Callable[[], None]) -> Remover:
