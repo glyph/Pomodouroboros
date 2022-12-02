@@ -430,8 +430,6 @@ def nextInterval(
         newInterval = preludeIntervalMap[duration.intervalType](
             previousInterval.endTime,
             previousInterval.endTime + duration.seconds,
-            # TODO: ^ WRONG: grace periods should *not* be the the same
-            # duration as the pomodoro interval.
         )
         debug("creating interval", newInterval)
         return newInterval
