@@ -2,36 +2,44 @@
 General-purpose PyObjC utilities that might belong in a different package.
 """
 
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Callable
 
-from datetime import datetime
-from dateutil.tz import tzlocal
-
-from Foundation import (
-    NSCalendarUnitYear,
-    NSCalendarUnitMonth,
-    NSCalendarUnitDay,
-    NSCalendarUnitHour,
-    NSCalendarUnitMinute,
-    NSCalendarUnitSecond,
-    NSCalendarUnitNanosecond,
-    NSCalendar,
-    NSDate,
-)
-from Foundation import NSCalendar, NSDate
-
-from AppKit import NSNotificationCenter
+from Foundation import NSCalendar, NSCalendarUnitDay, NSCalendarUnitHour, NSCalendarUnitMinute, NSCalendarUnitMonth, NSCalendarUnitNanosecond, NSCalendarUnitSecond, NSCalendarUnitYear, NSDate
 
 from .quickapp import Actionable
+from AppKit import NSNotificationCenter
+from dateutil.tz import tzlocal
 
 
-def callOnNotification(nsNotificationName: str, f: Callable[[], None]) -> None:
-    NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
-        Actionable.alloc().initWithFunction_(f).retain(),
+@dataclass
+class Remover:
+    center: NSNotificationCenter
+    name: str
+    observer: object
+    sender: object
+
+    def removeObserver(self) -> None:
+        self.center.removeObserver_name_object_(self.observer, self.name, self.sender)
+
+
+def callOnNotification(nsNotificationName: str, f: Callable[[], None]) -> Remover:
+    """
+    When the given notification occurs, call the given callable with no
+    arguments.
+    """
+    defaultCenter = NSNotificationCenter.defaultCenter()
+    observer = Actionable.alloc().initWithFunction_(f)
+    observer.retain()
+    sender = None
+    defaultCenter.addObserver_selector_name_object_(
+        observer,
         "doIt:",
         nsNotificationName,
-        None,
+        sender,
     )
+    return Remover(defaultCenter, nsNotificationName, observer, sender)
 
 
 fromDate = NSCalendar.currentCalendar().components_fromDate_
