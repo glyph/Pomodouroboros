@@ -467,18 +467,20 @@ class ModelTests(TestCase):
             (points_for_first_interval * 2) + (points_for_second_interval),
         )
 
-        # 2. evaluating a pomodoro should grant some points.
+        # TODO 2. evaluating a pomodoro should grant some points.
+        #
         #  - more if focused
+        #
         #  - even more if successful
 
-        # 3. adding an estimate to a pomodoro should grant some points as well,
-        # possibly only once evaluated
+        # TODO 3. adding an estimate to a pomodoro should grant some points as
+        # well, possibly only once evaluated
 
-        # 4. estimating & evaluating a pomodoro should grant some points
+        # TODO 4. estimating & evaluating a pomodoro should grant some points
         # regardless of how long things are taking, but getting the estimate
         # correct should be a big bonus
 
-        # ?: should the ideal score be calculated to include estimations?
+        # TODO ?: should the ideal score be calculated to include estimations?
         # (should it have multiple modes? par & birdie?)
 
     def test_achievedEarly(self) -> None:
