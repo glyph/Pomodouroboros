@@ -130,8 +130,6 @@ class ModelTests(TestCase):
         self.advanceTime(1)
         self.advanceTime(1)
         self.advanceTime(1)
-        # 496 -> infinite loop
-        # 497 -> traceback
         self.advanceTime(497)
         self.advanceTime(100)
         # self.advanceTime(1)
