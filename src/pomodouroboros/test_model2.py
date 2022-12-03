@@ -158,6 +158,49 @@ class ModelTests(TestCase):
             self.testUI.actions,
         )
 
+    def test_startDuringSession(self) -> None:
+        """
+        When a session is running (and therefore, a 'start' prompt /
+        score-decrease timer interrval is running) starting a pomodoro stops
+        that timer and begins a pomodoro.
+        """
+        intention = self.userModel.addIntention("x", None)
+        self.userModel.addSession(1000, 2000)
+        self.advanceTime(100)   # no-op; time before session
+        self.advanceTime(1000)  # enter session
+        self.advanceTime(50)    # time in session before pomodoro
+        self.userModel.startPomodoro(intention)
+        self.advanceTime(120)   # enter pomodoro
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=StartPrompt(
+                        startTime=1100., endTime=1700.0, pointsLost=4
+                    ),
+                    actualStartTime=1100.0,
+                    actualEndTime=1150.0,
+                    currentProgress=[
+                        0.0,
+                        50./600.,
+                        1.0,
+                    ],
+                ),
+                TestInterval(
+                    interval=Pomodoro(
+                        intention=intention, startTime=1150., endTime=1150. + (5.*60.)
+                    ),
+                    actualStartTime=1150.,
+                    actualEndTime=None,
+                    currentProgress=[
+                        120/(5*60.),
+                    ],
+                )
+            ],
+            self.testUI.actions,
+        )
+
+
+
     def test_idealScore(self) -> None:
         """
         The ideal score should be the best sequence of events that the user

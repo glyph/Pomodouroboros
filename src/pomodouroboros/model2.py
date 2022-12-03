@@ -691,9 +691,9 @@ class TheUserModel:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        if self._activeInterval is None:
-            # or isinstance(self._activeInterval, StartPrompt)
-
+        if self._activeInterval is None or isinstance(
+            self._activeInterval, StartPrompt
+        ):
             # We are either idle because no interval is running or idle because
             # the running interval is a prompt to start an intention.
             self._upcomingDurations = iter(self._rules.streakIntervalDurations)
@@ -704,6 +704,14 @@ class TheUserModel:
             assert (
                 nextDuration.intervalType == IntervalType.Pomodoro
             ), "streak must begin with a pomodoro"
+
+            if self._activeInterval is not None:
+                # Deal with the StartPrompt interval: let the UI know it's over.
+                startPrompt = self._activeInterval
+                self.userInterface.intervalProgress(1.0)
+                self.userInterface.intervalEnd()
+                self._activeInterval = None
+
             newPomodoro = Pomodoro(
                 startTime=self._lastUpdateTime,
                 endTime=self._lastUpdateTime + nextDuration.seconds,
@@ -726,7 +734,7 @@ class TheUserModel:
             result = PomStartResult.Continued
         intention.pomodoros.append(newPomodoro)
         self._activeInterval = newPomodoro
-        self._allStreaks[-1].append(self._activeInterval)
+        self._allStreaks[-1].append(newPomodoro)
         self.userInterface.intervalStart(newPomodoro)
         return result
 
