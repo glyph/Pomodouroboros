@@ -148,6 +148,7 @@ class EvaluationResult(Enum):
     """
     How did a given Pomodoro go?
     """
+    points: float
 
     distracted = "distracted"
     """
@@ -172,6 +173,12 @@ class EvaluationResult(Enum):
     """
 
 
+EvaluationResult.distracted.points = 0.1
+EvaluationResult.interrupted.points = 0.2
+EvaluationResult.focused.points = 1.0
+EvaluationResult.achieved.points = 1.25
+
+
 @dataclass
 class Evaluation:
     """
@@ -181,6 +188,9 @@ class Evaluation:
 
     result: EvaluationResult
     timestamp: float
+
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        yield EvaluationScore(self.timestamp, self.result.points)
 
 
 @dataclass
@@ -195,7 +205,6 @@ class Pomodoro:
     endTime: float
 
     evaluation: Evaluation | None = None
-
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
     def earlyOut(self) -> PomStartResult:
@@ -205,6 +214,8 @@ class Pomodoro:
         yield IntentionScore(
             self.intention, self.startTime, self.endTime - self.startTime
         )
+        if self.evaluation is not None:
+            yield from self.evaluation.scoreEvents()
 
 
 @dataclass
@@ -273,7 +284,7 @@ class StartPrompt:
 
     startTime: float
     endTime: float
-    pointsLost: int
+    pointsLost: float
 
     intervalType: ClassVar[IntervalType] = IntervalType.StartPrompt
 
@@ -304,7 +315,7 @@ class ScoreEvent(Protocol):
     """
 
     @property
-    def points(self) -> int:
+    def points(self) -> float:
         """
         The number of points awarded to this event.
         """
@@ -352,7 +363,7 @@ class EvaluationScore:
     """
 
     time: float
-    points: int = field(default=1, init=False)
+    points: float = field(default=1)
 
 
 _is_score_event = EvaluationScore
@@ -395,7 +406,7 @@ class IdealScoreInfo:
     nextPointLoss: float | None
     idealScoreNext: list[ScoreEvent]
 
-    def pointsLost(self) -> int:
+    def pointsLost(self) -> float:
         """
         Compute, numerically, how many points will be lost at L{self.nextPointLoss}.
         """
