@@ -508,12 +508,6 @@ class ModelTests(TestCase):
             (points_for_first_interval * 2) + (points_for_second_interval),
         )
 
-        # TODO 2. evaluating a pomodoro should grant some points.
-        #
-        #  - more if focused
-        #
-        #  - even more if successful
-
         # TODO 3. adding an estimate to a pomodoro should grant some points as
         # well, possibly only once evaluated
 
@@ -521,8 +515,13 @@ class ModelTests(TestCase):
         # regardless of how long things are taking, but getting the estimate
         # correct should be a big bonus
 
-        # TODO ?: should the ideal score be calculated to include estimations?
+        # TODO 5?: should the ideal score be calculated to include estimations?
         # (should it have multiple modes? par & birdie?)
+
+        # TODO 6: evaluating an intention successfully should remove it from
+        # the list of intentions displayed to the user for selecting.  if we
+        # somehow select one then starting a pomodoro with it should be an
+        # error.
 
     def test_achievedEarly(self) -> None:
         """
@@ -630,3 +629,23 @@ class ModelTests(TestCase):
             ],
             self.testUI.actions,
         )
+
+    def test_evaluationScore(self) -> None:
+        """
+        Evaluating a task should give us some points.
+        """
+        self.advanceTime(1)
+        intent = self.userModel.addIntention("intent", None)
+        self.userModel.startPomodoro(intent)
+        self.advanceTime((5 * 60.) + 1)
+        pom = self.testUI.actions[0].interval
+        assert isinstance(pom, Pomodoro)
+        before = sum(each.points for each in self.userModel.scoreEvents())
+        self.userModel.evaluatePomodoro(pom, EvaluationResult.achieved)
+        after = sum(each.points for each in self.userModel.scoreEvents())
+        self.assertEqual(after - before, 1.25)
+        # TODO: since score is based on duration, if we don't go through the
+        # full duration of the pomodoro, currently we actually *lose* points.
+        # should we not record the score at all until it is over? possibly this
+        # behavior is the right thing but it should be tested.
+
