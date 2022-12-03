@@ -164,40 +164,40 @@ class ModelTests(TestCase):
         """
         intention = self.userModel.addIntention("x", None)
         self.userModel.addSession(1000, 2000)
-        self.advanceTime(100)   # no-op; time before session
+        self.advanceTime(100)  # no-op; time before session
         self.advanceTime(1000)  # enter session
-        self.advanceTime(50)    # time in session before pomodoro
+        self.advanceTime(50)  # time in session before pomodoro
         self.userModel.startPomodoro(intention)
-        self.advanceTime(120)   # enter pomodoro
+        self.advanceTime(120)  # enter pomodoro
         self.assertEqual(
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100., endTime=1700.0, pointsLost=4
+                        startTime=1100.0, endTime=1700.0, pointsLost=4
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1150.0,
                     currentProgress=[
                         0.0,
-                        50./600.,
+                        50.0 / 600.0,
                         1.0,
                     ],
                 ),
                 TestInterval(
                     interval=Pomodoro(
-                        intention=intention, startTime=1150., endTime=1150. + (5.*60.)
+                        intention=intention,
+                        startTime=1150.0,
+                        endTime=1150.0 + (5.0 * 60.0),
                     ),
-                    actualStartTime=1150.,
+                    actualStartTime=1150.0,
                     actualEndTime=None,
                     currentProgress=[
-                        120/(5*60.),
+                        120 / (5 * 60.0),
                     ],
-                )
+                ),
             ],
             self.testUI.actions,
         )
-
-
 
     def test_idealScore(self) -> None:
         """
@@ -625,9 +625,8 @@ class ModelTests(TestCase):
                     ),
                     actualStartTime=START_TIME,
                     actualEndTime=None,
-                    currentProgress=[1 / 3, (1./3)+(1/(5.*60))],
+                    currentProgress=[1 / 3, (1.0 / 3) + (1 / (5.0 * 60))],
                 ),
             ],
             self.testUI.actions,
         )
-
