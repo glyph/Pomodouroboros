@@ -148,6 +148,7 @@ class EvaluationResult(Enum):
     """
     How did a given Pomodoro go?
     """
+
     points: float
 
     distracted = "distracted"
