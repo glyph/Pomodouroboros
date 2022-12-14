@@ -204,16 +204,22 @@ class Pomodoro:
     startTime: float
     intention: Intention
     endTime: float
+    indexInStreak: int
 
     evaluation: Evaluation | None = None
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
-    def earlyOut(self) -> PomStartResult:
+    def handleStartPom(
+        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+    ) -> PomStartResult:
         return PomStartResult.AlreadyStarted
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         yield IntentionScore(
-            self.intention, self.startTime, self.endTime - self.startTime
+            intention=self.intention,
+            time=self.startTime,
+            duration=self.endTime - self.startTime,
+            streakLength=self.indexInStreak,
         )
         if self.evaluation is not None:
             yield from self.evaluation.scoreEvents()
@@ -233,7 +239,9 @@ class Break:
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
 
-    def earlyOut(self) -> PomStartResult:
+    def handleStartPom(
+        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+    ) -> PomStartResult:
         return PomStartResult.OnBreak
 
 
@@ -258,8 +266,14 @@ class GracePeriod:
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
 
-    def earlyOut(self) -> None:
-        return None
+    def handleStartPom(
+        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+    ) -> PomStartResult:
+        # if it's a grace period then we're going to replace it, same start
+        # time, same original end time (the grace period itself may be
+        # shorter)
+        startPom(self.startTime, self.originalPomEnd)
+        return PomStartResult.Continued
 
 
 MaybeFloat = TypeVar("MaybeFloat", float, None)
@@ -292,8 +306,12 @@ class StartPrompt:
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
 
-    def earlyOut(self) -> None:
-        return None
+    def handleStartPom(
+        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+    ) -> PomStartResult:
+        userModel.userInterface.intervalProgress(1.0)
+        userModel.userInterface.intervalEnd()
+        return handleIdleStartPom(userModel, startPom)
 
 
 AnyInterval = Pomodoro | Break | GracePeriod | StartPrompt
@@ -340,6 +358,7 @@ class IntentionScore:
     intention: Intention
     time: float
     duration: float
+    streakLength: int
     """
     How long the intention was set for.
     """
@@ -347,11 +366,9 @@ class IntentionScore:
     @property
     def points(self) -> int:
         """
-        Calculate points based on the duration of the pomodoro.  The idea here
-        is that we want later pomodoros to get exponentially more valuable so
-        there's an incentive to continue the streak.
+        Setting an intention yields 1 point.
         """
-        return int((self.duration / (5 * 60)) ** 2)
+        return int(2**self.streakLength)
 
 
 _is_score_event = IntentionScore
@@ -393,6 +410,27 @@ class GameRules:
             ]
         ]
     )
+
+
+def handleIdleStartPom(
+    userModel: TheUserModel, startPom: Callable[[float, float], None]
+) -> PomStartResult:
+    userModel._upcomingDurations = iter(
+        userModel._rules.streakIntervalDurations
+    )
+    nextDuration = next(userModel._upcomingDurations, None)
+    assert (
+        nextDuration is not None
+    ), "empty streak interval durations is invalid"
+    assert (
+        nextDuration.intervalType == IntervalType.Pomodoro
+    ), "streak must begin with a pomodoro"
+
+    startTime = userModel._lastUpdateTime
+    endTime = userModel._lastUpdateTime + nextDuration.seconds
+
+    startPom(startTime, endTime)
+    return PomStartResult.Started
 
 
 @dataclass
@@ -593,18 +631,21 @@ class TheUserModel:
             self.advanceToTime(self._initialTime)
 
     def scoreEvents(
-        self, *, startTime: float | None = None, endTime: float = 1e9999
+        self, *, startTime: float | None = None, endTime: float | None = None
     ) -> Iterable[ScoreEvent]:
         """
         Get all score-relevant events since the given timestamp.
         """
         if startTime is None:
             startTime = self._initialTime
+        if endTime is None:
+            endTime = self._lastUpdateTime
         for streak in self._allStreaks:
             for interval in streak:
                 if interval.startTime > startTime:
                     for event in interval.scoreEvents():
-                        if event.time >= endTime:
+                        debug("score", event.time > endTime, event, event.points)
+                        if event.time > endTime:
                             break
                         yield event
 
@@ -703,52 +744,27 @@ class TheUserModel:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        if self._activeInterval is None or isinstance(
-            self._activeInterval, StartPrompt
-        ):
-            # We are either idle because no interval is running or idle because
-            # the running interval is a prompt to start an intention.
-            self._upcomingDurations = iter(self._rules.streakIntervalDurations)
-            nextDuration = next(self._upcomingDurations, None)
-            assert (
-                nextDuration is not None
-            ), "empty streak interval durations is invalid"
-            assert (
-                nextDuration.intervalType == IntervalType.Pomodoro
-            ), "streak must begin with a pomodoro"
+        handleStartFunc = (
+            handleIdleStartPom
+            if self._activeInterval is None
+            else self._activeInterval.handleStartPom
+        )
 
-            if self._activeInterval is not None:
-                # Deal with the StartPrompt interval: let the UI know it's over.
-                startPrompt = self._activeInterval
-                self.userInterface.intervalProgress(1.0)
-                self.userInterface.intervalEnd()
-                self._activeInterval = None
+        def startPom(startTime: float, endTime: float) -> None:
+            newPomodoro = Pomodoro(
+                intention=intention,
+                indexInStreak=sum(
+                    isinstance(each, Pomodoro) for each in self._allStreaks[-1]
+                ),
+                startTime=startTime,
+                endTime=endTime,
+            )
+            intention.pomodoros.append(newPomodoro)
+            self._activeInterval = newPomodoro
+            self._allStreaks[-1].append(newPomodoro)
+            self.userInterface.intervalStart(newPomodoro)
 
-            newPomodoro = Pomodoro(
-                startTime=self._lastUpdateTime,
-                endTime=self._lastUpdateTime + nextDuration.seconds,
-                intention=intention,
-            )
-            result = PomStartResult.Started
-        else:
-            interval = self._activeInterval
-            if (earlyOut := interval.earlyOut()) is not None:
-                return earlyOut
-            assert isinstance(interval, GracePeriod)
-            # if it's a grace period then we're going to replace it, same start
-            # time, same original end time (the grace period itself may be
-            # shorter)
-            newPomodoro = Pomodoro(
-                startTime=interval.startTime,
-                endTime=interval.originalPomEnd,
-                intention=intention,
-            )
-            result = PomStartResult.Continued
-        intention.pomodoros.append(newPomodoro)
-        self._activeInterval = newPomodoro
-        self._allStreaks[-1].append(newPomodoro)
-        self.userInterface.intervalStart(newPomodoro)
-        return result
+        return handleStartFunc(self, startPom)
 
     def evaluatePomodoro(
         self, pomodoro: Pomodoro, result: EvaluationResult

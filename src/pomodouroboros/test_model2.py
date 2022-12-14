@@ -137,7 +137,7 @@ class ModelTests(TestCase):
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1700.0, pointsLost=4
+                        startTime=1100.0, endTime=1700.0, pointsLost=2
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1702.0,
@@ -173,7 +173,7 @@ class ModelTests(TestCase):
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1700.0, pointsLost=4
+                        startTime=1100.0, endTime=1700.0, pointsLost=2
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1150.0,
@@ -188,6 +188,7 @@ class ModelTests(TestCase):
                         intention=intention,
                         startTime=1150.0,
                         endTime=1150.0 + (5.0 * 60.0),
+                        indexInStreak=0,
                     ),
                     actualStartTime=1150.0,
                     actualEndTime=None,
@@ -206,7 +207,7 @@ class ModelTests(TestCase):
         """
         self.advanceTime(1000)
         ideal = idealScore(self.userModel, 2000)
-        self.assertEqual(ideal.pointsLost(), 4)
+        self.assertEqual(ideal.pointsLost(), 2)
         self.assertEqual(ideal.nextPointLoss, 1600)
         self.advanceTime(1600)
         ideal = idealScore(self.userModel, 2000)
@@ -226,7 +227,7 @@ class ModelTests(TestCase):
         self.assertEqual(
             [
                 TestInterval(
-                    Pomodoro(5.0, i, 5 + 5.0 * 60),
+                    Pomodoro(5.0, i, 5 + 5.0 * 60, indexInStreak=0),
                     actualStartTime=5.0,
                     actualEndTime=(5.0 + 5 * 60),
                     currentProgress=[1.0],
@@ -292,6 +293,7 @@ class ModelTests(TestCase):
             startTime=4000.0,
             endTime=4000.0 + expectedDuration,
             intention=first,
+            indexInStreak=0
         )
         self.assertEqual(
             [
@@ -435,6 +437,7 @@ class ModelTests(TestCase):
                         startTime=10201.0,
                         intention=second,
                         endTime=10501.0,
+                        indexInStreak=0,
                     ),
                     actualStartTime=10201.0,
                     actualEndTime=10502.0,
@@ -485,6 +488,7 @@ class ModelTests(TestCase):
                         # grace period.
                         intention=third,
                         endTime=11401.0,
+                        indexInStreak=1,
                     ),
                     actualStartTime=10803.0,
                     actualEndTime=None,
@@ -500,7 +504,7 @@ class ModelTests(TestCase):
         # currently the score is 1 point for the first pomdoro in a streak and
         # 4 points for the second
         points_for_first_interval = 1
-        points_for_second_interval = 4
+        points_for_second_interval = 2
 
         self.assertEqual(
             sum(each.points for each in events),
@@ -561,6 +565,7 @@ class ModelTests(TestCase):
                             EvaluationResult.achieved,
                             START_TIME + EARLY_COMPLETION,
                         ),
+                        indexInStreak=0,
                     ),
                     actualStartTime=START_TIME,
                     actualEndTime=START_TIME + EARLY_COMPLETION,
@@ -621,6 +626,7 @@ class ModelTests(TestCase):
                             EvaluationResult.distracted,
                             START_TIME + EARLY_COMPLETION,
                         ),
+                        indexInStreak=0,
                     ),
                     actualStartTime=START_TIME,
                     actualEndTime=None,
@@ -640,9 +646,13 @@ class ModelTests(TestCase):
         self.advanceTime((5 * 60.) + 1)
         pom = self.testUI.actions[0].interval
         assert isinstance(pom, Pomodoro)
-        before = sum(each.points for each in self.userModel.scoreEvents())
+        def currentPoints() -> float:
+            events = list(self.userModel.scoreEvents())
+            debug(events)
+            return sum(each.points for each in events)
+        before = currentPoints()
         self.userModel.evaluatePomodoro(pom, EvaluationResult.achieved)
-        after = sum(each.points for each in self.userModel.scoreEvents())
+        after = currentPoints()
         self.assertEqual(after - before, 1.25)
         # TODO: since score is based on duration, if we don't go through the
         # full duration of the pomodoro, currently we actually *lose* points.
