@@ -137,7 +137,7 @@ class ModelTests(TestCase):
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1700.0, pointsLost=2
+                        startTime=1100.0, endTime=1700.0, pointsLost=3
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1702.0,
@@ -173,7 +173,7 @@ class ModelTests(TestCase):
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1700.0, pointsLost=2
+                        startTime=1100.0, endTime=1700.0, pointsLost=3
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1150.0,
@@ -207,7 +207,7 @@ class ModelTests(TestCase):
         """
         self.advanceTime(1000)
         ideal = idealScore(self.userModel, 2000)
-        self.assertEqual(ideal.pointsLost(), 2)
+        self.assertEqual(ideal.pointsLost(), 3)
         self.assertEqual(ideal.nextPointLoss, 1600)
         self.advanceTime(1600)
         ideal = idealScore(self.userModel, 2000)
@@ -293,7 +293,7 @@ class ModelTests(TestCase):
             startTime=4000.0,
             endTime=4000.0 + expectedDuration,
             intention=first,
-            indexInStreak=0
+            indexInStreak=0,
         )
         self.assertEqual(
             [
@@ -505,11 +505,16 @@ class ModelTests(TestCase):
         # 4 points for the second
         points_for_first_interval = 1
         points_for_second_interval = 2
+        points_for_intention = 1
+        points_for_estimation = 1
 
         self.assertEqual(
             sum(each.points for each in events),
             # 2 first-in-streak pomodoros, 1 second-in-streak
-            (points_for_first_interval * 2) + (points_for_second_interval),
+            (points_for_first_interval * 2)
+            + (points_for_second_interval)
+            + (3 * points_for_intention)
+            + (2 * points_for_estimation),
         )
 
         # TODO 3. adding an estimate to a pomodoro should grant some points as
@@ -638,19 +643,21 @@ class ModelTests(TestCase):
 
     def test_evaluationScore(self) -> None:
         """
-        Evaluating a task should give us some points.
+        Evaluating a pomdooro as focused on an intention should give us 1 point.
         """
         self.advanceTime(1)
         intent = self.userModel.addIntention("intent", None)
         self.userModel.startPomodoro(intent)
-        self.advanceTime((5 * 60.) + 1)
+        self.advanceTime((5 * 60.0) + 1)
         pom = self.testUI.actions[0].interval
         assert isinstance(pom, Pomodoro)
+
         def currentPoints() -> float:
             events = list(self.userModel.scoreEvents())
-            debug(events)
+            debug([(each, each.points) for each in events])
             return sum(each.points for each in events)
+
         before = currentPoints()
-        self.userModel.evaluatePomodoro(pom, EvaluationResult.achieved)
+        self.userModel.evaluatePomodoro(pom, EvaluationResult.focused)
         after = currentPoints()
-        self.assertEqual(after - before, 1.25)
+        self.assertEqual(after - before, 1.0)

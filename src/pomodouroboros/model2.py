@@ -215,7 +215,7 @@ class Pomodoro:
         return PomStartResult.AlreadyStarted
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
-        yield IntentionScore(
+        yield IntentionSet(
             intention=self.intention,
             time=self.startTime,
             duration=self.endTime - self.startTime,
@@ -276,18 +276,178 @@ class GracePeriod:
         return PomStartResult.Continued
 
 
-MaybeFloat = TypeVar("MaybeFloat", float, None)
+@dataclass
+class Estimate:
+    """
+    A guess was made about how long an L{Intention} would take to complete.
+    """
+
+    duration: float  # how long do we think the thing is going to take?
+    madeAt: float  # when was this estimate made?
 
 
 @dataclass
-class Intention(Generic[MaybeFloat]):
+class Intention:
     """
     An intention of something to do.
     """
 
+    created: float
     description: str
-    estimate: float | None
+    estimates: list[Estimate] = field(default_factory=list)
     pomodoros: list[Pomodoro] = field(default_factory=list)
+
+    @property
+    def completed(self) -> bool:
+        """
+        Has this intention been completed?
+        """
+        # TBD: it should be possible to abandon an intention too, probably?
+        return (
+            False
+            if not self.pomodoros
+            else (evaluation := self.pomodoros[-1].evaluation) is not None
+            and evaluation.result == EvaluationResult.achieved
+        )
+
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        # If we've ever been used in a pomodoro even once, the user gets a
+        # point for creating this intention.
+        if self.pomodoros:
+            yield IntentionCreatedEvent(self)
+        for estimate, _ in zip(self.estimates, range(len(self.pomodoros) + 1)):
+            # Only give a point for one estimation per attempt; estimating is
+            # good, but correcting more than once per work session is just
+            # faffing around
+            yield AttemptedEstimation(estimate)
+        if self.completed:
+            yield IntentionCompleted(self)
+            if self.estimates:
+                yield EstimationAccuracy(self)
+
+
+class ScoreEvent(Protocol):
+    """
+    An event that occurred that affected the users score.
+    """
+
+    @property
+    def points(self) -> float:
+        """
+        The number of points awarded to this event.
+        """
+
+    @property
+    def time(self) -> float:
+        """
+        The point in time where this scoring event occurred.
+        """
+
+
+_is_score_event: type[ScoreEvent]
+
+
+@dataclass
+class IntentionCreatedEvent:
+    """
+    An intention was created (and used at least once in a pomodoro).
+    """
+
+    intention: Intention
+
+    @property
+    def time(self) -> float:
+        return self.intention.created
+
+    @property
+    def points(self) -> int:
+        """
+        Creating an intention (and then using it) always only gives a single
+        point.  Creating intentions is good and it's good to use them.
+        """
+        return 1
+
+
+_is_score_event = IntentionCreatedEvent
+
+@dataclass
+class IntentionCompleted:
+    intention: Intention
+
+    @property
+    def time(self) -> float:
+        evaluation = self.intention.pomodoros[-1].evaluation
+        assert evaluation is not None
+        return evaluation.timestamp
+
+    @property
+    def points(self) -> int:
+        """
+        When an intention is completed, the user is given 10 points.  This can
+        be given two additional bonuses: if it took more than 1 pomodoro to
+        finish, 1 additional point per pomodoro will be granted, up to 5 pomodoros.
+        """
+        score = 10
+        score += min(5, (len(self.intention.pomodoros) - 1))
+        return score
+
+
+_is_score_event = IntentionCompleted
+@dataclass
+class EstimationAccuracy:
+    intention: Intention
+
+    @property
+    def time(self) -> float:
+        evaluation = self.intention.pomodoros[-1].evaluation
+        assert evaluation is not None
+        return evaluation.timestamp
+
+    @property
+    def points(self) -> int:
+        """
+        When an intention is completed, give some points for how close the estimate was.
+        """
+        actualTimeTaken = sum((each.endTime-each.startTime) for each in self.intention.pomodoros)
+        timeOfEvaluation = self.time
+        allEstimateScores: list[int] = []
+        for estimate, recencyCap in zip(self.intention.estimates[-10::-1], range(10, 1, -1)):
+            # Counting down from the most recent estimate to the 10th most
+            # recent, we give progressively smaller caps to the estimate.
+            timeSinceEstimate = timeOfEvaluation - estimate.madeAt
+            # You get more points for estimates that are earlier (specifically,
+            # you only get max credit for estimates that are made longer ago
+            # than the total time that the thing took to do).  This is a rough
+            # heuristic, because it's still technically gameable if you have a
+            # task that takes a super long time and you have dozens of
+            # pomodoros on it, estimate that you only have a single pomdoro
+            # left, then wait a day before completing it.
+            timeSinceEstimateCap = int(min(1.0, timeSinceEstimate / actualTimeTaken) * 10)
+            # You obviously get more points for having made more accurate estimates.
+            distanceSeconds = abs(actualTimeTaken - estimate.duration)
+            distanceHours = distanceSeconds / (60*60)
+            # within 100 hours you can get 10 points, within 90 hours you can
+            # get 9, etc
+            distanceScore = min(10, int(distanceHours / 10))
+            allEstimateScores.append(min([distanceScore, timeSinceEstimateCap, recencyCap]))
+        return max(allEstimateScores)
+
+_is_score_event=EstimationAccuracy
+@dataclass
+class AttemptedEstimation:
+    """
+    The user attempted to estimate how long this would take.
+    """
+
+    estimate: Estimate
+
+    @property
+    def time(self) -> float:
+        return self.estimate.madeAt
+
+    @property
+    def points(self) -> int:
+        return 1
 
 
 @dataclass
@@ -328,31 +488,13 @@ subsequent pomodoros) don't happen.
 """
 
 
-class ScoreEvent(Protocol):
-    """
-    An event that occurred that affected the users score.
-    """
-
-    @property
-    def points(self) -> float:
-        """
-        The number of points awarded to this event.
-        """
-
-    @property
-    def time(self) -> float:
-        """
-        The point in time where this scoring event occurred.
-        """
-
-
-_is_score_event: type[ScoreEvent]
-
-
 @dataclass
-class IntentionScore:
+class IntentionSet:
     """
-    Setting an intention gives some points.
+    An intention was set: i.e. a pomodoro was started.
+
+    @note: contrast with L{IntentionCreatedEvent}; an intention may be I{set}
+        multiple times, but it is I{created} only once.
     """
 
     intention: Intention
@@ -371,7 +513,7 @@ class IntentionScore:
         return int(2**self.streakLength)
 
 
-_is_score_event = IntentionScore
+_is_score_event = IntentionSet
 
 
 @dataclass
@@ -640,11 +782,18 @@ class TheUserModel:
             startTime = self._initialTime
         if endTime is None:
             endTime = self._lastUpdateTime
+        for intention in self.intentions:
+            for event in intention.scoreEvents():
+                if event.time > endTime:
+                    break
+                yield event
         for streak in self._allStreaks:
             for interval in streak:
                 if interval.startTime > startTime:
                     for event in interval.scoreEvents():
-                        debug("score", event.time > endTime, event, event.points)
+                        debug(
+                            "score", event.time > endTime, event, event.points
+                        )
                         if event.time > endTime:
                             break
                         yield event
@@ -720,14 +869,20 @@ class TheUserModel:
         )
 
     def addIntention(
-        self, description: str, estimation: float | None
+        self, description: str, estimatedDuration: float | None
     ) -> Intention:
         """
         Add an intention with the given description and time estimate.
         """
         self._intentions.append(
-            newIntention := Intention(description, estimation)
+            newIntention := Intention(self._lastUpdateTime, description)
         )
+        if estimatedDuration is not None:
+            newIntention.estimates.append(
+                Estimate(
+                    duration=estimatedDuration, madeAt=self._lastUpdateTime
+                )
+            )
         self.userInterface.intentionAdded(newIntention)
         return newIntention
 
