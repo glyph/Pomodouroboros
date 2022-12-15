@@ -654,8 +654,3 @@ class ModelTests(TestCase):
         self.userModel.evaluatePomodoro(pom, EvaluationResult.achieved)
         after = currentPoints()
         self.assertEqual(after - before, 1.25)
-        # TODO: since score is based on duration, if we don't go through the
-        # full duration of the pomodoro, currently we actually *lose* points.
-        # should we not record the score at all until it is over? possibly this
-        # behavior is the right thing but it should be tested.
-
