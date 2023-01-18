@@ -127,6 +127,17 @@ class AnUserInterface(Protocol):
         An intention was added to the set of intentions.
         """
 
+    def intentionAbandoned(self, intention: Intention) -> None:
+        """
+        An intention was removed from the set of intentions by the user.
+        """
+
+    def intentionCompleted(self, intention: Intention) -> None:
+        """
+        An intention was marked as completed, so it is no longer available for
+        selection for new pomodoros by the user.
+        """
+
 
 @dataclass
 class NoUserInterface(AnUserInterface):
@@ -296,13 +307,13 @@ class Intention:
     description: str
     estimates: list[Estimate] = field(default_factory=list)
     pomodoros: list[Pomodoro] = field(default_factory=list)
+    abandoned: bool = False
 
     @property
     def completed(self) -> bool:
         """
         Has this intention been completed?
         """
-        # TBD: it should be possible to abandon an intention too, probably?
         return (
             False
             if not self.pomodoros
@@ -406,7 +417,8 @@ class EstimationAccuracy:
     @property
     def points(self) -> int:
         """
-        When an intention is completed, give some points for how close the estimate was.
+        When an intention is completed, give some points for how close the
+        estimate was.
         """
         actualTimeTaken = sum((each.endTime-each.startTime) for each in self.intention.pomodoros)
         timeOfEvaluation = self.time
@@ -481,10 +493,11 @@ Any interval at all.
 
 AnyRealInterval = Pomodoro | Break
 """
-Grace periods aren't 'real' in the sense that they just represent the beginning
-of a pomodoro during that time where the its intention is not yet set.  If a
-grace period elapses, then it is deleted from history and its pomodoro (and
-subsequent pomodoros) don't happen.
+'Real' intervals are those which persist as a historical record past the end of
+their elapsed time.  Grace periods and start prompts are temporary placeholders
+which are replaced by a started pomodoro once it gets going; start prompts are
+just removed and grace periods are clipped out in-place with the start of the
+pomodoro going back to their genesis.
 """
 
 
@@ -782,7 +795,7 @@ class TheUserModel:
             startTime = self._initialTime
         if endTime is None:
             endTime = self._lastUpdateTime
-        for intention in self.intentions:
+        for intention in self._intentions:
             for event in intention.scoreEvents():
                 if event.time > endTime:
                     break
@@ -810,6 +823,14 @@ class TheUserModel:
     @property
     def intentions(self) -> Sequence[Intention]:
         return self._intentions
+
+    @property
+    def availableIntentions(self) -> Sequence[Intention]:
+        """
+        This property is a list of all intentions that are available for the
+        user to select for a new pomodoro.
+        """
+        return [i for i in self._intentions if not i.completed and not i.abandoned]
 
     def _makeNextInterval(self, newTime: float) -> None:
         """
@@ -928,15 +949,21 @@ class TheUserModel:
         The user has determined the success criteria.
         """
         timestamp = self._lastUpdateTime
+        pomodoro.evaluation = Evaluation(result, timestamp)
         if (
             result == EvaluationResult.achieved
-            and timestamp < pomodoro.endTime
         ):
-            assert pomodoro is self._activeInterval
-            pomodoro.endTime = timestamp
-            # We now need to advance back to the current time since we've
-            # changed the landscape; there's a new interval that now starts
-            # there, and we need to emit our final progress notification and
-            # build that new interval.
-            self.advanceToTime(self._lastUpdateTime)
-        pomodoro.evaluation = Evaluation(result, timestamp)
+            assert pomodoro.intention.completed, "evaluation was set, should be complete"
+            self.userInterface.intentionCompleted(pomodoro.intention)
+            if timestamp < pomodoro.endTime:
+                # We evaluated the pomodoro as *complete* early, which is a
+                # special case.  Evaluating it in other ways allows it to
+                # continue.  (Might want an 'are you sure' in the UI for this,
+                # since other evaluations can be reversed.)
+                assert pomodoro is self._activeInterval
+                pomodoro.endTime = timestamp
+                # We now need to advance back to the current time since we've
+                # changed the landscape; there's a new interval that now starts
+                # there, and we need to emit our final progress notification
+                # and build that new interval.
+                self.advanceToTime(self._lastUpdateTime)

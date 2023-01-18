@@ -47,6 +47,8 @@ class TestUserInterface:
     clock: IReactorTime
     actions: list[TestInterval] = field(default_factory=list)
     sawIntentions: list[Intention] = field(default_factory=list)
+    abandonedIntentions: list[Intention] = field(default_factory=list)
+    completedIntentions: list[Intention] = field(default_factory=list)
 
     def intervalProgress(self, percentComplete: float) -> None:
         """
@@ -73,6 +75,18 @@ class TestUserInterface:
         An intention was added to the set of intentions.
         """
         self.sawIntentions.append(intention)
+
+    def intentionCompleted(self, intention: Intention) -> None:
+        """
+        The given intention was completed.
+        """
+        self.completedIntentions.append(intention)
+
+    def intentionAbandoned(self, intention: Intention) -> None:
+        """
+        The given intention was abandoned.
+        """
+        self.abandonedIntentions.append(intention)
 
     def setIt(self, model: TheUserModel) -> AnUserInterface:
         self.theModel = model
@@ -517,20 +531,12 @@ class ModelTests(TestCase):
             + (2 * points_for_estimation),
         )
 
-        # TODO 3. adding an estimate to a pomodoro should grant some points as
-        # well, possibly only once evaluated
-
         # TODO 4. estimating & evaluating a pomodoro should grant some points
         # regardless of how long things are taking, but getting the estimate
         # correct should be a big bonus
 
         # TODO 5?: should the ideal score be calculated to include estimations?
         # (should it have multiple modes? par & birdie?)
-
-        # TODO 6: evaluating an intention successfully should remove it from
-        # the list of intentions displayed to the user for selecting.  if we
-        # somehow select one then starting a pomodoro with it should be an
-        # error.
 
     def test_achievedEarly(self) -> None:
         """
@@ -555,7 +561,11 @@ class ModelTests(TestCase):
         self.advanceTime(EARLY_COMPLETION)
         action = self.testUI.actions[0].interval
         assert isinstance(action, Pomodoro)
+        self.assertEqual(self.userModel.availableIntentions, [intent])
+        self.assertEqual(self.testUI.completedIntentions, [])
         self.userModel.evaluatePomodoro(action, EvaluationResult.achieved)
+        self.assertEqual(self.userModel.availableIntentions, [])
+        self.assertEqual(self.testUI.completedIntentions, [intent])
         self.advanceTime(1)
         self.assertEqual(
             [
