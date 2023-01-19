@@ -1,5 +1,3 @@
-
-
 @dataclass(frozen=True)
 class Duration:
     intervalType: IntervalType
@@ -82,8 +80,6 @@ class GracePeriod:
         return PomStartResult.Continued
 
 
-
-
 AnyInterval = Pomodoro | Break | GracePeriod | StartPrompt
 """
 Any interval at all.
@@ -97,3 +93,24 @@ which are replaced by a started pomodoro once it gets going; start prompts are
 just removed and grace periods are clipped out in-place with the start of the
 pomodoro going back to their genesis.
 """
+
+
+@dataclass(frozen=True)
+class GameRules:
+    streakIntervalDurations: Iterable[Duration] = field(
+        default_factory=lambda: [
+            each
+            for pomMinutes, breakMinutes in [
+                (5, 5),
+                (10, 5),
+                (20, 5),
+                (30, 10),
+            ]
+            for each in [
+                Duration(IntervalType.Pomodoro, pomMinutes * 60),
+                Duration(IntervalType.Break, breakMinutes * 60),
+            ]
+        ]
+    )
+
+
