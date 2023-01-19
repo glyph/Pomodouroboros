@@ -1,3 +1,16 @@
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Callable, ClassVar, Iterable
+
+from pomodouroboros.model.boundaries import (
+    EvaluationResult,
+    IntervalType,
+    PomStartResult,
+    ScoreEvent,
+)
+from pomodouroboros.model.intention import Intention
+
+
 @dataclass(frozen=True)
 class Duration:
     intervalType: IntervalType
@@ -16,6 +29,26 @@ class Evaluation:
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         yield EvaluationScore(self.timestamp, self.result.points)
+
+
+@dataclass
+class Break:
+    """
+    Interval where the user is taking some open-ended time to relax, with no
+    specific intention.
+    """
+
+    startTime: float
+    endTime: float
+    intervalType: ClassVar[IntervalType] = IntervalType.Break
+
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        return [BreakCompleted(self)]
+
+    def handleStartPom(
+        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+    ) -> PomStartResult:
+        return PomStartResult.OnBreak
 
 
 @dataclass
@@ -80,6 +113,30 @@ class GracePeriod:
         return PomStartResult.Continued
 
 
+@dataclass
+class StartPrompt:
+    """
+    Interval where the user is not currently in a streak, and we are prompting
+    them to get started.
+    """
+
+    startTime: float
+    endTime: float
+    pointsLost: float
+
+    intervalType: ClassVar[IntervalType] = IntervalType.StartPrompt
+
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        return ()
+
+    def handleStartPom(
+        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+    ) -> PomStartResult:
+        userModel.userInterface.intervalProgress(1.0)
+        userModel.userInterface.intervalEnd()
+        return handleIdleStartPom(userModel, startPom)
+
+
 AnyInterval = Pomodoro | Break | GracePeriod | StartPrompt
 """
 Any interval at all.
@@ -94,23 +151,9 @@ just removed and grace periods are clipped out in-place with the start of the
 pomodoro going back to their genesis.
 """
 
-
-@dataclass(frozen=True)
-class GameRules:
-    streakIntervalDurations: Iterable[Duration] = field(
-        default_factory=lambda: [
-            each
-            for pomMinutes, breakMinutes in [
-                (5, 5),
-                (10, 5),
-                (20, 5),
-                (30, 10),
-            ]
-            for each in [
-                Duration(IntervalType.Pomodoro, pomMinutes * 60),
-                Duration(IntervalType.Break, breakMinutes * 60),
-            ]
-        ]
-    )
-
-
+from pomodouroboros.model.nexus import TheUserModel, handleIdleStartPom
+from pomodouroboros.model.scoring import (
+    BreakCompleted,
+    EvaluationScore,
+    IntentionSet,
+)

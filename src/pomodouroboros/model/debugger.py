@@ -4,6 +4,3 @@ def debug(*x: object) -> None:
     """
     if 0:
         print(*x)
-
-
-

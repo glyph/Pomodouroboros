@@ -1,3 +1,10 @@
+from __future__ import annotations
+from dataclasses import dataclass, field
+
+from pomodouroboros.model.boundaries import ScoreEvent
+from pomodouroboros.model.intention import Estimate, Intention
+
+
 _is_score_event: type[ScoreEvent]
 
 
@@ -76,8 +83,6 @@ class BreakCompleted:
 _is_score_event = BreakCompleted
 
 
-
-
 @dataclass
 class EstimationAccuracy:
     intention: Intention
@@ -129,6 +134,8 @@ class EstimationAccuracy:
 
 
 _is_score_event = EstimationAccuracy
+
+
 @dataclass
 class AttemptedEstimation:
     """
@@ -185,3 +192,4 @@ class EvaluationScore:
 
 
 _is_score_event = EvaluationScore
+from pomodouroboros.model.intervals import Break

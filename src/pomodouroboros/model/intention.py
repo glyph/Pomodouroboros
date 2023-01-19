@@ -1,3 +1,8 @@
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Callable, ClassVar, Iterable
+
+
 @dataclass
 class Estimate:
     """
@@ -6,26 +11,6 @@ class Estimate:
 
     duration: float  # how long do we think the thing is going to take?
     madeAt: float  # when was this estimate made?
-
-
-@dataclass
-class Break:
-    """
-    Interval where the user is taking some open-ended time to relax, with no
-    specific intention.
-    """
-
-    startTime: float
-    endTime: float
-    intervalType: ClassVar[IntervalType] = IntervalType.Break
-
-    def scoreEvents(self) -> Iterable[ScoreEvent]:
-        return [BreakCompleted(self)]
-
-    def handleStartPom(
-        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
-    ) -> PomStartResult:
-        return PomStartResult.OnBreak
 
 
 @dataclass
@@ -65,3 +50,22 @@ class Intention:
             yield IntentionCompleted(self)
             if self.estimates:
                 yield EstimationAccuracy(self)
+
+
+# Circular imports
+from pomodouroboros.model.boundaries import (
+    EvaluationResult,
+    IntervalType,
+    PomStartResult,
+    ScoreEvent,
+)
+
+from pomodouroboros.model.intervals import Pomodoro
+from pomodouroboros.model.nexus import TheUserModel
+from pomodouroboros.model.scoring import (
+    AttemptedEstimation,
+    BreakCompleted,
+    EstimationAccuracy,
+    IntentionCompleted,
+    IntentionCreatedEvent,
+)

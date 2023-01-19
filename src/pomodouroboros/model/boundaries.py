@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+from typing import Protocol
 
 
 class IntervalType(Enum):
@@ -139,3 +144,6 @@ class ScoreEvent(Protocol):
         """
 
 
+from pomodouroboros.model.intention import Intention
+from pomodouroboros.model.intervals import AnyInterval
+from pomodouroboros.model.nexus import TheUserModel

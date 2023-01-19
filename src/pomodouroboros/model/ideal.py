@@ -1,3 +1,26 @@
+from __future__ import annotations
+from copy import deepcopy
+from dataclasses import dataclass, replace
+from itertools import count
+from typing import Iterator
+
+from pomodouroboros.model.boundaries import (
+    EvaluationResult,
+    NoUserInterface,
+    PomStartResult,
+    ScoreEvent,
+)
+from pomodouroboros.model.debugger import debug
+from pomodouroboros.model.intention import Intention
+from pomodouroboros.model.intervals import (
+    AnyInterval,
+    Break,
+    Duration,
+    GracePeriod,
+    Pomodoro,
+)
+
+
 @dataclass
 class IdealScoreInfo:
     """
@@ -76,7 +99,7 @@ def idealFuture(
         return newPlaceholder()
 
     while hypothetical._lastUpdateTime <= workPeriodEnd:
-        workingInterval = hypothetical._activeInterval
+        workingInterval: AnyInterval | None = hypothetical._activeInterval
         if isinstance(workingInterval, (type(None), GracePeriod)):
             # We are either idle or in a grace period, so we should
             # immediately start a pomodoro.
@@ -137,3 +160,6 @@ def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
             ).scoreEvents(endTime=workPeriodEnd)
         ),
     )
+
+
+from pomodouroboros.model.nexus import TheUserModel
