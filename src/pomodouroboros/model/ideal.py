@@ -11,6 +11,7 @@ from pomodouroboros.model.boundaries import (
     ScoreEvent,
 )
 from pomodouroboros.model.debugger import debug
+
 if TYPE_CHECKING:
     from pomodouroboros.model.nexus import TheUserModel
     from pomodouroboros.model.intention import Intention
@@ -22,7 +23,6 @@ from pomodouroboros.model.intervals import (
     GracePeriod,
     Pomodoro,
 )
-
 
 
 @dataclass

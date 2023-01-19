@@ -14,6 +14,7 @@ from pomodouroboros.model.boundaries import (
     ScoreEvent,
 )
 from pomodouroboros.model.intention import Intention
+
 if TYPE_CHECKING:
     from pomodouroboros.model.nexus import TheUserModel
 
@@ -158,6 +159,7 @@ just removed and grace periods are clipped out in-place with the start of the
 pomodoro going back to their genesis.
 """
 
+
 def handleIdleStartPom(
     userModel: TheUserModel, startPom: Callable[[float, float], None]
 ) -> PomStartResult:
@@ -177,5 +179,3 @@ def handleIdleStartPom(
 
     startPom(startTime, endTime)
     return PomStartResult.Started
-
-

@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from pomodouroboros.model.intervals import Pomodoro
 
 
-
 @dataclass
 class Estimate:
     """
@@ -69,5 +68,3 @@ class Intention:
             yield IntentionCompleted(self)
             if self.estimates:
                 yield EstimationAccuracy(self)
-
-
