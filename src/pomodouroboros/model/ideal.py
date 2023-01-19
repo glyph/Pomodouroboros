@@ -2,7 +2,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from itertools import count
-from typing import Iterator
+from typing import Iterator, TYPE_CHECKING
 
 from pomodouroboros.model.boundaries import (
     EvaluationResult,
@@ -11,7 +11,10 @@ from pomodouroboros.model.boundaries import (
     ScoreEvent,
 )
 from pomodouroboros.model.debugger import debug
-from pomodouroboros.model.intention import Intention
+if TYPE_CHECKING:
+    from pomodouroboros.model.nexus import TheUserModel
+    from pomodouroboros.model.intention import Intention
+
 from pomodouroboros.model.intervals import (
     AnyInterval,
     Break,
@@ -19,6 +22,7 @@ from pomodouroboros.model.intervals import (
     GracePeriod,
     Pomodoro,
 )
+
 
 
 @dataclass
@@ -160,6 +164,3 @@ def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
             ).scoreEvents(endTime=workPeriodEnd)
         ),
     )
-
-
-from pomodouroboros.model.nexus import TheUserModel

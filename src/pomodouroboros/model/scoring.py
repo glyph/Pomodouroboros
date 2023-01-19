@@ -1,8 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 from dataclasses import dataclass, field
 
 from pomodouroboros.model.boundaries import ScoreEvent
-from pomodouroboros.model.intention import Estimate, Intention
+
+if TYPE_CHECKING:
+    from pomodouroboros.model.intervals import Break
+    from pomodouroboros.model.intention import Estimate, Intention
 
 
 _is_score_event: type[ScoreEvent]
@@ -192,4 +196,3 @@ class EvaluationScore:
 
 
 _is_score_event = EvaluationScore
-from pomodouroboros.model.intervals import Break

@@ -1,26 +1,13 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Iterator, Sequence
 
-from pomodouroboros.model.boundaries import (
-    AnUserInterface,
-    EvaluationResult,
-    IntervalType,
-    PomStartResult,
-    ScoreEvent,
-    UserInterfaceFactory,
-)
+from pomodouroboros.model.boundaries import AnUserInterface, EvaluationResult, IntervalType, PomStartResult, ScoreEvent, UserInterfaceFactory
 from pomodouroboros.model.debugger import debug
+from pomodouroboros.model.ideal import idealScore
 from pomodouroboros.model.intention import Estimate, Intention
-from pomodouroboros.model.intervals import (
-    AnyInterval,
-    Break,
-    Duration,
-    Evaluation,
-    GracePeriod,
-    Pomodoro,
-    StartPrompt,
-)
+from pomodouroboros.model.intervals import AnyInterval, Break, Duration, Evaluation, GracePeriod, Pomodoro, StartPrompt, handleIdleStartPom
 
 
 @dataclass(frozen=True)
@@ -40,27 +27,6 @@ class GameRules:
             ]
         ]
     )
-
-
-def handleIdleStartPom(
-    userModel: TheUserModel, startPom: Callable[[float, float], None]
-) -> PomStartResult:
-    userModel._upcomingDurations = iter(
-        userModel._rules.streakIntervalDurations
-    )
-    nextDuration = next(userModel._upcomingDurations, None)
-    assert (
-        nextDuration is not None
-    ), "empty streak interval durations is invalid"
-    assert (
-        nextDuration.intervalType == IntervalType.Pomodoro
-    ), "streak must begin with a pomodoro"
-
-    startTime = userModel._lastUpdateTime
-    endTime = userModel._lastUpdateTime + nextDuration.seconds
-
-    startPom(startTime, endTime)
-    return PomStartResult.Started
 
 
 @dataclass
@@ -329,4 +295,3 @@ def nextInterval(
     return StartPrompt(timestamp, nextDrop, scoreInfo.pointsLost())
 
 
-from pomodouroboros.model.ideal import idealScore

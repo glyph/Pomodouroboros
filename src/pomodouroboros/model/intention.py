@@ -1,6 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Callable, ClassVar, Iterable
+from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pomodouroboros.model.intervals import Pomodoro
+
 
 
 @dataclass
@@ -60,8 +64,6 @@ from pomodouroboros.model.boundaries import (
     ScoreEvent,
 )
 
-from pomodouroboros.model.intervals import Pomodoro
-from pomodouroboros.model.nexus import TheUserModel
 from pomodouroboros.model.scoring import (
     AttemptedEstimation,
     BreakCompleted,

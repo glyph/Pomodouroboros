@@ -1,7 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Iterable
+from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
+from pomodouroboros.model.scoring import (
+    BreakCompleted,
+    EvaluationScore,
+    IntentionSet,
+)
 from pomodouroboros.model.boundaries import (
     EvaluationResult,
     IntervalType,
@@ -9,6 +14,8 @@ from pomodouroboros.model.boundaries import (
     ScoreEvent,
 )
 from pomodouroboros.model.intention import Intention
+if TYPE_CHECKING:
+    from pomodouroboros.model.nexus import TheUserModel
 
 
 @dataclass(frozen=True)
@@ -151,9 +158,24 @@ just removed and grace periods are clipped out in-place with the start of the
 pomodoro going back to their genesis.
 """
 
-from pomodouroboros.model.nexus import TheUserModel, handleIdleStartPom
-from pomodouroboros.model.scoring import (
-    BreakCompleted,
-    EvaluationScore,
-    IntentionSet,
-)
+def handleIdleStartPom(
+    userModel: TheUserModel, startPom: Callable[[float, float], None]
+) -> PomStartResult:
+    userModel._upcomingDurations = iter(
+        userModel._rules.streakIntervalDurations
+    )
+    nextDuration = next(userModel._upcomingDurations, None)
+    assert (
+        nextDuration is not None
+    ), "empty streak interval durations is invalid"
+    assert (
+        nextDuration.intervalType == IntervalType.Pomodoro
+    ), "streak must begin with a pomodoro"
+
+    startTime = userModel._lastUpdateTime
+    endTime = userModel._lastUpdateTime + nextDuration.seconds
+
+    startPom(startTime, endTime)
+    return PomStartResult.Started
+
+

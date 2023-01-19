@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pomodouroboros.model.intention import Intention
+    from pomodouroboros.model.intervals import AnyInterval
+    from pomodouroboros.model.nexus import TheUserModel
 
 
 class IntervalType(Enum):
@@ -142,8 +147,3 @@ class ScoreEvent(Protocol):
         """
         The point in time where this scoring event occurred.
         """
-
-
-from pomodouroboros.model.intention import Intention
-from pomodouroboros.model.intervals import AnyInterval
-from pomodouroboros.model.nexus import TheUserModel
