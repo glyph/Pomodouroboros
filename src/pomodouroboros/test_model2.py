@@ -137,35 +137,46 @@ class ModelTests(TestCase):
         When the user has a session started, they will receive notifications
         telling them about decreases to their potential maximum score.
         """
-        self.userModel.addSession(1000, 2000)
-        self.advanceTime(1100)
-        self.advanceTime(1)
-        self.advanceTime(1)
-        self.advanceTime(1)
-        self.advanceTime(1)
-        self.advanceTime(1)
-        self.advanceTime(497)
-        self.advanceTime(100)
-        # self.advanceTime(1)
+        sessionStart = 1000
+        realTimeStartDelay = 100.0
+        self.userModel.addSession(sessionStart, 2000)
+        self.advanceTime(sessionStart + realTimeStartDelay)
+        self.advanceTime(1.0)
+        self.advanceTime(1.0)
+        self.advanceTime(1.0)
+        self.advanceTime(1.0)
+        self.advanceTime(1.0)
+        self.advanceTime(197.0)
+        self.advanceTime(100.0)
+        self.advanceTime(103.0)
+
         self.assertEqual(
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1700.0, pointsLost=3
+                        startTime=1100.0, endTime=1400.0, pointsLost=3.0
                     ),
                     actualStartTime=1100.0,
-                    actualEndTime=1702.0,
+                    actualEndTime=1402.0,
                     currentProgress=[
                         0.0,
-                        0.0016666666666666668,
                         0.0033333333333333335,
-                        0.005,
                         0.006666666666666667,
-                        0.008333333333333333,
-                        0.8366666666666667,
+                        0.01,
+                        0.013333333333333334,
+                        0.016666666666666666,
+                        0.6733333333333333,
                         1.0,
                     ],
-                )
+                ),
+                TestInterval(
+                    interval=StartPrompt(
+                        startTime=1402.0, endTime=1700.0, pointsLost=11.25
+                    ),
+                    actualStartTime=1402.0,
+                    actualEndTime=None,
+                    currentProgress=[0.0, 0.34563758389261745],
+                ),
             ],
             self.testUI.actions,
         )
@@ -187,13 +198,13 @@ class ModelTests(TestCase):
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1700.0, pointsLost=3
+                        startTime=1100.0, endTime=1400.0, pointsLost=3.0
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1150.0,
                     currentProgress=[
                         0.0,
-                        50.0 / 600.0,
+                        50.0 / 300.0,
                         1.0,
                     ],
                 ),
@@ -220,13 +231,17 @@ class ModelTests(TestCase):
         could execute.
         """
         self.advanceTime(1000)
-        ideal = idealScore(self.userModel, 2000)
-        self.assertEqual(ideal.pointsLost(), 3)
-        self.assertEqual(ideal.nextPointLoss, 1600)
+        ideal = idealScore(self.userModel, 2000.0)
+        self.assertEqual(ideal.nextPointLoss, 1400.0)
+        pointsForBreak = 1.0
+        pointsForSecondIntentionSet = 2.0
+        self.assertEqual(
+            ideal.pointsLost(), pointsForBreak + pointsForSecondIntentionSet
+        )
         self.advanceTime(1600)
-        ideal = idealScore(self.userModel, 2000)
-        self.assertEqual(ideal.pointsLost(), 0)
+        ideal = idealScore(self.userModel, 2000.0)
         self.assertEqual(ideal.nextPointLoss, None)
+        self.assertEqual(ideal.pointsLost(), 0.0)
 
     def test_exactAdvance(self) -> None:
         """
@@ -519,8 +534,9 @@ class ModelTests(TestCase):
         # 4 points for the second
         points_for_first_interval = 1
         points_for_second_interval = 2
-        points_for_intention = 1
+        points_for_intention = 3
         points_for_estimation = 1
+        points_for_break = 1.0
 
         self.assertEqual(
             sum(each.points for each in events),
@@ -528,12 +544,9 @@ class ModelTests(TestCase):
             (points_for_first_interval * 2)
             + (points_for_second_interval)
             + (3 * points_for_intention)
-            + (2 * points_for_estimation),
+            + (2 * points_for_estimation)
+            + (2 * points_for_break),
         )
-
-        # TODO 4. estimating & evaluating a pomodoro should grant some points
-        # regardless of how long things are taking, but getting the estimate
-        # correct should be a big bonus
 
         # TODO 5?: should the ideal score be calculated to include estimations?
         # (should it have multiple modes? par & birdie?)

@@ -47,8 +47,10 @@ itself.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
+from itertools import count
 from typing import (
     Callable,
     ClassVar,
@@ -248,7 +250,7 @@ class Break:
     intervalType: ClassVar[IntervalType] = IntervalType.Break
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
-        return ()
+        return [BreakCompleted(self)]
 
     def handleStartPom(
         self, userModel: TheUserModel, startPom: Callable[[float, float], None]
@@ -321,11 +323,10 @@ class Intention:
             and evaluation.result == EvaluationResult.achieved
         )
 
-    def scoreEvents(self) -> Iterable[ScoreEvent]:
-        # If we've ever been used in a pomodoro even once, the user gets a
-        # point for creating this intention.
-        if self.pomodoros:
-            yield IntentionCreatedEvent(self)
+    def intentionScoreEvents(
+        self, intentionIndex: int
+    ) -> Iterable[ScoreEvent]:
+        yield IntentionCreatedEvent(self, intentionIndex)
         for estimate, _ in zip(self.estimates, range(len(self.pomodoros) + 1)):
             # Only give a point for one estimation per attempt; estimating is
             # good, but correcting more than once per work session is just
@@ -361,10 +362,11 @@ _is_score_event: type[ScoreEvent]
 @dataclass
 class IntentionCreatedEvent:
     """
-    An intention was created (and used at least once in a pomodoro).
+    You get points for creating intentions.
     """
 
     intention: Intention
+    intentionIndex: int
 
     @property
     def time(self) -> float:
@@ -373,13 +375,18 @@ class IntentionCreatedEvent:
     @property
     def points(self) -> int:
         """
-        Creating an intention (and then using it) always only gives a single
-        point.  Creating intentions is good and it's good to use them.
+        Creating intentions is good, but there are diminishing returns.  The
+        first 3 intentions will give you 3 points each, the next 3 will give
+        you 2 points, and the next 3 will give you 1 point each.  Every
+        intention after the 9th one is worth 0 points.
         """
-        return 1
+        # >>> [max(0, 3-(x//3)) for x in range(15)]
+        # [3, 3, 3, 2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+        return max(0, 3 - (self.intentionIndex // 3))
 
 
 _is_score_event = IntentionCreatedEvent
+
 
 @dataclass
 class IntentionCompleted:
@@ -404,6 +411,29 @@ class IntentionCompleted:
 
 
 _is_score_event = IntentionCompleted
+
+
+@dataclass
+class BreakCompleted:
+    """
+    A break being completed gives us one point.
+    """
+
+    interval: Break
+
+    @property
+    def time(self) -> float:
+        return self.interval.endTime
+
+    @property
+    def points(self) -> float:
+
+        return 1.0
+
+
+_is_score_event = BreakCompleted
+
+
 @dataclass
 class EstimationAccuracy:
     intention: Intention
@@ -420,10 +450,15 @@ class EstimationAccuracy:
         When an intention is completed, give some points for how close the
         estimate was.
         """
-        actualTimeTaken = sum((each.endTime-each.startTime) for each in self.intention.pomodoros)
+        actualTimeTaken = sum(
+            (each.endTime - each.startTime)
+            for each in self.intention.pomodoros
+        )
         timeOfEvaluation = self.time
         allEstimateScores: list[int] = []
-        for estimate, recencyCap in zip(self.intention.estimates[-10::-1], range(10, 1, -1)):
+        for estimate, recencyCap in zip(
+            self.intention.estimates[-10::-1], range(10, 1, -1)
+        ):
             # Counting down from the most recent estimate to the 10th most
             # recent, we give progressively smaller caps to the estimate.
             timeSinceEstimate = timeOfEvaluation - estimate.madeAt
@@ -434,17 +469,24 @@ class EstimationAccuracy:
             # task that takes a super long time and you have dozens of
             # pomodoros on it, estimate that you only have a single pomdoro
             # left, then wait a day before completing it.
-            timeSinceEstimateCap = int(min(1.0, timeSinceEstimate / actualTimeTaken) * 10)
+            timeSinceEstimateCap = int(
+                min(1.0, timeSinceEstimate / actualTimeTaken) * 10
+            )
             # You obviously get more points for having made more accurate estimates.
             distanceSeconds = abs(actualTimeTaken - estimate.duration)
-            distanceHours = distanceSeconds / (60*60)
+            distanceHours = distanceSeconds / (60 * 60)
             # within 100 hours you can get 10 points, within 90 hours you can
             # get 9, etc
             distanceScore = min(10, int(distanceHours / 10))
-            allEstimateScores.append(min([distanceScore, timeSinceEstimateCap, recencyCap]))
+            allEstimateScores.append(
+                min([distanceScore, timeSinceEstimateCap, recencyCap])
+            )
         return max(allEstimateScores)
 
-_is_score_event=EstimationAccuracy
+
+_is_score_event = EstimationAccuracy
+
+
 @dataclass
 class AttemptedEstimation:
     """
@@ -519,7 +561,7 @@ class IntentionSet:
     """
 
     @property
-    def points(self) -> int:
+    def points(self) -> float:
         """
         Setting an intention yields 1 point.
         """
@@ -680,14 +722,20 @@ def idealFuture(
         return iter(previouslyUpcoming)
 
     model._upcomingDurations = split()
-    hypothetical = replace(
-        model,
-        _intentions=model._intentions[:],
-        _interfaceFactory=lambda whatever: NoUserInterface(),
-        _userInterface=NoUserInterface(),
-        _upcomingDurations=split(),
-        _sessions=[],
-        _allStreaks=[each[:] for each in model._allStreaks],
+    hypothetical = deepcopy(
+        replace(
+            model,
+            # TODO: intentions are mutable! we need to *deep*-clone this object,
+            # otherwise our hypothetical evaluations will actually complete
+            # existing intentions.
+            _intentions=model._intentions[:],
+            _interfaceFactory=lambda whatever: NoUserInterface(),
+            _userInterface=NoUserInterface(),
+            _upcomingDurations=split(),
+            _sessions=[],
+            # TODO: intervals (specifically: pomodoros) are also mutable.
+            _allStreaks=[each[:] for each in model._allStreaks],
+        )
     )
     # because it's init=False we have to copy it manually
     hypothetical._lastUpdateTime = model._lastUpdateTime
@@ -695,28 +743,44 @@ def idealFuture(
     debug("advancing to activity start", model._lastUpdateTime, activityStart)
     hypothetical.advanceToTime(activityStart)
 
+    c = count()
+
+    def newPlaceholder() -> Intention:
+        return hypothetical.addIntention(f"placeholder {next(c)}", None)
+
+    fillerIntentions = [
+        newPlaceholder()
+        for _ in range(max(0, 9 - len(hypothetical.intentions)))
+    ]
+    # fillerIntentions: list[Intention] = []
+
+    def availablePlaceholder() -> Intention:
+        if fillerIntentions:
+            return fillerIntentions.pop(0)
+        return newPlaceholder()
+
     while hypothetical._lastUpdateTime <= workPeriodEnd:
-        if hypothetical._activeInterval is not None:
-            debug("advancing to interval end")
-            hypothetical.advanceToTime(
-                hypothetical._activeInterval.endTime + 1
-            )
-            if isinstance(hypothetical._activeInterval, Pomodoro):
-                hypothetical.evaluatePomodoro(
-                    hypothetical._activeInterval, EvaluationResult.achieved
-                )
-            # TODO: when estimation gets a score, make sure to put one that
-            # is exactly correct here.
-        if isinstance(hypothetical._activeInterval, (type(None), GracePeriod)):
+        workingInterval = hypothetical._activeInterval
+        if isinstance(workingInterval, (type(None), GracePeriod)):
             # We are either idle or in a grace period, so we should
             # immediately start a pomodoro.
 
-            intention = hypothetical.addIntention("placeholder", None)
+            intention = availablePlaceholder()
             startResult = hypothetical.startPomodoro(intention)
             assert startResult in {
                 PomStartResult.Started,
                 PomStartResult.Continued,
             }, "invariant failed: could not actually start pomodoro"
+        elif isinstance(workingInterval, (Break, Pomodoro)):
+            debug("advancing to interval end", workingInterval)
+            hypothetical.advanceToTime(workingInterval.endTime)
+            if isinstance(workingInterval, Pomodoro):
+                debug("achieving")
+                hypothetical.evaluatePomodoro(
+                    workingInterval, EvaluationResult.achieved
+                )
+            # TODO: we need to be exactly estimating every intention to get
+            # maximum points.
     return hypothetical
 
 
@@ -729,17 +793,21 @@ def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
     perfectly.
     """
     debug("ideal future 1")
-    currentIdeal = idealFuture(model, model._lastUpdateTime, workPeriodEnd)
-    idealScoreNow = list(currentIdeal.scoreEvents(endTime=workPeriodEnd))
+    workPeriodBegin = model._lastUpdateTime
+    currentIdeal = idealFuture(model, workPeriodBegin, workPeriodEnd)
+    idealScoreNow = sorted(
+        currentIdeal.scoreEvents(endTime=workPeriodEnd), key=lambda it: it.time
+    )
     if not idealScoreNow:
         return IdealScoreInfo(
-            now=model._lastUpdateTime,
+            now=workPeriodBegin,
             idealScoreNow=idealScoreNow,
             workPeriodEnd=workPeriodEnd,
             nextPointLoss=None,
             idealScoreNext=idealScoreNow,
         )
-    pointLossTime = idealScoreNow[-1].time
+    latestScoreTime = idealScoreNow[-1].time
+    pointLossTime = workPeriodBegin + (workPeriodEnd - latestScoreTime)
     return IdealScoreInfo(
         now=model._lastUpdateTime,
         idealScoreNow=idealScoreNow,
@@ -747,7 +815,7 @@ def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
         nextPointLoss=pointLossTime,
         idealScoreNext=list(
             (
-                idealFuture(model, pointLossTime, workPeriodEnd)
+                idealFuture(model, pointLossTime + 1.0, workPeriodEnd)
                 if idealScoreNow
                 else currentIdeal
             ).scoreEvents(endTime=workPeriodEnd)
@@ -795,11 +863,10 @@ class TheUserModel:
             startTime = self._initialTime
         if endTime is None:
             endTime = self._lastUpdateTime
-        for intention in self._intentions:
-            for event in intention.scoreEvents():
-                if event.time > endTime:
-                    break
-                yield event
+        for intentionIndex, intention in enumerate(self._intentions):
+            for event in intention.intentionScoreEvents(intentionIndex):
+                if event.time <= endTime:
+                    yield event
         for streak in self._allStreaks:
             for interval in streak:
                 if interval.startTime > startTime:
@@ -807,9 +874,8 @@ class TheUserModel:
                         debug(
                             "score", event.time > endTime, event, event.points
                         )
-                        if event.time > endTime:
-                            break
-                        yield event
+                        if event.time <= endTime:
+                            yield event
 
     @property
     def userInterface(self) -> AnUserInterface:
@@ -830,7 +896,9 @@ class TheUserModel:
         This property is a list of all intentions that are available for the
         user to select for a new pomodoro.
         """
-        return [i for i in self._intentions if not i.completed and not i.abandoned]
+        return [
+            i for i in self._intentions if not i.completed and not i.abandoned
+        ]
 
     def _makeNextInterval(self, newTime: float) -> None:
         """
@@ -950,10 +1018,10 @@ class TheUserModel:
         """
         timestamp = self._lastUpdateTime
         pomodoro.evaluation = Evaluation(result, timestamp)
-        if (
-            result == EvaluationResult.achieved
-        ):
-            assert pomodoro.intention.completed, "evaluation was set, should be complete"
+        if result == EvaluationResult.achieved:
+            assert (
+                pomodoro.intention.completed
+            ), "evaluation was set, should be complete"
             self.userInterface.intentionCompleted(pomodoro.intention)
             if timestamp < pomodoro.endTime:
                 # We evaluated the pomodoro as *complete* early, which is a
