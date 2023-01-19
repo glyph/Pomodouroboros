@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol, TYPE_CHECKING
 
+
 if TYPE_CHECKING:
-    from pomodouroboros.model.intention import Intention
     from pomodouroboros.model.intervals import AnyInterval
     from pomodouroboros.model.nexus import TheUserModel
+    from pomodouroboros.model.intention import Intention
 
 
 class IntervalType(Enum):

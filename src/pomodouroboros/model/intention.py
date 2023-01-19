@@ -2,6 +2,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
+from pomodouroboros.model.boundaries import (
+    EvaluationResult,
+    IntervalType,
+    PomStartResult,
+    ScoreEvent,
+)
+
+from pomodouroboros.model.scoring import (
+    AttemptedEstimation,
+    BreakCompleted,
+    EstimationAccuracy,
+    IntentionCompleted,
+    IntentionCreatedEvent,
+)
+
 if TYPE_CHECKING:
     from pomodouroboros.model.intervals import Pomodoro
 
@@ -56,18 +71,3 @@ class Intention:
                 yield EstimationAccuracy(self)
 
 
-# Circular imports
-from pomodouroboros.model.boundaries import (
-    EvaluationResult,
-    IntervalType,
-    PomStartResult,
-    ScoreEvent,
-)
-
-from pomodouroboros.model.scoring import (
-    AttemptedEstimation,
-    BreakCompleted,
-    EstimationAccuracy,
-    IntentionCompleted,
-    IntentionCreatedEvent,
-)
