@@ -153,8 +153,11 @@ class AttemptedEstimation:
         return self.estimate.madeAt
 
     @property
-    def points(self) -> int:
-        return 1
+    def points(self) -> float:
+        return 1.0
+
+
+_is_score_event = AttemptedEstimation
 
 
 @dataclass

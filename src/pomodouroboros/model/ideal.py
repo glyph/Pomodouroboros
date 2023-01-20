@@ -68,15 +68,11 @@ def idealFuture(
     hypothetical = deepcopy(
         replace(
             model,
-            # TODO: intentions are mutable! we need to *deep*-clone this object,
-            # otherwise our hypothetical evaluations will actually complete
-            # existing intentions.
             _intentions=model._intentions[:],
             _interfaceFactory=lambda whatever: NoUserInterface(),
             _userInterface=NoUserInterface(),
             _upcomingDurations=split(),
             _sessions=[],
-            # TODO: intervals (specifically: pomodoros) are also mutable.
             _allStreaks=[each[:] for each in model._allStreaks],
         )
     )
