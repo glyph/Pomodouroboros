@@ -5,12 +5,12 @@ from unittest import TestCase
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
-from .model.boundaries import AnUserInterface, EvaluationResult, PomStartResult
-from .model.debugger import debug
-from .model.ideal import idealScore
-from .model.intention import Intention
-from .model.intervals import AnyInterval, Break, Evaluation, GracePeriod, Pomodoro, StartPrompt
-from .model.nexus import TheUserModel
+from ..boundaries import AnUserInterface, EvaluationResult, PomStartResult
+from ..debugger import debug
+from ..ideal import idealScore
+from ..intention import Intention
+from ..intervals import AnyInterval, Break, Evaluation, GracePeriod, Pomodoro, StartPrompt
+from ..nexus import TheUserModel
 
 
 @dataclass
