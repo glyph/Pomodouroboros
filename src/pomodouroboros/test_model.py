@@ -24,5 +24,7 @@ class DayTests(TestCase):
             len(simpleDay.pendingIntervals),
             (8 * 2 * 2)  # start with 8 hours broken into 2 poms, each pom
                          # broken into pom/break
-            - 2,  # subtract out 2 breaks because the long breaks are contiguous
+            - 3,  # subtract out 3 breaks because the long breaks are
+                  # contiguous (including contiguous with the previous
+                  # pomodoro's break)
         )

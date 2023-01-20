@@ -6,278 +6,26 @@ from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    NoReturn,
-    Optional,
-    Tuple,
-)
+from typing import Any, Callable, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple
 
+from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.base import DelayedCall
 from twisted.internet.interfaces import IDelayedCall, IReactorTime
 from twisted.internet.task import LoopingCall
 from twisted.python.failure import Failure
 
 import math
-from ..pommodel import (
-    Break,
-    Day,
-    Intention,
-    IntentionResponse,
-    IntentionSuccess,
-    Interval,
-    Pomodoro,
-)
+from ..pommodel import Break, Day, Intention, IntentionResponse, IntentionSuccess, Interval, Pomodoro
 from ..storage import DayLoader, TEST_MODE
+from .progress_hud import ProgressController
 from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
-from .notifs import (
-    askForIntent,
-    notify,
-    setupNotifications,
-    withdrawIntentPrompt,
-)
+from .notifs import askForIntent, notify, setupNotifications, withdrawIntentPrompt
 from .quickapp import Status, mainpoint, quit
-from AppKit import (
-    NSAlert,
-    NSAlertFirstButtonReturn,
-    NSAlertSecondButtonReturn,
-    NSAlertThirdButtonReturn,
-    NSApp,
-    NSApplicationDidChangeScreenParametersNotification,
-    NSBackingStoreBuffered,
-    NSBezierPath,
-    NSBorderlessWindowMask,
-    NSCell,
-    NSColor,
-    NSCompositingOperationCopy,
-    NSEvent,
-    NSFloatingWindowLevel,
-    NSFocusRingTypeNone,
-    NSMenu,
-    NSMenuItem,
-    NSNib,
-    NSNotificationCenter,
-    NSRectFill,
-    NSRectFillListWithColorsUsingOperation,
-    NSResponder,
-    NSScreen,
-    NSTextField,
-    NSTextFieldCell,
-    NSView,
-    NSWindow,
-    NSWindowCollectionBehaviorCanJoinAllSpaces,
-    NSWindowCollectionBehaviorStationary,
-)
-
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
-
+from AppKit import NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertThirdButtonReturn, NSApp, NSApplicationDidChangeScreenParametersNotification, NSBackingStoreBuffered, NSBezierPath, NSBorderlessWindowMask, NSCell, NSColor, NSCompositingOperationCopy, NSEvent, NSFloatingWindowLevel, NSFocusRingTypeNone, NSMenu, NSMenuItem, NSNib, NSNotificationCenter, NSRectFill, NSRectFillListWithColorsUsingOperation, NSResponder, NSScreen, NSTextField, NSTextFieldCell, NSView, NSWindow, NSWindowCollectionBehaviorCanJoinAllSpaces, NSWindowCollectionBehaviorStationary
 from PyObjCTools.AppHelper import callLater
-from dateutil.tz import tzlocal
 from dateutil.relativedelta import relativedelta
+from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
-
-
-# fillRect = NSBezierPath.fillRect_
-fillRect = NSRectFill
-
-
-def _removeWindows(self: ProgressController) -> None:
-    """
-    Remove the progress views from the given ProgressController.
-    """
-    self.progressViews = []
-    self.hudWindows, oldHudWindows = [], self.hudWindows
-    for eachWindow in oldHudWindows:
-        eachWindow.close()
-        eachWindow.setContentView_(None)
-
-@dataclass
-class ProgressController(object):
-    """
-    Coordinating object that maintains a set of BigProgressViews on each display.
-    """
-
-    percentage: float = 0.0
-    leftColor: NSColor = NSColor.greenColor()
-    rightColor: NSColor = NSColor.redColor()
-    progressViews: List[BigProgressView] = field(default_factory=list)
-    hudWindows: List[HUDWindow] = field(default_factory=list)
-    alphaValue: float = 0.1
-    shouldBeVisible: bool = False
-
-    def setPercentage(self, percentage: float) -> None:
-        """
-        set the percentage complete
-        """
-        self.percentage = percentage
-        for eachView in self.progressViews:
-            eachView.setPercentage_(percentage)
-
-    def setColors(self, left: NSColor, right: NSColor) -> None:
-        """
-        set the left and right colors
-        """
-        self.leftColor = left
-        self.rightColor = right
-        for eachView in self.progressViews:
-            eachView.setLeftColor_(left)
-            eachView.setRightColor_(right)
-
-    def show(self) -> None:
-        """
-        Display this progress controller on all displays
-        """
-        self.shouldBeVisible = True
-        if not self.progressViews:
-            self.redisplay()
-
-    def redisplay(self) -> None:
-        if self.shouldBeVisible:
-            _removeWindows(self)
-            for eachScreen in NSScreen.screens():
-                (win := hudWindowOn(eachScreen)).setContentView_(
-                    newProgressView := BigProgressView.alloc().init()
-                )
-                win.setAlphaValue_(self.alphaValue)
-                newProgressView.setLeftColor_(self.leftColor)
-                newProgressView.setRightColor_(self.rightColor)
-                newProgressView.setPercentage_(self.percentage)
-                self.hudWindows.append(win)
-                self.progressViews.append(newProgressView)
-
-    def hide(self) -> None:
-        self.shouldBeVisible = False
-        _removeWindows(self)
-
-    def setAlpha(self, alphaValue: float) -> None:
-        self.alphaValue = alphaValue
-        for eachWindow in self.hudWindows:
-            eachWindow.setAlphaValue_(alphaValue)
-
-
-def hudWindowOn(screen: NSScreen) -> HUDWindow:
-    app = NSApp()
-    frame = screen.frame()
-    height = 50
-    hpadding = frame.size.width // 10
-    vpadding = frame.size.height // (4 if TEST_MODE else 3)
-    contentRect = NSRect(
-        (hpadding + frame.origin[0], vpadding + frame.origin[1]),
-        (frame.size.width - (hpadding * 2), height),
-    )
-    styleMask = NSBorderlessWindowMask
-    backing = NSBackingStoreBuffered
-    defer = False
-    win = HUDWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-        contentRect,
-        styleMask,
-        backing,
-        defer,
-    )
-    # Let python handle the refcounting thanks
-    win.setReleasedWhenClosed_(False)
-    win.setCollectionBehavior_(
-        NSWindowCollectionBehaviorCanJoinAllSpaces
-        | NSWindowCollectionBehaviorStationary
-    )
-    win.setIgnoresMouseEvents_(True)
-    win.setBackgroundColor_(NSColor.blackColor())
-    win.setLevel_(NSFloatingWindowLevel)
-    win.orderFront_(app)
-    return win
-
-
-class BigProgressView(NSView):
-    """
-    View that draws a big red/green progress bar rectangle
-    """
-
-    _percentage = 0.0
-    _leftColor = NSColor.greenColor()
-    _rightColor = NSColor.redColor()
-
-    def isOpaque(self) -> bool:
-        """
-        This view is opaque, try to be faster compositing it
-        """
-        return True
-
-    @classmethod
-    def defaultFocusRingType(self) -> int:
-        return NSFocusRingTypeNone
-
-    def percentage(self) -> float:
-        return self._percentage
-
-    def setPercentage_(self, newPercentage: float) -> None:
-        """
-        Set the percentage-full here.
-        """
-        self._percentage = newPercentage
-        self.setNeedsDisplay_(True)
-        # self.setNeedsDisplay_(True)
-
-    def setLeftColor_(self, newLeftColor: NSColor) -> None:
-        self._leftColor = newLeftColor
-        # self.setNeedsDisplay_(True)
-
-    def setRightColor_(self, newRightColor: NSColor) -> None:
-        self._rightColor = newRightColor
-        # self.setNeedsDisplay_(True)
-
-    def drawRect_(self, rect: NSRect) -> None:
-        bounds = self.bounds()
-        split = self._percentage * (bounds.size.width)
-        NSRectFillListWithColorsUsingOperation(
-            [
-                NSRect((0, 0), (split, bounds.size.height)),
-                NSRect(
-                    (split, 0), (bounds.size.width - split, bounds.size.height)
-                ),
-            ],
-            [self._leftColor, self._rightColor],
-            2,
-            NSCompositingOperationCopy,
-        )
-
-    def canBecomeKeyView(self) -> bool:
-        return False
-
-    def movableByWindowBackground(self) -> bool:
-        return True
-
-    def acceptsFirstMouse_(self, evt: NSEvent) -> bool:
-        return True
-
-    def acceptsFirstResponder(self) -> bool:
-        return False
-
-    def wantsDefaultClipping(self) -> bool:
-        return False
-
-
-class HUDWindow(NSWindow):
-    """
-    A window that doesn't receive input events and floats as an overlay.
-    """
-
-    def canBecomeKeyWindow(self) -> bool:
-        return False
-
-    def canBecomeMainWindow(self) -> bool:
-        return False
-
-    def acceptsFirstResponder(self) -> bool:
-        return False
-
-    def makeKeyWindow(self) -> None:
-        return None
 
 
 NSModalResponse = int
@@ -285,10 +33,11 @@ buttonReturnTo = {
     NSAlertFirstButtonReturn: IntentionSuccess.Achieved,
     NSAlertSecondButtonReturn: IntentionSuccess.Focused,
     NSAlertThirdButtonReturn: IntentionSuccess.Distracted,
+    NSAlertThirdButtonReturn + 1: None,
 }
 
 
-def getSuccess(intention: Intention) -> IntentionSuccess:
+def getSuccess(intention: Intention) -> IntentionSuccess | None:
     """
     Show an alert that asks for an evaluation of the success.
     """
@@ -296,6 +45,7 @@ def getSuccess(intention: Intention) -> IntentionSuccess:
     msg.addButtonWithTitle_("Achieved it")
     msg.addButtonWithTitle_("Focused on it")
     msg.addButtonWithTitle_("I was distracted")
+    msg.addButtonWithTitle_("Cancel")
     msg.setMessageText_("Did you follow your intention?")
     msg.setInformativeText_(
         f"Your intention was: “{intention.description}”.  How did you track to it?"
@@ -324,7 +74,8 @@ def getString(title: str, question: str, defaultValue: str) -> str:
     response: NSModalResponse = msg.runModal()
 
     if response == NSAlertFirstButtonReturn:
-        return txt.stringValue()
+        result: str = txt.stringValue()
+        return result
     else:
         return ""
 
@@ -369,7 +120,6 @@ class MacPomObserver(object):
     alphaVariance: float = 0.3
     pulseMultiplier: float = 1.5
     pulseTime: float = 1.0
-    progressAnimation: Optional[LoopingCall] = None
 
     def __post_init__(self) -> None:
         if self.active:
@@ -417,6 +167,12 @@ class MacPomObserver(object):
                 "The pomodoro elapsed with no intention specified."
             ),
         )
+        self.refreshList()
+
+    def tooLongToEvaluate(self, pomodoro: Pomodoro) -> None:
+        """
+        A pomodoro took too long to evaluate.
+        """
         self.refreshList()
 
     @_intention(IntentionResponse.CanBeSet)
@@ -491,37 +247,8 @@ class MacPomObserver(object):
             self.lastIntentionResponse = canSetIntention
             responses[canSetIntention](self, interval, percentageElapsed)
             self.refreshList()
-
-        previousPercentageElapsed = self.progressController.percentage
-        if percentageElapsed < previousPercentageElapsed:
-            previousPercentageElapsed = 0
-        elapsedDelta = percentageElapsed - previousPercentageElapsed
-        startTime = self.clock.seconds()
-
-        def updateSome() -> None:
-            now = self.clock.seconds()
-            percentDone = (now - startTime) / self.pulseTime
-            easedEven = math.sin((percentDone * math.pi))
-            easedUp = math.sin((percentDone * math.pi) / 2.0)
-            self.progressController.setPercentage(
-                previousPercentageElapsed + (easedUp * elapsedDelta)
-            )
-            if percentDone >= 1.0:
-                alphaValue = self.baseAlphaValue
-                self.progressAnimation = None
-                lc.stop()
-            else:
-                alphaValue = (
-                    easedEven * self.alphaVariance
-                ) + self.baseAlphaValue
-            self.progressController.setAlpha(alphaValue)
-
-        if self.progressAnimation is not None:
-            self.progressAnimation.stop()
-        self.progressAnimation = lc = LoopingCall(updateSome)
-        lc.start(1.0 / 60.0)
         self.active = True
-        self.progressController.show()
+        self.progressController.animatePercentage(self.clock, percentageElapsed, self.pulseTime, self.baseAlphaValue, self.alphaVariance)
 
     def dayOver(self) -> None:
         """
@@ -602,26 +329,6 @@ def nowNative() -> datetime:
     return datetime.now(tz=tzlocal())
 
 
-def labelForDay(day: Day) -> str:
-    """
-    Generate a textual label representing the success proportion of the given
-    day.
-    """
-    score = day.score()
-    icon = tomato if score.hits > score.misses else can
-    unevaluated, q = (
-        (score.unevaluated, "?") if score.unevaluated else ("", "")
-    )
-    remaining, e = (score.remaining, "…") if score.remaining else ("", "")
-    return (
-        f"{icon}: {score.hits}✓ {score.misses}✗ {unevaluated}{q}{remaining}{e}"
-    )
-
-
-can = "🥫"
-tomato = "🍅"
-
-
 import traceback
 
 
@@ -639,7 +346,8 @@ class MenuForwarder(NSResponder):
             handled = menu.performKeyEquivalent_(event)
             if handled:
                 return True
-        return super().performKeyEquivalent_(event)
+        result: bool = super().performKeyEquivalent_(event)
+        return result
 
 
 @dataclass
@@ -711,7 +419,7 @@ class DayManager(object):
         self.observer.refreshList()
 
     def start(self) -> None:
-        status = self.status = Status(can)
+        status = self.status = Status("Starting Up")
 
         def doList() -> None:
             self.editController.editorWindow.setIsVisible_(True)
@@ -772,7 +480,7 @@ class DayManager(object):
             if presentDate != self.day.startTime.date():
                 self.day = self.dayLoader.loadOrCreateDay(presentDate)
             self.day.advanceToTime(currentTimestamp, self.observer)
-            label = labelForDay(self.day)
+            label = self.day.label()
             if TEST_MODE:
                 label = "🐇" + label
             if (status := self.status) is not None:
@@ -831,6 +539,8 @@ class DayManager(object):
             aPom.intention is not None
         ), "unEvaluatedPomodoros scans this already"
         succeeded = getSuccess(aPom.intention)
+        if succeeded is None:
+            return
         self.day.evaluateIntention(aPom, succeeded)
         self.dayLoader.saveDay(self.day)
         didIt = aPom.intention.wasSuccessful not in (
@@ -980,7 +690,7 @@ class DayEditorController(NSObject):
     def refreshStatus_(self, day: Day) -> None:
         previouslySelectedRow = self.tableView.selectedRow()
         assert self.dayLabelField is not None, "should be set by nib loading"
-        self.dayLabelField.setObjectValue_(labelForDay(day))
+        self.dayLabelField.setObjectValue_(day.label())
         oldObserver = self.observer
         if oldObserver is not None:
             for eachPreviousDict in self.arrayController.arrangedObjects():
