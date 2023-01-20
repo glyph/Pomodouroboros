@@ -4,19 +4,19 @@ from dataclasses import dataclass, replace
 from itertools import count
 from typing import Iterator, TYPE_CHECKING
 
-from pomodouroboros.model.boundaries import (
+from .boundaries import (
     EvaluationResult,
     NoUserInterface,
     PomStartResult,
     ScoreEvent,
 )
-from pomodouroboros.model.debugger import debug
+from .debugger import debug
 
 if TYPE_CHECKING:
-    from pomodouroboros.model.nexus import TheUserModel
-    from pomodouroboros.model.intention import Intention
+    from .nexus import TheUserModel
+    from .intention import Intention
 
-from pomodouroboros.model.intervals import (
+from .intervals import (
     AnyInterval,
     Break,
     Duration,

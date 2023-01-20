@@ -6,9 +6,9 @@ from typing import Protocol, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from pomodouroboros.model.intervals import AnyInterval
-    from pomodouroboros.model.nexus import TheUserModel
-    from pomodouroboros.model.intention import Intention
+    from .intervals import AnyInterval
+    from .nexus import TheUserModel
+    from .intention import Intention
 
 
 class IntervalType(Enum):

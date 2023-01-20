@@ -2,21 +2,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
-from pomodouroboros.model.scoring import (
+from .scoring import (
     BreakCompleted,
     EvaluationScore,
     IntentionSet,
 )
-from pomodouroboros.model.boundaries import (
+from .boundaries import (
     EvaluationResult,
     IntervalType,
     PomStartResult,
     ScoreEvent,
 )
-from pomodouroboros.model.intention import Intention
+from .intention import Intention
 
 if TYPE_CHECKING:
-    from pomodouroboros.model.nexus import TheUserModel
+    from .nexus import TheUserModel
 
 
 @dataclass(frozen=True)

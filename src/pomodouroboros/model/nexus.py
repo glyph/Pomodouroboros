@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Iterator, Sequence
 
-from pomodouroboros.model.boundaries import (
+from .boundaries import (
     AnUserInterface,
     EvaluationResult,
     IntervalType,
@@ -11,10 +11,10 @@ from pomodouroboros.model.boundaries import (
     ScoreEvent,
     UserInterfaceFactory,
 )
-from pomodouroboros.model.debugger import debug
-from pomodouroboros.model.ideal import idealScore
-from pomodouroboros.model.intention import Estimate, Intention
-from pomodouroboros.model.intervals import (
+from .debugger import debug
+from .ideal import idealScore
+from .intention import Estimate, Intention
+from .intervals import (
     AnyInterval,
     Break,
     Duration,

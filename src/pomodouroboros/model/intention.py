@@ -2,14 +2,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
-from pomodouroboros.model.boundaries import (
+from .boundaries import (
     EvaluationResult,
     IntervalType,
     PomStartResult,
     ScoreEvent,
 )
 
-from pomodouroboros.model.scoring import (
+from .scoring import (
     AttemptedEstimation,
     BreakCompleted,
     EstimationAccuracy,
@@ -18,7 +18,7 @@ from pomodouroboros.model.scoring import (
 )
 
 if TYPE_CHECKING:
-    from pomodouroboros.model.intervals import Pomodoro
+    from .intervals import Pomodoro
 
 
 @dataclass
