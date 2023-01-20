@@ -1,21 +1,13 @@
+# -*- test-case-name: pomodouroboros.test_model2 -*-
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+from itertools import islice
 from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
-from .boundaries import (
-    EvaluationResult,
-    IntervalType,
-    PomStartResult,
-    ScoreEvent,
-)
+from .boundaries import EvaluationResult, IntervalType, PomStartResult, ScoreEvent
+from .scoring import AttemptedEstimation, BreakCompleted, EstimationAccuracy, IntentionCompleted, IntentionCreatedEvent
 
-from .scoring import (
-    AttemptedEstimation,
-    BreakCompleted,
-    EstimationAccuracy,
-    IntentionCompleted,
-    IntentionCreatedEvent,
-)
 
 if TYPE_CHECKING:
     from .intervals import Pomodoro
@@ -59,7 +51,7 @@ class Intention:
         self, intentionIndex: int
     ) -> Iterable[ScoreEvent]:
         yield IntentionCreatedEvent(self, intentionIndex)
-        for estimate, _ in zip(self.estimates, range(len(self.pomodoros) + 1)):
+        for estimate in islice(self.estimates, len(self.pomodoros) + 1):
             # Only give a point for one estimation per attempt; estimating is
             # good, but correcting more than once per work session is just
             # faffing around
