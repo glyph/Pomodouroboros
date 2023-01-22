@@ -539,9 +539,6 @@ class ModelTests(TestCase):
             + (2 * points_for_break),
         )
 
-        # TODO 5?: should the ideal score be calculated to include estimations?
-        # (should it have multiple modes? par & birdie?)
-
     def test_achievedEarly(self) -> None:
         """
         If I achieve the desired intent of a pomodoro while it is still
