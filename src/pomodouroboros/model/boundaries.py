@@ -87,7 +87,7 @@ class IntentionListener(Protocol):
         """
 
 
-class UIEventListener(Protocol, IntentionListener, IntervalListener):
+class UIEventListener(IntentionListener, IntervalListener, Protocol):
     """
     The user interface must implement all intention and interval methods.
     """

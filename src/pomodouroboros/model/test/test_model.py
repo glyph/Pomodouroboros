@@ -31,7 +31,7 @@ T = TypeVar("T")
 @dataclass
 class TestUserInterface:
     """
-    Implementation of UIEventListener protocol.
+    Implementation of all UIEventListener protocols.
     """
 
     theNexus: Nexus = field(init=False)
