@@ -5,12 +5,12 @@ from unittest import TestCase
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
-from ..boundaries import AnUserInterface, EvaluationResult, PomStartResult
+from ..boundaries import UIEventListener, EvaluationResult, PomStartResult
 from ..debugger import debug
 from ..ideal import idealScore
 from ..intention import Intention
 from ..intervals import AnyInterval, Break, Evaluation, GracePeriod, Pomodoro, StartPrompt
-from ..nexus import TheUserModel
+from ..nexus import Nexus
 
 
 @dataclass
@@ -31,10 +31,10 @@ T = TypeVar("T")
 @dataclass
 class TestUserInterface:
     """
-    Implementation of AnUserInterface protocol.
+    Implementation of UIEventListener protocol.
     """
 
-    theModel: TheUserModel = field(init=False)
+    theNexus: Nexus = field(init=False)
     clock: IReactorTime
     actions: list[TestInterval] = field(default_factory=list)
     sawIntentions: list[Intention] = field(default_factory=list)
@@ -79,8 +79,8 @@ class TestUserInterface:
         """
         self.abandonedIntentions.append(intention)
 
-    def setIt(self, model: TheUserModel) -> AnUserInterface:
-        self.theModel = model
+    def setIt(self, nexus: Nexus) -> UIEventListener:
+        self.theNexus = nexus
         return self
 
     def clear(self) -> None:
@@ -94,15 +94,15 @@ class TestUserInterface:
         self.actions[:] = filtered
 
 
-intention: Type[AnUserInterface] = TestUserInterface
+intention: Type[UIEventListener] = TestUserInterface
 
 
-class ModelTests(TestCase):
+class NexusTests(TestCase):
     """
-    Model tests.
+    Nexus tests.
     """
 
-    userMode: TheUserModel
+    userMode: Nexus
 
     def setUp(self) -> None:
         """
@@ -111,7 +111,7 @@ class ModelTests(TestCase):
         self.maxDiff = 9999
         self.clock = Clock()
         self.testUI = TestUserInterface(self.clock)
-        self.userModel = TheUserModel(self.clock.seconds(), self.testUI.setIt)
+        self.nexus = Nexus(self.clock.seconds(), self.testUI.setIt)
 
     def advanceTime(self, n: float) -> None:
         """
@@ -121,7 +121,7 @@ class ModelTests(TestCase):
         debug("advancing", n)
         self.clock.advance(n)
         debug("to", self.clock.seconds())
-        self.userModel.advanceToTime(self.clock.seconds())
+        self.nexus.advanceToTime(self.clock.seconds())
 
     def test_idealScoreNotifications(self) -> None:
         """
@@ -130,7 +130,7 @@ class ModelTests(TestCase):
         """
         sessionStart = 1000
         realTimeStartDelay = 100.0
-        self.userModel.addSession(sessionStart, 2000)
+        self.nexus.addSession(sessionStart, 2000)
         self.advanceTime(sessionStart + realTimeStartDelay)
         self.advanceTime(1.0)
         self.advanceTime(1.0)
@@ -178,12 +178,12 @@ class ModelTests(TestCase):
         score-decrease timer interrval is running) starting a pomodoro stops
         that timer and begins a pomodoro.
         """
-        intention = self.userModel.addIntention("x", None)
-        self.userModel.addSession(1000, 2000)
+        intention = self.nexus.addIntention("x", None)
+        self.nexus.addSession(1000, 2000)
         self.advanceTime(100)  # no-op; time before session
         self.advanceTime(1000)  # enter session
         self.advanceTime(50)  # time in session before pomodoro
-        self.userModel.startPomodoro(intention)
+        self.nexus.startPomodoro(intention)
         self.advanceTime(120)  # enter pomodoro
         self.assertEqual(
             [
@@ -222,7 +222,7 @@ class ModelTests(TestCase):
         could execute.
         """
         self.advanceTime(1000)
-        ideal = idealScore(self.userModel, 2000.0)
+        ideal = idealScore(self.nexus, 2000.0)
         self.assertEqual(ideal.nextPointLoss, 1400.0)
         pointsForBreak = 1.0
         pointsForSecondIntentionSet = 2.0
@@ -230,7 +230,7 @@ class ModelTests(TestCase):
             ideal.pointsLost(), pointsForBreak + pointsForSecondIntentionSet
         )
         self.advanceTime(1600)
-        ideal = idealScore(self.userModel, 2000.0)
+        ideal = idealScore(self.nexus, 2000.0)
         self.assertEqual(ideal.nextPointLoss, None)
         self.assertEqual(ideal.pointsLost(), 0.0)
 
@@ -241,8 +241,8 @@ class ModelTests(TestCase):
         """
 
         self.advanceTime(5.0)
-        i = self.userModel.addIntention("i", None)
-        self.userModel.startPomodoro(i)
+        i = self.nexus.addIntention("i", None)
+        self.nexus.startPomodoro(i)
         self.advanceTime(5 * 60.0)
         self.assertEqual(
             [
@@ -270,7 +270,7 @@ class ModelTests(TestCase):
         """
         # TODO: obviously a big omnibus thing like this is not good, but this
         # was a combination of bootstrapping the tests working through the
-        # model's design.  Split it up later.
+        # nexus's design.  Split it up later.
 
         # Some time passes before intentions are added.  Nothing should really
         # happen (but if we add a discrete timestamp for logging intention
@@ -279,11 +279,11 @@ class ModelTests(TestCase):
 
         # User types in some intentions and sets estimates for some of them
         # TBD: should there be a prompt?
-        first = self.userModel.addIntention("first intention", 100.0)
-        second = self.userModel.addIntention("second intention", None)
-        third = self.userModel.addIntention("third intention", 50.0)
-        self.assertEqual(self.userModel.intentions, [first, second, third])
-        self.assertEqual(self.userModel.intentions, self.testUI.sawIntentions)
+        first = self.nexus.addIntention("first intention", 100.0)
+        second = self.nexus.addIntention("second intention", None)
+        third = self.nexus.addIntention("third intention", 50.0)
+        self.assertEqual(self.nexus.intentions, [first, second, third])
+        self.assertEqual(self.nexus.intentions, self.testUI.sawIntentions)
 
         # Some time passes so we can set a baseline for pomodoro timing
         # (i.e. our story doesn't start at time 0).
@@ -291,14 +291,14 @@ class ModelTests(TestCase):
 
         # Start our first pomodoro with our first intention.
         self.assertEqual(
-            self.userModel.startPomodoro(first), PomStartResult.Started
+            self.nexus.startPomodoro(first), PomStartResult.Started
         )
         self.assertEqual(first.pomodoros, [self.testUI.actions[0].interval])
 
         # No time has passed. We can't start another pomodoro; the first one is
         # already running.
         self.assertEqual(
-            self.userModel.startPomodoro(second), PomStartResult.AlreadyStarted
+            self.nexus.startPomodoro(second), PomStartResult.AlreadyStarted
         )
         self.assertEqual(second.pomodoros, [])
 
@@ -438,7 +438,7 @@ class ModelTests(TestCase):
 
         # OK, start a second streak.
         self.assertEqual(
-            self.userModel.startPomodoro(second), PomStartResult.Started
+            self.nexus.startPomodoro(second), PomStartResult.Started
         )
 
         # Advance past the end of the pomodoro, into the break.
@@ -446,7 +446,7 @@ class ModelTests(TestCase):
         # Try to start a second pomodoro during the break; you can't. You're on
         # a break.
         self.assertEqual(
-            self.userModel.startPomodoro(second), PomStartResult.OnBreak
+            self.nexus.startPomodoro(second), PomStartResult.OnBreak
         )
         # Advance out of the end of the break, into the next pomodoro
         self.advanceTime((5 * 60) + 1.0)
@@ -489,7 +489,7 @@ class ModelTests(TestCase):
         # For the first time we're starting a pomdoro from *within* a grace
         # period, so we are continuing a streak.
         self.assertEqual(
-            self.userModel.startPomodoro(third), PomStartResult.Continued
+            self.nexus.startPomodoro(third), PomStartResult.Continued
         )
         self.assertEqual(
             [
@@ -519,7 +519,7 @@ class ModelTests(TestCase):
         )
 
         # test for scoring
-        events = list(self.userModel.scoreEvents())
+        events = list(self.nexus.scoreEvents())
 
         # currently the score is 1 point for the first pomdoro in a streak and
         # 4 points for the second
@@ -548,12 +548,12 @@ class ModelTests(TestCase):
         START_TIME = 1234.0
         self.advanceTime(START_TIME)
 
-        intent = self.userModel.addIntention(
+        intent = self.nexus.addIntention(
             "early completion intention", None
         )
 
         self.assertEqual(
-            self.userModel.startPomodoro(intent), PomStartResult.Started
+            self.nexus.startPomodoro(intent), PomStartResult.Started
         )
 
         DEFAULT_DURATION = 5.0 * 60.0
@@ -562,10 +562,10 @@ class ModelTests(TestCase):
         self.advanceTime(EARLY_COMPLETION)
         action = self.testUI.actions[0].interval
         assert isinstance(action, Pomodoro)
-        self.assertEqual(self.userModel.availableIntentions, [intent])
+        self.assertEqual(self.nexus.availableIntentions, [intent])
         self.assertEqual(self.testUI.completedIntentions, [])
-        self.userModel.evaluatePomodoro(action, EvaluationResult.achieved)
-        self.assertEqual(self.userModel.availableIntentions, [])
+        self.nexus.evaluatePomodoro(action, EvaluationResult.achieved)
+        self.assertEqual(self.nexus.availableIntentions, [])
         self.assertEqual(self.testUI.completedIntentions, [intent])
         self.advanceTime(1)
         self.assertEqual(
@@ -615,12 +615,12 @@ class ModelTests(TestCase):
         START_TIME = 1234.0
         self.advanceTime(START_TIME)
 
-        intent = self.userModel.addIntention(
+        intent = self.nexus.addIntention(
             "early completion intention", None
         )
 
         self.assertEqual(
-            self.userModel.startPomodoro(intent), PomStartResult.Started
+            self.nexus.startPomodoro(intent), PomStartResult.Started
         )
 
         DEFAULT_DURATION = 5.0 * 60.0
@@ -629,7 +629,7 @@ class ModelTests(TestCase):
         self.advanceTime(EARLY_COMPLETION)
         action = self.testUI.actions[0].interval
         assert isinstance(action, Pomodoro)
-        self.userModel.evaluatePomodoro(action, EvaluationResult.distracted)
+        self.nexus.evaluatePomodoro(action, EvaluationResult.distracted)
         self.advanceTime(1)
         self.assertEqual(
             [
@@ -657,18 +657,18 @@ class ModelTests(TestCase):
         Evaluating a pomdooro as focused on an intention should give us 1 point.
         """
         self.advanceTime(1)
-        intent = self.userModel.addIntention("intent", None)
-        self.userModel.startPomodoro(intent)
+        intent = self.nexus.addIntention("intent", None)
+        self.nexus.startPomodoro(intent)
         self.advanceTime((5 * 60.0) + 1)
         pom = self.testUI.actions[0].interval
         assert isinstance(pom, Pomodoro)
 
         def currentPoints() -> float:
-            events = list(self.userModel.scoreEvents())
+            events = list(self.nexus.scoreEvents())
             debug([(each, each.points) for each in events])
             return sum(each.points for each in events)
 
         before = currentPoints()
-        self.userModel.evaluatePomodoro(pom, EvaluationResult.focused)
+        self.nexus.evaluatePomodoro(pom, EvaluationResult.focused)
         after = currentPoints()
         self.assertEqual(after - before, 1.0)

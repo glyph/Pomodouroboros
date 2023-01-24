@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Iterable, Iterator, Sequence
 
 from .boundaries import (
-    AnUserInterface,
+    UIEventListener,
     EvaluationResult,
     IntervalType,
     PomStartResult,
@@ -46,9 +46,10 @@ class GameRules:
 
 
 @dataclass
-class TheUserModel:
+class Nexus:
     """
-    Model of the user's ongoing pomodoro experience.
+    Nexus where all the models of the user's ongoing pomodoro experience are
+    coordinated, dispatched, and collected for things like serialization.
     """
 
     _initialTime: float
@@ -60,7 +61,7 @@ class TheUserModel:
     """
 
     _lastUpdateTime: float = field(init=False, default=0.0)
-    _userInterface: AnUserInterface | None = None
+    _userInterface: UIEventListener | None = None
     _upcomingDurations: Iterator[Duration] = iter(())
     _rules: GameRules = field(default_factory=GameRules)
 
@@ -100,7 +101,7 @@ class TheUserModel:
                             yield event
 
     @property
-    def userInterface(self) -> AnUserInterface:
+    def userInterface(self) -> UIEventListener:
         """
         build the user interface on demand
         """
@@ -266,14 +267,14 @@ preludeIntervalMap: dict[IntervalType, type[GracePeriod | Break]] = {
 
 
 def nextInterval(
-    model: TheUserModel,
+    nexus: Nexus,
     timestamp: float,
     previousInterval: AnyInterval | None,
 ) -> AnyInterval | None:
     """
     Determine what the next interval should be.
     """
-    duration = next(model._upcomingDurations, None)
+    duration = next(nexus._upcomingDurations, None)
     debug("new duration", duration)
     if duration is not None:
         # We're in an interval. Chain on to the end of it, and start the next
@@ -292,7 +293,7 @@ def nextInterval(
     # We're not currently in an interval; i.e. we are idling.  If there's a
     # work session active, then let's add a new special interval that tells us
     # about the next point at which we will lose some potential points.
-    for start, end in model._sessions:
+    for start, end in nexus._sessions:
         if start <= timestamp < end:
             debug("session active", start, end)
             break
@@ -300,7 +301,7 @@ def nextInterval(
         debug("no session")
         return None
 
-    scoreInfo = idealScore(model, end)
+    scoreInfo = idealScore(nexus, end)
     nextDrop = scoreInfo.nextPointLoss
     debug(nextDrop)
     if nextDrop is None:

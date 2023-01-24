@@ -16,7 +16,7 @@ from .boundaries import (
 from .intention import Intention
 
 if TYPE_CHECKING:
-    from .nexus import TheUserModel
+    from .nexus import Nexus
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ class Break:
         return [BreakCompleted(self)]
 
     def handleStartPom(
-        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+        self, nexus: Nexus, startPom: Callable[[float, float], None]
     ) -> PomStartResult:
         return PomStartResult.OnBreak
 
@@ -75,7 +75,7 @@ class Pomodoro:
     intervalType: ClassVar[IntervalType] = IntervalType.Pomodoro
 
     def handleStartPom(
-        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+        self, nexus: Nexus, startPom: Callable[[float, float], None]
     ) -> PomStartResult:
         return PomStartResult.AlreadyStarted
 
@@ -112,7 +112,7 @@ class GracePeriod:
         return ()
 
     def handleStartPom(
-        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+        self, nexus: Nexus, startPom: Callable[[float, float], None]
     ) -> PomStartResult:
         # if it's a grace period then we're going to replace it, same start
         # time, same original end time (the grace period itself may be
@@ -138,11 +138,11 @@ class StartPrompt:
         return ()
 
     def handleStartPom(
-        self, userModel: TheUserModel, startPom: Callable[[float, float], None]
+        self, nexus: Nexus, startPom: Callable[[float, float], None]
     ) -> PomStartResult:
-        userModel.userInterface.intervalProgress(1.0)
-        userModel.userInterface.intervalEnd()
-        return handleIdleStartPom(userModel, startPom)
+        nexus.userInterface.intervalProgress(1.0)
+        nexus.userInterface.intervalEnd()
+        return handleIdleStartPom(nexus, startPom)
 
 
 AnyInterval = Pomodoro | Break | GracePeriod | StartPrompt
@@ -161,12 +161,12 @@ pomodoro going back to their genesis.
 
 
 def handleIdleStartPom(
-    userModel: TheUserModel, startPom: Callable[[float, float], None]
+    nexus: Nexus, startPom: Callable[[float, float], None]
 ) -> PomStartResult:
-    userModel._upcomingDurations = iter(
-        userModel._rules.streakIntervalDurations
+    nexus._upcomingDurations = iter(
+        nexus._rules.streakIntervalDurations
     )
-    nextDuration = next(userModel._upcomingDurations, None)
+    nextDuration = next(nexus._upcomingDurations, None)
     assert (
         nextDuration is not None
     ), "empty streak interval durations is invalid"
@@ -174,8 +174,8 @@ def handleIdleStartPom(
         nextDuration.intervalType == IntervalType.Pomodoro
     ), "streak must begin with a pomodoro"
 
-    startTime = userModel._lastUpdateTime
-    endTime = userModel._lastUpdateTime + nextDuration.seconds
+    startTime = nexus._lastUpdateTime
+    endTime = nexus._lastUpdateTime + nextDuration.seconds
 
     startPom(startTime, endTime)
     return PomStartResult.Started

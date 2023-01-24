@@ -7,7 +7,7 @@ from typing import Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .intervals import AnyInterval
-    from .nexus import TheUserModel
+    from .nexus import Nexus
     from .intention import Intention
 
 
@@ -42,9 +42,10 @@ class PomStartResult(Enum):
     """
 
 
-class AnUserInterface(Protocol):
+class IntervalListener(Protocol):
     """
-    Protocol that user interfaces must adhere to.
+    An L{IntervalListener} implements all the notifications that can be sent to
+    the user about intervals updating.
     """
 
     def intervalStart(self, interval: AnyInterval) -> None:
@@ -63,6 +64,12 @@ class AnUserInterface(Protocol):
         The interval has ended. Hide the progress bar.
         """
 
+class IntentionListener(Protocol):
+    """
+    An L{IntentionListener} implements all the notifications that be sent to
+    the user about intentions being added or removed.
+    """
+
     def intentionAdded(self, intention: Intention) -> None:
         """
         An intention was added to the set of intentions.
@@ -80,8 +87,14 @@ class AnUserInterface(Protocol):
         """
 
 
+class UIEventListener(Protocol, IntentionListener, IntervalListener):
+    """
+    The user interface must implement all intention and interval methods.
+    """
+
+
 @dataclass
-class NoUserInterface(AnUserInterface):
+class NoUserInterface(UIEventListener):
     """
     Do-nothing implementation of a user interface.
     """
@@ -92,7 +105,7 @@ class UserInterfaceFactory(Protocol):
     Entry point to a frontend that creates a user interface from a user model
     """
 
-    def __call__(self, model: TheUserModel) -> AnUserInterface:
+    def __call__(self, nexus: Nexus) -> UIEventListener:
         ...  # pragma: no cover
 
 

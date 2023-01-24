@@ -13,7 +13,7 @@ from .boundaries import (
 from .debugger import debug
 
 if TYPE_CHECKING:
-    from .nexus import TheUserModel
+    from .nexus import Nexus
     from .intention import Intention
 
 from .intervals import (
@@ -47,8 +47,8 @@ class IdealScoreInfo:
 
 
 def idealFuture(
-    model: TheUserModel, activityStart: float, workPeriodEnd: float
-) -> TheUserModel:
+    nexus: Nexus, activityStart: float, workPeriodEnd: float
+) -> Nexus:
     """
     Compute the ideal score if we were to maintain focus through the end of
     the given time period.
@@ -59,27 +59,27 @@ def idealFuture(
     @param workPeriodEnd: The point beyond which we will not count points
         any more; i.e. the end of the work day.
     """
-    previouslyUpcoming = list(model._upcomingDurations)
+    previouslyUpcoming = list(nexus._upcomingDurations)
 
     def split() -> Iterator[Duration]:
         return iter(previouslyUpcoming)
 
-    model._upcomingDurations = split()
+    nexus._upcomingDurations = split()
     hypothetical = deepcopy(
         replace(
-            model,
-            _intentions=model._intentions[:],
+            nexus,
+            _intentions=nexus._intentions[:],
             _interfaceFactory=lambda whatever: NoUserInterface(),
             _userInterface=NoUserInterface(),
             _upcomingDurations=split(),
             _sessions=[],
-            _allStreaks=[each[:] for each in model._allStreaks],
+            _allStreaks=[each[:] for each in nexus._allStreaks],
         )
     )
     # because it's init=False we have to copy it manually
-    hypothetical._lastUpdateTime = model._lastUpdateTime
+    hypothetical._lastUpdateTime = nexus._lastUpdateTime
 
-    debug("advancing to activity start", model._lastUpdateTime, activityStart)
+    debug("advancing to activity start", nexus._lastUpdateTime, activityStart)
     hypothetical.advanceToTime(activityStart)
 
     c = count()
@@ -123,7 +123,7 @@ def idealFuture(
     return hypothetical
 
 
-def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
+def idealScore(nexus: Nexus, workPeriodEnd: float) -> IdealScoreInfo:
     """
     Compute the inflection point for the ideal score the user might
     achieve.  We present two hypothetical futures: one where the user
@@ -132,8 +132,8 @@ def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
     perfectly.
     """
     debug("ideal future 1")
-    workPeriodBegin = model._lastUpdateTime
-    currentIdeal = idealFuture(model, workPeriodBegin, workPeriodEnd)
+    workPeriodBegin = nexus._lastUpdateTime
+    currentIdeal = idealFuture(nexus, workPeriodBegin, workPeriodEnd)
     idealScoreNow = sorted(
         currentIdeal.scoreEvents(endTime=workPeriodEnd), key=lambda it: it.time
     )
@@ -148,13 +148,13 @@ def idealScore(model: TheUserModel, workPeriodEnd: float) -> IdealScoreInfo:
     latestScoreTime = idealScoreNow[-1].time
     pointLossTime = workPeriodBegin + (workPeriodEnd - latestScoreTime)
     return IdealScoreInfo(
-        now=model._lastUpdateTime,
+        now=nexus._lastUpdateTime,
         idealScoreNow=idealScoreNow,
         workPeriodEnd=workPeriodEnd,
         nextPointLoss=pointLossTime,
         idealScoreNext=list(
             (
-                idealFuture(model, pointLossTime + 1.0, workPeriodEnd)
+                idealFuture(nexus, pointLossTime + 1.0, workPeriodEnd)
                 if idealScoreNow
                 else currentIdeal
             ).scoreEvents(endTime=workPeriodEnd)
