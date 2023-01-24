@@ -1,29 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import dataclass, field, replace
 from typing import Callable, Iterable, Iterator, Sequence
 
-from .boundaries import (
-    UIEventListener,
-    EvaluationResult,
-    IntervalType,
-    PomStartResult,
-    ScoreEvent,
-    UserInterfaceFactory,
-)
+from .boundaries import EvaluationResult, IntervalType, NoUserInterface, PomStartResult, ScoreEvent, UIEventListener, UserInterfaceFactory
 from .debugger import debug
 from .ideal import idealScore
 from .intention import Estimate, Intention
-from .intervals import (
-    AnyInterval,
-    Break,
-    Duration,
-    Evaluation,
-    GracePeriod,
-    Pomodoro,
-    StartPrompt,
-    handleIdleStartPom,
-)
+from .intervals import AnyInterval, Break, Duration, Evaluation, GracePeriod, Pomodoro, StartPrompt, handleIdleStartPom
 
 
 @dataclass(frozen=True)
@@ -75,6 +60,32 @@ class Nexus:
     def __post_init__(self) -> None:
         if self._initialTime > self._lastUpdateTime:
             self.advanceToTime(self._initialTime)
+
+    def cloneWithoutUI(self) -> Nexus:
+        """
+        Create a deep copy of this L{Nexus}, detached from any user interface,
+        to perform hypothetical model interactions.
+        """
+        previouslyUpcoming = list(self._upcomingDurations)
+
+        def split() -> Iterator[Duration]:
+            return iter(previouslyUpcoming)
+
+        self._upcomingDurations = split()
+        hypothetical = deepcopy(
+            replace(
+                self,
+                _intentions=self._intentions[:],
+                _interfaceFactory=lambda whatever: NoUserInterface(),
+                _userInterface=NoUserInterface(),
+                _upcomingDurations=split(),
+                _sessions=[],
+                _allStreaks=[each[:] for each in self._allStreaks],
+            )
+        )
+        # because it's init=False we have to copy it manually
+        hypothetical._lastUpdateTime = self._lastUpdateTime
+        return hypothetical
 
     def scoreEvents(
         self, *, startTime: float | None = None, endTime: float | None = None

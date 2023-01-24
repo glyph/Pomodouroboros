@@ -1,6 +1,5 @@
 from __future__ import annotations
-from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from itertools import count
 from typing import Iterator, TYPE_CHECKING
 
@@ -59,26 +58,7 @@ def idealFuture(
     @param workPeriodEnd: The point beyond which we will not count points
         any more; i.e. the end of the work day.
     """
-    previouslyUpcoming = list(nexus._upcomingDurations)
-
-    def split() -> Iterator[Duration]:
-        return iter(previouslyUpcoming)
-
-    nexus._upcomingDurations = split()
-    hypothetical = deepcopy(
-        replace(
-            nexus,
-            _intentions=nexus._intentions[:],
-            _interfaceFactory=lambda whatever: NoUserInterface(),
-            _userInterface=NoUserInterface(),
-            _upcomingDurations=split(),
-            _sessions=[],
-            _allStreaks=[each[:] for each in nexus._allStreaks],
-        )
-    )
-    # because it's init=False we have to copy it manually
-    hypothetical._lastUpdateTime = nexus._lastUpdateTime
-
+    hypothetical = nexus.cloneWithoutUI()
     debug("advancing to activity start", nexus._lastUpdateTime, activityStart)
     hypothetical.advanceToTime(activityStart)
 
