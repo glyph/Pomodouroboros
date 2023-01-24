@@ -9,7 +9,14 @@ from ..boundaries import UIEventListener, EvaluationResult, PomStartResult
 from ..debugger import debug
 from ..ideal import idealScore
 from ..intention import Intention
-from ..intervals import AnyInterval, Break, Evaluation, GracePeriod, Pomodoro, StartPrompt
+from ..intervals import (
+    AnyInterval,
+    Break,
+    Evaluation,
+    GracePeriod,
+    Pomodoro,
+    StartPrompt,
+)
 from ..nexus import Nexus
 
 
@@ -539,6 +546,26 @@ class NexusTests(TestCase):
             + (2 * points_for_break),
         )
 
+        from json import dumps, loads
+        from ..storage import loadNexus, asJSON
+
+        roundTrip = loadNexus(
+            loads(dumps(asJSON(self.nexus))),
+            lambda nexus: self.nexus.userInterface,
+        )
+        self.maxDiff = 99999
+        self.assertEqual(self.nexus._initialTime, roundTrip._initialTime)
+        self.assertEqual(self.nexus._intentions, roundTrip._intentions)
+        self.assertEqual(self.nexus._activeInterval, roundTrip._activeInterval)
+        self.assertEqual(self.nexus._lastUpdateTime, roundTrip._lastUpdateTime)
+        self.assertEqual(
+            list(self.nexus.cloneWithoutUI()._upcomingDurations),
+            list(roundTrip.cloneWithoutUI()._upcomingDurations),
+        )
+        self.assertEqual(self.nexus._rules, roundTrip._rules)
+        self.assertEqual(self.nexus._streaks, roundTrip._streaks)
+        self.assertEqual(self.nexus._sessions, roundTrip._sessions)
+
     def test_achievedEarly(self) -> None:
         """
         If I achieve the desired intent of a pomodoro while it is still
@@ -548,9 +575,7 @@ class NexusTests(TestCase):
         START_TIME = 1234.0
         self.advanceTime(START_TIME)
 
-        intent = self.nexus.addIntention(
-            "early completion intention", None
-        )
+        intent = self.nexus.addIntention("early completion intention", None)
 
         self.assertEqual(
             self.nexus.startPomodoro(intent), PomStartResult.Started
@@ -615,9 +640,7 @@ class NexusTests(TestCase):
         START_TIME = 1234.0
         self.advanceTime(START_TIME)
 
-        intent = self.nexus.addIntention(
-            "early completion intention", None
-        )
+        intent = self.nexus.addIntention("early completion intention", None)
 
         self.assertEqual(
             self.nexus.startPomodoro(intent), PomStartResult.Started

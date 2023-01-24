@@ -21,8 +21,23 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Duration:
+    """
+    A duration describes the amount of time that a 'real' interval (i.e. either
+    break or pomodoro) that will be generated in a continuing streak.
+    """
     intervalType: IntervalType
     seconds: float
+
+
+@dataclass(frozen=True)
+class Session:
+    """
+    A session describes a period during which the user wishes to be
+    intentionally actively using the app.  During an active session, users will
+    be notified of the next time their score will decrease.
+    """
+    start: float
+    end: float
 
 
 @dataclass

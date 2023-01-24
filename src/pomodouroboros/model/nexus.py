@@ -8,7 +8,7 @@ from .boundaries import EvaluationResult, IntervalType, NoUserInterface, PomStar
 from .debugger import debug
 from .ideal import idealScore
 from .intention import Estimate, Intention
-from .intervals import AnyInterval, Break, Duration, Evaluation, GracePeriod, Pomodoro, StartPrompt, handleIdleStartPom
+from .intervals import AnyInterval, Break, Duration, Evaluation, GracePeriod, Pomodoro, Session, StartPrompt, handleIdleStartPom
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,9 @@ class GameRules:
         ]
     )
 
+_theNoUserInterface = NoUserInterface()
+def _noUIFactory() -> NoUserInterface:
+    return _theNoUserInterface
 
 @dataclass
 class Nexus:
@@ -50,12 +53,12 @@ class Nexus:
     _upcomingDurations: Iterator[Duration] = iter(())
     _rules: GameRules = field(default_factory=GameRules)
 
-    _allStreaks: list[list[AnyInterval]] = field(default_factory=lambda: [[]])
+    _streaks: list[list[AnyInterval]] = field(default_factory=lambda: [[]])
     """
     The list of previous streaks, each one being a list of its intervals, that
     are now completed.
     """
-    _sessions: list[tuple[float, float]] = field(default_factory=list)
+    _sessions: list[Session] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self._initialTime > self._lastUpdateTime:
@@ -76,11 +79,11 @@ class Nexus:
             replace(
                 self,
                 _intentions=self._intentions[:],
-                _interfaceFactory=lambda whatever: NoUserInterface(),
-                _userInterface=NoUserInterface(),
+                _interfaceFactory=_noUIFactory,
+                _userInterface=_theNoUserInterface,
                 _upcomingDurations=split(),
                 _sessions=[],
-                _allStreaks=[each[:] for each in self._allStreaks],
+                _streaks=[each[:] for each in self._streaks],
             )
         )
         # because it's init=False we have to copy it manually
@@ -101,7 +104,7 @@ class Nexus:
             for event in intention.intentionScoreEvents(intentionIndex):
                 if event.time <= endTime:
                     yield event
-        for streak in self._allStreaks:
+        for streak in self._streaks:
             for interval in streak:
                 if interval.startTime > startTime:
                     for event in interval.scoreEvents():
@@ -142,7 +145,7 @@ class Nexus:
             self, newTime, self._activeInterval
         )
         if new is not None:
-            self._allStreaks[-1].append(new)
+            self._streaks[-1].append(new)
             self.userInterface.intervalStart(new)
 
     def advanceToTime(self, newTime: float) -> None:
@@ -177,7 +180,7 @@ class Nexus:
                     self._upcomingDurations = iter(())
                     # When a grace period expires, a streak is broken, so we
                     # make a new one.
-                    self._allStreaks.append([])
+                    self._streaks.append([])
                 self._makeNextInterval(newTime)
 
         # If there's an active streak, we definitionally should not have
@@ -214,7 +217,7 @@ class Nexus:
         Add a 'work session'; a discrete interval where we will be scored, and
         notified of potential drops to our score if we don't set intentions.
         """
-        self._sessions.append((startTime, endTime))
+        self._sessions.append(Session(startTime, endTime))
         self._sessions.sort()
 
     def startPomodoro(self, intention: Intention) -> PomStartResult:
@@ -232,14 +235,14 @@ class Nexus:
             newPomodoro = Pomodoro(
                 intention=intention,
                 indexInStreak=sum(
-                    isinstance(each, Pomodoro) for each in self._allStreaks[-1]
+                    isinstance(each, Pomodoro) for each in self._streaks[-1]
                 ),
                 startTime=startTime,
                 endTime=endTime,
             )
             intention.pomodoros.append(newPomodoro)
             self._activeInterval = newPomodoro
-            self._allStreaks[-1].append(newPomodoro)
+            self._streaks[-1].append(newPomodoro)
             self.userInterface.intervalStart(newPomodoro)
 
         return handleStartFunc(self, startPom)
@@ -304,15 +307,15 @@ def nextInterval(
     # We're not currently in an interval; i.e. we are idling.  If there's a
     # work session active, then let's add a new special interval that tells us
     # about the next point at which we will lose some potential points.
-    for start, end in nexus._sessions:
-        if start <= timestamp < end:
-            debug("session active", start, end)
+    for session in nexus._sessions:
+        if session.start <= timestamp < session.end:
+            debug("session active", session.start, session.end)
             break
     else:
         debug("no session")
         return None
 
-    scoreInfo = idealScore(nexus, end)
+    scoreInfo = idealScore(nexus, session.end)
     nextDrop = scoreInfo.nextPointLoss
     debug(nextDrop)
     if nextDrop is None:

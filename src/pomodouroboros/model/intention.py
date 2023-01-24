@@ -1,12 +1,23 @@
 # -*- test-case-name: pomodouroboros.test_model2 -*-
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from itertools import islice
 from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
-from .boundaries import EvaluationResult, IntervalType, PomStartResult, ScoreEvent
-from .scoring import AttemptedEstimation, BreakCompleted, EstimationAccuracy, IntentionCompleted, IntentionCreatedEvent
+from .boundaries import (
+    EvaluationResult,
+    IntervalType,
+    PomStartResult,
+    ScoreEvent,
+)
+from .scoring import (
+    AttemptedEstimation,
+    BreakCompleted,
+    EstimationAccuracy,
+    IntentionCompleted,
+    IntentionCreatedEvent,
+)
 
 
 if TYPE_CHECKING:
@@ -34,6 +45,21 @@ class Intention:
     estimates: list[Estimate] = field(default_factory=list)
     pomodoros: list[Pomodoro] = field(default_factory=list)
     abandoned: bool = False
+
+    def _compref(self) -> dict[str, object]:
+        return asdict(
+            replace(
+                self,
+                pomodoros=[
+                    replace(each, intention=None) for each in self.pomodoros
+                ],
+            )
+        )
+
+    def __eq__(self, other: object):
+        if not isinstance(other, Intention):
+            return NotImplemented
+        return self._compref() == other._compref()
 
     @property
     def completed(self) -> bool:
