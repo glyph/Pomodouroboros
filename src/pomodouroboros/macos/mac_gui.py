@@ -6,7 +6,18 @@ from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from typing import Any, Callable, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+)
 
 from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.base import DelayedCall
@@ -15,13 +26,56 @@ from twisted.internet.task import LoopingCall
 from twisted.python.failure import Failure
 
 import math
-from ..pommodel import Break, Day, Intention, IntentionResponse, IntentionSuccess, Interval, Pomodoro
+from ..pommodel import (
+    Break,
+    Day,
+    Intention,
+    IntentionResponse,
+    IntentionSuccess,
+    Interval,
+    Pomodoro,
+)
 from ..storage import DayLoader, TEST_MODE
 from .progress_hud import ProgressController
 from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
-from .notifs import askForIntent, notify, setupNotifications, withdrawIntentPrompt
+from .notifs import (
+    askForIntent,
+    notify,
+    setupNotifications,
+    withdrawIntentPrompt,
+)
 from .quickapp import Status, mainpoint, quit
-from AppKit import NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertThirdButtonReturn, NSApp, NSApplicationDidChangeScreenParametersNotification, NSBackingStoreBuffered, NSBezierPath, NSBorderlessWindowMask, NSCell, NSColor, NSCompositingOperationCopy, NSEvent, NSFloatingWindowLevel, NSFocusRingTypeNone, NSMenu, NSMenuItem, NSNib, NSNotificationCenter, NSRectFill, NSRectFillListWithColorsUsingOperation, NSResponder, NSScreen, NSTextField, NSTextFieldCell, NSView, NSWindow, NSWindowCollectionBehaviorCanJoinAllSpaces, NSWindowCollectionBehaviorStationary
+from AppKit import (
+    NSAlert,
+    NSAlertFirstButtonReturn,
+    NSAlertSecondButtonReturn,
+    NSAlertThirdButtonReturn,
+    NSApp,
+    NSApplicationDidChangeScreenParametersNotification,
+    NSBackingStoreBuffered,
+    NSBezierPath,
+    NSBorderlessWindowMask,
+    NSCell,
+    NSColor,
+    NSCompositingOperationCopy,
+    NSEvent,
+    NSFloatingWindowLevel,
+    NSFocusRingTypeNone,
+    NSMenu,
+    NSMenuItem,
+    NSNib,
+    NSNotificationCenter,
+    NSRectFill,
+    NSRectFillListWithColorsUsingOperation,
+    NSResponder,
+    NSScreen,
+    NSTextField,
+    NSTextFieldCell,
+    NSView,
+    NSWindow,
+    NSWindowCollectionBehaviorCanJoinAllSpaces,
+    NSWindowCollectionBehaviorStationary,
+)
 from PyObjCTools.AppHelper import callLater
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
