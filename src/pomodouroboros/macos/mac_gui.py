@@ -302,7 +302,13 @@ class MacPomObserver(object):
             responses[canSetIntention](self, interval, percentageElapsed)
             self.refreshList()
         self.active = True
-        self.progressController.animatePercentage(self.clock, percentageElapsed, self.pulseTime, self.baseAlphaValue, self.alphaVariance)
+        self.progressController.animatePercentage(
+            self.clock,
+            percentageElapsed,
+            self.pulseTime,
+            self.baseAlphaValue,
+            self.alphaVariance,
+        )
 
     def dayOver(self) -> None:
         """
