@@ -1,3 +1,5 @@
+# -*- test-case-name: pomodouroboros -*-
+
 from __future__ import annotations
 
 from functools import singledispatch
