@@ -99,6 +99,24 @@ class NoUserInterface(UIEventListener):
     Do-nothing implementation of a user interface.
     """
 
+    def intentionAdded(self, intention: Intention) -> None:
+        ...
+
+    def intentionAbandoned(self, intention: Intention) -> None:
+        ...
+
+    def intentionCompleted(self, intention: Intention) -> None:
+        ...
+
+    def intervalStart(self, interval: AnyInterval) -> None:
+        ...
+
+    def intervalProgress(self, percentComplete: float) -> None:
+        ...
+
+    def intervalEnd(self) -> None:
+        ...
+
 
 class UserInterfaceFactory(Protocol):
     """
