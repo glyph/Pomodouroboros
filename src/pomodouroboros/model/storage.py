@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 from functools import singledispatch
-from typing import Literal, TypedDict, Union
+from typing import Literal, TypeAlias, TypedDict, Union, cast
 
-from .boundaries import UserInterfaceFactory, IntervalType
+from .boundaries import IntervalType, UserInterfaceFactory, NoUserInterface
+from .intention import Estimate, Intention
 from .intervals import (
     AnyInterval,
-    Pomodoro,
     Break,
     Duration,
     GracePeriod,
+    Pomodoro,
     Session,
     StartPrompt,
 )
 from .nexus import Nexus
-from .intention import Estimate, Intention
 
 
 SavedIntervalType = Literal["Pomodoro", "GracePeriod", "Break", "StartPrompt"]
@@ -118,7 +118,7 @@ SavedNexus = TypedDict(
 )
 
 
-def loadNexus(
+def nexusFromJSON(
     saved: SavedNexus, userInterfaceFactory: UserInterfaceFactory
 ) -> Nexus:
     """
@@ -201,12 +201,13 @@ def loadNexus(
     return nexus
 
 
-def asJSON(nexus: Nexus) -> SavedNexus:
+def nexusToJSON(nexus: Nexus) -> SavedNexus:
     @singledispatch
     def saveInterval(interval: AnyInterval) -> SavedInterval:
         """
         Save any interval to its paired JSON data structure.
         """
+        raise TypeError("unsupported type")
 
     @saveInterval.register(Pomodoro)
     def savePomodoro(interval: Pomodoro) -> SavedPomodoro:
@@ -295,3 +296,48 @@ def asJSON(nexus: Nexus) -> SavedNexus:
             for session in nexus._sessions
         ],
     }
+
+
+JSON: TypeAlias = "None | str | float | bool | dict[str, JSON] | list[JSON] | SavedNexus"
+
+from os.path import join, dirname, expanduser
+from json import dump, load
+from os import replace
+
+
+def saveToFile(filename: str, jsonObject: JSON) -> None:
+    """
+    Save the given JSON object to a file.
+    """
+    newp = join(dirname(filename), ".temporary-" + filename + ".new")
+    with open(newp, "w") as new:
+        dump(jsonObject, new)
+    replace(newp, filename)
+
+
+def loadFromFile(filename: str) -> JSON:
+    with open(filename) as f:
+        result: JSON = load(f)
+        return result
+
+defaultNexusFile = expanduser("~/.local/share/pomodouroboros/current-nexus.json")
+
+def loadDefaultNexus(userInterfaceFactory: UserInterfaceFactory) -> Nexus:
+    """
+    Load the default nexus.
+    """
+    return nexusFromJSON(
+        cast(
+            SavedNexus,
+            loadFromFile(
+                defaultNexusFile
+            ),
+        ),
+        userInterfaceFactory,
+    )
+
+def saveDefaultNexus(nexus: Nexus) -> None:
+    """
+    Save a given nexus to the default file for the current user.
+    """
+    saveToFile(defaultNexusFile, nexusToJSON(nexus))
