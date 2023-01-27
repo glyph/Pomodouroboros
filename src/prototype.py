@@ -4,8 +4,8 @@ from tempfile import TemporaryDirectory
 from sys import stdout
 from twisted.internet.fdesc import setBlocking
 
+from objc import IBAction, IBOutlet
 from Foundation import NSData, NSURL, NSObject
-
 from AppKit import NSNib, NSArrayController
 from pomodouroboros.macos.quickapp import mainpoint
 
@@ -41,8 +41,27 @@ class ItsAnObject(NSObject):
         print("set value", value, key)
         super().setValue_forKey_(value, key)
 
+    def clickedRowButton_(self, aButton) -> None:
+        """
+        This is hooked up via a target I{binding} (chain link icon) not a
+        sent-action I{connection}.  By binding it to the clickedRowButton:
+        selector on table cell view's objectValue, we get the click directly
+        here, and don't need to go through NSTableView.rowForView_ to figure
+        out what to click on; we just need to maintain whatever state we need
+        locally in this view.
+        """
+        print("row clicked", self.field1)
+
 
 class CustomDataSource(NSObject):
+
+    table = IBOutlet()
+
+    @IBAction
+    def rowButtonTest_(self, target) -> None:
+        # print("click", target, self.table)
+        print("custom button click")
+
     def numberOfRowsInTableView_(self, view) -> int:
         print("NORITV", view)
         return 3
@@ -64,4 +83,5 @@ def go(argv: list[str]) -> None:
     # [arc] = [each for each in tlo if isinstance(each, NSArrayController)]
     nibs.append(nib)
 
-go.runMain()
+if __name__ == '__main__':
+    go.runMain()

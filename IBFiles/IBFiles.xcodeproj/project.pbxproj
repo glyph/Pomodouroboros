@@ -11,6 +11,7 @@
 		F08257D0282620790007B95F /* python_classes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = python_classes.swift; sourceTree = "<group>"; };
 		F0991E9D298099B4000D3A12 /* TestWin.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = TestWin.xib; sourceTree = "<group>"; };
 		F0A4EEB2297FC00E00D84FE4 /* IntentionListWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = IntentionListWindow.xib; sourceTree = "<group>"; };
+		F0A557B22982036A0079807D /* prototype_classes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = prototype_classes.swift; sourceTree = "<group>"; };
 		F0EA07AC282E112D00E38FDF /* StandardMenus.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = StandardMenus.xib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -23,6 +24,7 @@
 				F0991E9D298099B4000D3A12 /* TestWin.xib */,
 				F0EA07AC282E112D00E38FDF /* StandardMenus.xib */,
 				F08257D0282620790007B95F /* python_classes.swift */,
+				F0A557B22982036A0079807D /* prototype_classes.swift */,
 			);
 			sourceTree = "<group>";
 		};
