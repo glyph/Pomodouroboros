@@ -786,7 +786,6 @@ class DayEditorController(NSObject):
         )
 
 
-@mainpoint()
 def main(reactor: IReactorTime) -> None:
     import traceback, sys
 
