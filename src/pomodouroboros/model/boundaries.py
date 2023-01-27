@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol, TYPE_CHECKING
+from typing import Callable, Protocol, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
@@ -118,14 +118,8 @@ class NoUserInterface(UIEventListener):
         ...
 
 
-class UserInterfaceFactory(Protocol):
-    """
-    Entry point to a frontend that creates a user interface from a user model
-    """
-
-    def __call__(self, nexus: Nexus) -> UIEventListener:
-        ...  # pragma: no cover
-
+# Not a protocol because https://github.com/python/mypy/issues/14544
+UserInterfaceFactory = Callable[[Nexus], UIEventListener]
 
 class EvaluationResult(Enum):
     """
