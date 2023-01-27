@@ -547,10 +547,10 @@ class NexusTests(TestCase):
         )
 
         from json import dumps, loads
-        from ..storage import loadNexus, asJSON
+        from ..storage import nexusToJSON, nexusFromJSON
 
-        roundTrip = loadNexus(
-            loads(dumps(asJSON(self.nexus))),
+        roundTrip = nexusFromJSON(
+            loads(dumps(nexusToJSON(self.nexus))),
             lambda nexus: self.nexus.userInterface,
         )
         self.maxDiff = 99999
