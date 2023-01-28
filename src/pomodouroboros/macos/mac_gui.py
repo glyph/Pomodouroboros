@@ -1,27 +1,19 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from textwrap import dedent
 from typing import TYPE_CHECKING
-
-from twisted.internet.interfaces import IReactorTime
-
-from ..storage import TEST_MODE
-from .old_mac_gui import main as oldMain
-from .quickapp import mainpoint
-from pomodouroboros.model.intention import Intention
-from pomodouroboros.model.intervals import AnyInterval
-from pomodouroboros.model.nexus import Nexus
-from pomodouroboros.model.storage import loadDefaultNexus
-
-from Foundation import NSObject
-from objc import IBAction, IBOutlet
+from zoneinfo import ZoneInfo
 
 from AppKit import (
-    NSApplication,
     NSAlert,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
     NSApp,
+    NSApplication,
+    NSApplicationActivationPolicyRegular,
     NSApplicationDidChangeScreenParametersNotification,
     NSBackingStoreBuffered,
     NSBezierPath,
@@ -40,15 +32,25 @@ from AppKit import (
     NSRectFillListWithColorsUsingOperation,
     NSResponder,
     NSScreen,
+    NSTableView,
     NSTextField,
     NSTextFieldCell,
     NSView,
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
-    NSApplicationActivationPolicyRegular,
-    NSTableView,
 )
+from Foundation import NSObject
+from objc import IBAction, IBOutlet
+from twisted.internet.interfaces import IReactorTime
+
+from ..storage import TEST_MODE
+from .old_mac_gui import main as oldMain
+from .quickapp import mainpoint
+from pomodouroboros.model.intention import Intention
+from pomodouroboros.model.intervals import AnyInterval
+from pomodouroboros.model.nexus import Nexus
+from pomodouroboros.model.storage import loadDefaultNexus
 
 
 @dataclass
@@ -88,10 +90,13 @@ class IntentionRow(NSObject):
     """
     A row in the intentions table.
     """
+
     title: str
     description: str
+    estimate: str
 
     if TYPE_CHECKING:
+
         @classmethod
         def alloc(self) -> IntentionRow:
             ...
@@ -99,16 +104,37 @@ class IntentionRow(NSObject):
     def initWithRowNumber_(self, rowNumber: int) -> IntentionRow:
         self.title = f"title {rowNumber}"
         self.textDescription = f"description {rowNumber}"
+        self.estimate = f"estimate {rowNumber}"
+        creationDate = datetime.now(ZoneInfo("US/Pacific")) - timedelta(
+            days=(10 - rowNumber)
+        )
+        modificationDate = creationDate + timedelta(days=2)
+        self.creationText = f"Created at {creationDate.isoformat()}; Modified at {modificationDate.isoformat()}"
+        self.canEditSummary = False
         return self
+
+    def pomodoroListSummaryText(self) -> str:
+        return dedent(
+            """\
+            • list
+            • of
+            • pomodoros
+            • placeholder
+        """
+        )
+
 
 class IntentionDataSource(NSObject):
     """
     NSTableViewDataSource for the list of intentions.
     """
+
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
         return 2
 
-    def tableView_objectValueForTableColumn_row_(self, tableView, objectValueForTableColumn, row) -> IntentionRow:
+    def tableView_objectValueForTableColumn_row_(
+        self, tableView, objectValueForTableColumn, row
+    ) -> IntentionRow:
         return IntentionRow.alloc().initWithRowNumber_(row)
 
 
@@ -139,7 +165,9 @@ class PomFilesOwner(NSObject):
 def main(reactor: IReactorTime) -> None:
     if not TEST_MODE:
         return oldMain(reactor)
-    NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyRegular)
+    NSApplication.sharedApplication().setActivationPolicy_(
+        NSApplicationActivationPolicyRegular
+    )
 
     nexus = loadDefaultNexus(
         reactor.seconds(), userInterfaceFactory=MacUserInterface
