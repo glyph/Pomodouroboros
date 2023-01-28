@@ -1,4 +1,4 @@
-from Foundation import NSObject
+from Foundation import NSObject, NSBundle
 from typing import Type, Iterable, TypeVar
 
 from textwrap import dedent
@@ -24,13 +24,16 @@ def getActions(cls):
 def fakeSwiftClass(cls: Type[NSObject]) -> str:
     someOutlets = list(getOutlets(cls))
     someActions = list(getActions(cls))
-    if not (someOutlets or someActions):
-        return ""
+    # if not (someOutlets or someActions):
+    #     return ""
     indentation = "\n            "
     outlets = indentation.join(f"@IBOutlet var {each}: id;" for each in someOutlets)
     actions = indentation.join(
         [f"@IBAction func {each}(_ sender: NSObject) {{ }}" for each in someActions]
     )
+    bundleName = NSBundle.bundleForClass_(cls).bundleIdentifier()
+    if bundleName != "org.python.python":
+        return ""
     return dedent(
         f"""
         class {cls.__name__}: NSObject {{

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Protocol, TYPE_CHECKING
+from typing import Callable, Protocol, TYPE_CHECKING, TypeAlias
 
 
 if TYPE_CHECKING:
@@ -119,7 +119,7 @@ class NoUserInterface(UIEventListener):
 
 
 # Not a protocol because https://github.com/python/mypy/issues/14544
-UserInterfaceFactory = Callable[[Nexus], UIEventListener]
+UserInterfaceFactory: TypeAlias = "Callable[[Nexus], UIEventListener]"
 
 class EvaluationResult(Enum):
     """

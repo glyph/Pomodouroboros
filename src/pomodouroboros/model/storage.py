@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 from functools import singledispatch
+from os import makedirs
 from typing import Literal, TypeAlias, TypedDict, Union, cast
 
-from .boundaries import IntervalType, UserInterfaceFactory, NoUserInterface
+from .boundaries import IntervalType, NoUserInterface, UserInterfaceFactory
 from .intention import Estimate, Intention
-from .intervals import (
-    AnyInterval,
-    Break,
-    Duration,
-    GracePeriod,
-    Pomodoro,
-    Session,
-    StartPrompt,
-)
+from .intervals import AnyInterval, Break, Duration, GracePeriod, Pomodoro, Session, StartPrompt
 from .nexus import Nexus
 
 
@@ -300,7 +293,7 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
 
 JSON: TypeAlias = "None | str | float | bool | dict[str, JSON] | list[JSON] | SavedNexus"
 
-from os.path import join, dirname, expanduser
+from os.path import join, dirname, expanduser, exists
 from json import dump, load
 from os import replace
 
@@ -322,22 +315,30 @@ def loadFromFile(filename: str) -> JSON:
 
 defaultNexusFile = expanduser("~/.local/share/pomodouroboros/current-nexus.json")
 
-def loadDefaultNexus(userInterfaceFactory: UserInterfaceFactory) -> Nexus:
+def loadDefaultNexus(currentTime: float, userInterfaceFactory: UserInterfaceFactory) -> Nexus:
     """
     Load the default nexus.
     """
-    return nexusFromJSON(
-        cast(
-            SavedNexus,
-            loadFromFile(
-                defaultNexusFile
+    if exists(defaultNexusFile):
+        # TODO: probably need to be extremely careful before shipping to
+        # end-users here, since failing to create a nexus makes the app
+        # unlaunchable
+        loaded = nexusFromJSON(
+            cast(
+                SavedNexus,
+                loadFromFile(
+                    defaultNexusFile
+                ),
             ),
-        ),
-        userInterfaceFactory,
-    )
+            userInterfaceFactory,
+        )
+        loaded.advanceToTime(currentTime)
+        return loaded
+    return Nexus(currentTime, userInterfaceFactory)
 
 def saveDefaultNexus(nexus: Nexus) -> None:
     """
     Save a given nexus to the default file for the current user.
     """
+    makedirs(dirname(defaultNexusFile), exist_ok=True)
     saveToFile(defaultNexusFile, nexusToJSON(nexus))

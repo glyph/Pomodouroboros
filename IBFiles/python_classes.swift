@@ -7,6 +7,20 @@ class Actionable: NSObject {
     @IBAction func doIt(_ sender: NSObject) { }
 }
 
+class QuickApplication: NSObject {
+    # Outlets
+
+    # Actions
+
+}
+
+class HUDWindow: NSObject {
+    # Outlets
+
+    # Actions
+
+}
+
 class BigProgressView: NSObject {
     # Outlets
 
@@ -15,10 +29,47 @@ class BigProgressView: NSObject {
     @IBAction func setRightColor(_ sender: NSObject) { }
 }
 
+class SessionDataSource: NSObject {
+    # Outlets
+
+    # Actions
+
+}
+
+class IntentionDataSource: NSObject {
+    # Outlets
+
+    # Actions
+
+}
+
+class StreakDataSource: NSObject {
+    # Outlets
+
+    # Actions
+
+}
+
+class PomFilesOwner: NSObject {
+    # Outlets
+    @IBOutlet var sessionDataSource: id;
+    @IBOutlet var intentionDataSource: id;
+    @IBOutlet var streakDataSource: id;
+    # Actions
+
+}
+
 class MenuForwarder: NSObject {
     # Outlets
     @IBOutlet var myMenu: id;
     @IBOutlet var statusMenu: id;
+    # Actions
+
+}
+
+class DescriptionChanger: NSObject {
+    # Outlets
+
     # Actions
 
 }
@@ -34,5 +85,12 @@ class DayEditorController: NSObject {
     @IBAction func hideMe(_ sender: NSObject) { }
     @IBAction func dateWasSet(_ sender: NSObject) { }
     @IBAction func refreshStatus(_ sender: NSObject) { }
+}
+
+class NotificationDelegate: NSObject {
+    # Outlets
+
+    # Actions
+
 }
 

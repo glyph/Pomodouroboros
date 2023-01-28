@@ -2,7 +2,9 @@
 
 python generate_swift_stub.py \
        pomodouroboros.macos.quickapp \
+       pomodouroboros.macos.progress_hud \
        pomodouroboros.macos.mac_gui \
+       pomodouroboros.macos.old_mac_gui \
        pomodouroboros.macos.mac_utils \
        pomodouroboros.macos.notifs \
        > IBFiles/python_classes.swift

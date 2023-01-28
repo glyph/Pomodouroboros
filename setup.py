@@ -11,6 +11,8 @@ from setuptools import setup
 APP = [f"mac/{'Test' if os.environ.get('TEST_MODE') else ''}Pomodouroboros.py"]
 DATA_FILES = [
     "IBFiles/GoalListWindow.xib",
+    "IBFiles/IntentionEditor.xib",
+    "IBFiles/MainMenu.xib",
     "IBFiles/StandardMenus.xib",
 ]
 OPTIONS = {
