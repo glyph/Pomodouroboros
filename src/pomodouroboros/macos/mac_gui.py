@@ -1,4 +1,6 @@
+from __future__ import annotations
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from twisted.internet.interfaces import IReactorTime
 
@@ -45,6 +47,7 @@ from AppKit import (
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
     NSApplicationActivationPolicyRegular,
+    NSTableView,
 )
 
 
@@ -81,10 +84,32 @@ class SessionDataSource(NSObject):
     """
 
 
+class IntentionRow(NSObject):
+    """
+    A row in the intentions table.
+    """
+    title: str
+    description: str
+
+    if TYPE_CHECKING:
+        @classmethod
+        def alloc(self) -> IntentionRow:
+            ...
+
+    def initWithRowNumber_(self, rowNumber: int) -> IntentionRow:
+        self.title = f"title {rowNumber}"
+        self.textDescription = f"description {rowNumber}"
+        return self
+
 class IntentionDataSource(NSObject):
     """
     NSTableViewDataSource for the list of intentions.
     """
+    def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
+        return 2
+
+    def tableView_objectValueForTableColumn_row_(self, tableView, objectValueForTableColumn, row) -> IntentionRow:
+        return IntentionRow.alloc().initWithRowNumber_(row)
 
 
 class StreakDataSource(NSObject):
