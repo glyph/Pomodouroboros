@@ -105,13 +105,18 @@ class IntentionRow(NSObject):
         self.title = f"title {rowNumber}"
         self.textDescription = f"description {rowNumber}"
         self.estimate = f"estimate {rowNumber}"
+        self.shouldHideEstimate = True
         creationDate = datetime.now(ZoneInfo("US/Pacific")) - timedelta(
             days=(10 - rowNumber)
         )
         modificationDate = creationDate + timedelta(days=2)
-        self.creationText = f"Created at {creationDate.isoformat()}; Modified at {modificationDate.isoformat()}"
+        self.creationText = f"Created at {creationDate.isoformat(timespec='minutes')}; Modified at {modificationDate.isoformat(timespec='minutes')}"
         self.canEditSummary = False
         return self
+
+    @IBAction
+    def estimateClicked_(self, target: object) -> None:
+        self.shouldHideEstimate = not self.shouldHideEstimate
 
     def pomodoroListSummaryText(self) -> str:
         return dedent(
