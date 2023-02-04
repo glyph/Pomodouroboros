@@ -35,6 +35,7 @@ SavedIntention = TypedDict(
         # in the pomodoros themselves, so we can reconstitute that list while
         # loading them.
         "abandoned": bool,
+        "title": str,
         "id": SavedIntentionID,
     },
 )
@@ -122,6 +123,7 @@ def nexusFromJSON(
 
     for savedIntention in saved["intentions"]:
         intention = Intention(
+            title=savedIntention["title"],
             created=savedIntention["created"],
             description=savedIntention["description"],
             estimates=[
@@ -256,6 +258,7 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
         "intentions": [
             {
                 "created": intention.created,
+                "title": intention.title,
                 "description": intention.description,
                 "estimates": [
                     {"duration": estimate.duration, "madeAt": estimate.madeAt}

@@ -185,7 +185,7 @@ class NexusTests(TestCase):
         score-decrease timer interrval is running) starting a pomodoro stops
         that timer and begins a pomodoro.
         """
-        intention = self.nexus.addIntention("x", None)
+        intention = self.nexus.addIntention("x")
         self.nexus.addSession(1000, 2000)
         self.advanceTime(100)  # no-op; time before session
         self.advanceTime(1000)  # enter session
@@ -248,7 +248,7 @@ class NexusTests(TestCase):
         """
 
         self.advanceTime(5.0)
-        i = self.nexus.addIntention("i", None)
+        i = self.nexus.addIntention("i")
         self.nexus.startPomodoro(i)
         self.advanceTime(5 * 60.0)
         self.assertEqual(
@@ -286,9 +286,9 @@ class NexusTests(TestCase):
 
         # User types in some intentions and sets estimates for some of them
         # TBD: should there be a prompt?
-        first = self.nexus.addIntention("first intention", 100.0)
-        second = self.nexus.addIntention("second intention", None)
-        third = self.nexus.addIntention("third intention", 50.0)
+        first = self.nexus.addIntention("first intention", estimate=100.0)
+        second = self.nexus.addIntention("second intention")
+        third = self.nexus.addIntention("third intention", estimate=50.0)
         self.assertEqual(self.nexus.intentions, [first, second, third])
         self.assertEqual(self.nexus.intentions, self.testUI.sawIntentions)
 
@@ -575,7 +575,7 @@ class NexusTests(TestCase):
         START_TIME = 1234.0
         self.advanceTime(START_TIME)
 
-        intent = self.nexus.addIntention("early completion intention", None)
+        intent = self.nexus.addIntention("early completion intention")
 
         self.assertEqual(
             self.nexus.startPomodoro(intent), PomStartResult.Started
@@ -640,7 +640,7 @@ class NexusTests(TestCase):
         START_TIME = 1234.0
         self.advanceTime(START_TIME)
 
-        intent = self.nexus.addIntention("early completion intention", None)
+        intent = self.nexus.addIntention("early completion intention")
 
         self.assertEqual(
             self.nexus.startPomodoro(intent), PomStartResult.Started
@@ -680,7 +680,7 @@ class NexusTests(TestCase):
         Evaluating a pomdooro as focused on an intention should give us 1 point.
         """
         self.advanceTime(1)
-        intent = self.nexus.addIntention("intent", None)
+        intent = self.nexus.addIntention("intent")
         self.nexus.startPomodoro(intent)
         self.advanceTime((5 * 60.0) + 1)
         pom = self.testUI.actions[0].interval

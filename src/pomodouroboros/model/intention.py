@@ -1,23 +1,14 @@
-# -*- test-case-name: pomodouroboros.test_model2 -*-
+# -*- test-case-name: pomodouroboros.model.test -*-
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
 from itertools import islice
 from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
-from .boundaries import (
-    EvaluationResult,
-    IntervalType,
-    PomStartResult,
-    ScoreEvent,
-)
-from .scoring import (
-    AttemptedEstimation,
-    BreakCompleted,
-    EstimationAccuracy,
-    IntentionCompleted,
-    IntentionCreatedEvent,
-)
+from ulid import ULID, new as new_ulid
+
+from .boundaries import EvaluationResult, IntervalType, PomStartResult, ScoreEvent
+from .scoring import AttemptedEstimation, BreakCompleted, EstimationAccuracy, IntentionCompleted, IntentionCreatedEvent
 
 
 if TYPE_CHECKING:
@@ -34,6 +25,8 @@ class Estimate:
     madeAt: float  # when was this estimate made?
 
 
+
+counter = iter(range(999999999999))
 @dataclass
 class Intention:
     """
@@ -41,10 +34,13 @@ class Intention:
     """
 
     created: float
+    title: str
     description: str
     estimates: list[Estimate] = field(default_factory=list)
     pomodoros: list[Pomodoro] = field(default_factory=list)
     abandoned: bool = False
+    id: int = field(default_factory=lambda: next(counter))
+    # id: ULID = field(default_factory=new_ulid, compare=False)
 
     def _compref(self) -> dict[str, object]:
         return asdict(
@@ -53,6 +49,7 @@ class Intention:
                 pomodoros=[
                     replace(each, intention=None) for each in self.pomodoros
                 ],
+                id=None,
             )
         )
 

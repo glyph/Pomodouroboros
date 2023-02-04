@@ -65,7 +65,7 @@ def idealFuture(
     c = count()
 
     def newPlaceholder() -> Intention:
-        return hypothetical.addIntention(f"placeholder {next(c)}", None)
+        return hypothetical.addIntention(f"placeholder {next(c)}")
 
     fillerIntentions = [
         newPlaceholder()

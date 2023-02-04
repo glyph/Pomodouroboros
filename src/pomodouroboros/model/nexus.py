@@ -195,18 +195,18 @@ class Nexus:
         )
 
     def addIntention(
-        self, description: str, estimatedDuration: float | None
+        self, title: str="", description: str="", estimate: float | None=None
     ) -> Intention:
         """
         Add an intention with the given description and time estimate.
         """
         self._intentions.append(
-            newIntention := Intention(self._lastUpdateTime, description)
+            newIntention := Intention(self._lastUpdateTime, title, description)
         )
-        if estimatedDuration is not None:
+        if estimate is not None:
             newIntention.estimates.append(
                 Estimate(
-                    duration=estimatedDuration, madeAt=self._lastUpdateTime
+                    duration=estimate, madeAt=self._lastUpdateTime
                 )
             )
         self.userInterface.intentionAdded(newIntention)

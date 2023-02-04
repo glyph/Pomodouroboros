@@ -18,7 +18,7 @@
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="196" y="240" width="662" height="424"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1042"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="3840" height="1575"/>
             <value key="minSize" type="size" width="600" height="400"/>
             <view key="contentView" wantsLayer="YES" translatesAutoresizingMaskIntoConstraints="NO" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="662" height="424"/>
@@ -314,7 +314,7 @@
                     </tabView>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-654" y="-657"/>
+            <point key="canvasLocation" x="-929" y="-1216"/>
         </window>
         <customObject id="0Fz-Nm-f6J" customClass="SessionDataSource"/>
         <customObject id="rFC-Sz-Dx3" customClass="IntentionDataSource"/>

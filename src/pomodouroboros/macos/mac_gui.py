@@ -50,7 +50,7 @@ from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
 from .quickapp import mainpoint
 from pomodouroboros.model.intention import Intention
-from pomodouroboros.model.intervals import AnyInterval
+from pomodouroboros.model.intervals import AnyInterval, StartPrompt
 from pomodouroboros.model.nexus import Nexus
 from pomodouroboros.model.storage import loadDefaultNexus
 
@@ -76,6 +76,14 @@ class MacUserInterface:
 
     def intervalStart(self, interval: AnyInterval) -> None:
         print("interval started", interval)
+        if isinstance(interval, StartPrompt):
+            print(
+                "you're about to lose",
+                interval.pointsLost,
+                "points, in",
+                interval.endTime - interval.startTime,
+                "seconds",
+            )
 
     def intervalProgress(self, percentComplete: float) -> None:
         self.pc.animatePercentage(self.clock, percentComplete)
