@@ -43,9 +43,11 @@ from AppKit import (
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
 from twisted.internet.interfaces import IReactorTime
+from twisted.internet.task import LoopingCall
 
 from ..storage import TEST_MODE
 from .old_mac_gui import main as oldMain
+from .progress_hud import ProgressController
 from .quickapp import mainpoint
 from pomodouroboros.model.intention import Intention
 from pomodouroboros.model.intervals import AnyInterval
@@ -59,6 +61,8 @@ class MacUserInterface:
     UI for the Mac.
     """
 
+    pc: ProgressController
+    clock: IReactorTime
     nexus: Nexus
 
     def intentionAdded(self, intention: Intention) -> None:
@@ -71,13 +75,13 @@ class MacUserInterface:
         ...
 
     def intervalStart(self, interval: AnyInterval) -> None:
-        ...
+        print("interval started", interval)
 
     def intervalProgress(self, percentComplete: float) -> None:
-        ...
+        self.pc.animatePercentage(self.clock, percentComplete)
 
     def intervalEnd(self) -> None:
-        ...
+        print("interval ended")
 
 
 class SessionDataSource(NSObject):
@@ -174,9 +178,20 @@ def main(reactor: IReactorTime) -> None:
         NSApplicationActivationPolicyRegular
     )
 
+    pc = ProgressController()
     nexus = loadDefaultNexus(
-        reactor.seconds(), userInterfaceFactory=MacUserInterface
+        reactor.seconds(),
+        userInterfaceFactory=lambda nexus: MacUserInterface(
+            pc, reactor, nexus
+        ),
     )
+    # XXX test session
+    nexus.addSession(reactor.seconds(), reactor.seconds() + 1000.0)
+
+    def doAdvance() -> None:
+        nexus.advanceToTime(reactor.seconds())
+
+    LoopingCall(doAdvance).start(10.0)
     owner = PomFilesOwner.alloc().init().retain()
     NSNib.alloc().initWithNibNamed_bundle_(
         "MainMenu.nib", None
@@ -184,5 +199,8 @@ def main(reactor: IReactorTime) -> None:
     NSNib.alloc().initWithNibNamed_bundle_(
         "IntentionEditor.nib", None
     ).instantiateWithOwner_topLevelObjects_(owner, None)
+
     if TEST_MODE:
+        # When I'm no longer bootstrapipng the application I'll want to *not*
+        # unconditionally activate here, just have normal launch behavior.
         NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
