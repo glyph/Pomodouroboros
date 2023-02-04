@@ -7,3 +7,4 @@ mypy>=0.910
 mypy-zope
 python-dateutil
 types-python-dateutil
+ulid-py
