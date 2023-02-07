@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from AppKit import (
     NSAlert,
+    NSNotification,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
@@ -39,6 +40,13 @@ from AppKit import (
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
+    NSViewWidthSizable,
+    NSViewHeightSizable,
+    NSViewNotSizable,
+    NSMakeSize,
+    NSSize,
+    NSMakeRect,
+    NSRect,
 )
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
@@ -48,11 +56,12 @@ from twisted.internet.task import LoopingCall
 from ..storage import TEST_MODE
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
-from .quickapp import mainpoint
-from pomodouroboros.model.intention import Intention
-from pomodouroboros.model.intervals import AnyInterval, StartPrompt
-from pomodouroboros.model.nexus import Nexus
-from pomodouroboros.model.storage import loadDefaultNexus
+from .quickapp import mainpoint, Status
+
+from ..model.intention import Intention
+from ..model.intervals import AnyInterval, StartPrompt
+from ..model.nexus import Nexus
+from ..model.storage import loadDefaultNexus
 
 
 @dataclass
@@ -178,6 +187,65 @@ class PomFilesOwner(NSObject):
         )
 
 
+leftPadding = 15.0
+
+
+class HeightSizableTextField(NSTextField):
+    """
+    Thanks https://stackoverflow.com/a/10463761/13564
+    """
+
+    def intrinsicContentSize(self) -> NSSize:
+        """
+        Calculate the intrinsic content size based on height.
+        """
+        if not self.cell().wraps():
+            return super().intrinsicContentSize()
+
+        frame = self.frame()
+        width = 400.0 # frame.size.width
+        origHeight = frame.size.height
+        frame.size.height = 99999.0
+        cellHeight = self.cell().cellSizeForBounds_(frame).height
+        height = cellHeight + (leftPadding * 2)
+        print("orig height", origHeight)
+        print("cell height", cellHeight)
+        return NSMakeSize(width, height)
+
+    def textDidChange_(self, notification: NSNotification) -> None:
+        """
+        The text changed, recalculate please
+        """
+        print("tdc", notification)
+        super().textDidChange_(notification)
+        self.invalidateIntrinsicContentSize()
+
+    @classmethod
+    def cellClass(cls) -> type[PaddedTextFieldCell]:
+        """
+        Customize the cell class so that it includes some padding
+        """
+        return PaddedTextFieldCell
+
+
+class PaddedTextFieldCell(NSTextFieldCell):
+    """ """
+
+    def drawingRectForBounds_(self, rect: NSRect) -> NSRect:
+        """
+        """
+        rectInset = NSMakeRect(
+            rect.origin.x + leftPadding,
+            rect.origin.y + leftPadding,
+            rect.size.width - (leftPadding * 2),
+            rect.size.height - (leftPadding * 2),
+        )
+        return super().drawingRectForBounds_(rectInset)
+
+f"""
+You should start a pomodoro!  In about {seconds} seconds, you'll lose
+"""
+
 @mainpoint()
 def main(reactor: IReactorTime) -> None:
     if not TEST_MODE:
@@ -185,6 +253,41 @@ def main(reactor: IReactorTime) -> None:
     NSApplication.sharedApplication().setActivationPolicy_(
         NSApplicationActivationPolicyRegular
     )
+
+    def testing() -> None:
+        explanatoryLabel.setStringValue_("it's a new text value!\n\ntest / END")
+        explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
+
+    def justSize() -> None:
+        explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
+
+    def longerText() -> None:
+        evenLonger = ((" -- ".join([f"{each} this is much longer text " for each in range(25)])) + " >>> END")
+        explanatoryLabel.setStringValue_(evenLonger)
+        explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
+
+    status = Status("🍅🔰")
+    status.menu([("Testing Menu", testing), ("Just Size", justSize), ("Longer Text", longerText)])
+    viewItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        "ignored", "doIt:", "k"
+    )
+    status.item.menu().insertItem_atIndex_(viewItem, 0)
+    print()
+    explanatoryLabel = HeightSizableTextField.wrappingLabelWithString_(
+        "initial placeholder"
+    )
+    # explanatoryLabel.setCell_(PaddedTextFieldCell.alloc().init())
+    print("expl", explanatoryLabel)
+    viewItem.setView_(explanatoryLabel)
+    muchLongerText = ("X this is much longer text " * 20) + " >>> END"
+    # explanatoryLabel.setPreferredMaxLayoutWidth_(400.0)
+    explanatoryLabel.setMaximumNumberOfLines_(100)
+    explanatoryLabel.setSelectable_(False)
+    # explanatoryLabel.setAutoresizingMask_(NSViewNotSizable)
+    explanatoryLabel.setTextColor_(NSColor.disabledControlTextColor())
+    explanatoryLabel.setStringValue_(muchLongerText)
+    explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
+    explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
 
     pc = ProgressController()
     nexus = loadDefaultNexus(
