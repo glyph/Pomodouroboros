@@ -1,8 +1,11 @@
 import os
 import sys
 import traceback
-from twisted.internet.fdesc import setBlocking
+from typing import Callable
+
 from objc import ivar
+from twisted.internet.fdesc import setBlocking
+
 
 # Prevent tracebacks or other large messages from truncating when debugging
 # https://github.com/ronaldoussoren/py2app/issues/444
@@ -36,7 +39,7 @@ class Actionable(NSObject):
         self.thunk()
 
 
-def menu(title, items):
+def menu(title: str, items: list[tuple[str, Callable[[], object]]]) -> NSMenu:
     result = NSMenu.alloc().initWithTitle_(title)
     for (subtitle, thunk) in items:
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
@@ -48,8 +51,8 @@ def menu(title, items):
     return result
 
 
-class Status(object):
-    def __init__(self, text):
+class Status:
+    def __init__(self, text: str) -> None:
         self.item = NSStatusBar.systemStatusBar().statusItemWithLength_(
             NSVariableStatusItemLength
         )
@@ -57,7 +60,7 @@ class Status(object):
         self.item.setEnabled_(True)
         self.item.setHighlightMode_(True)
 
-    def menu(self, items):
+    def menu(self, items: list[tuple[str, Callable[[], object]]]) -> None:
         self.item.setMenu_(menu(self.item.title(), items))
 
 
