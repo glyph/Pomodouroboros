@@ -209,6 +209,6 @@ def main(reactor: IReactorTime) -> None:
     ).instantiateWithOwner_topLevelObjects_(owner, None)
 
     if TEST_MODE:
-        # When I'm no longer bootstrapipng the application I'll want to *not*
+        # When I'm no longer bootstrapping the application I'll want to *not*
         # unconditionally activate here, just have normal launch behavior.
         NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
