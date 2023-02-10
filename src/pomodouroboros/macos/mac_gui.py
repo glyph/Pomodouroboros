@@ -224,6 +224,12 @@ class HeightSizableTextField(NSTextField):
     def cellClass(cls) -> type[PaddedTextFieldCell]:
         """
         Customize the cell class so that it includes some padding
+
+        @note: C{cellClass} is nominally deprecated (as is C{cell}), but there
+            doesn't seem to be any reasonable way to do this sort of basic
+            customization that I{isn't} deprecated.  It seems like Apple mainly
+            wants to deprecate the use of this customization mechanism in
+            NSTableView usage?
         """
         return PaddedTextFieldCell
 
