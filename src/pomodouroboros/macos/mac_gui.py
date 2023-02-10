@@ -254,8 +254,16 @@ You should start a pomodoro!  In about {seconds} seconds, you'll lose
 
 @mainpoint()
 def main(reactor: IReactorTime) -> None:
-    if not TEST_MODE:
+    if TEST_MODE:
+        return newMain(reactor)
+    else:
         return oldMain(reactor)
+
+def newMain(reactor: IReactorTime) -> None:
+    """
+    New pomodoro.model.nexus-based implementation of the UI.
+    """
+
     NSApplication.sharedApplication().setActivationPolicy_(
         NSApplicationActivationPolicyRegular
     )
@@ -279,11 +287,7 @@ def main(reactor: IReactorTime) -> None:
     )
     status.item.menu().insertItem_atIndex_(viewItem, 0)
     print()
-    explanatoryLabel = HeightSizableTextField.wrappingLabelWithString_(
-        "initial placeholder"
-    )
-    # explanatoryLabel.setCell_(PaddedTextFieldCell.alloc().init())
-    print("expl", explanatoryLabel)
+    explanatoryLabel = HeightSizableTextField.wrappingLabelWithString_("Starting Up…")
     viewItem.setView_(explanatoryLabel)
     muchLongerText = ("X this is much longer text " * 20) + " >>> END"
     # explanatoryLabel.setPreferredMaxLayoutWidth_(400.0)
