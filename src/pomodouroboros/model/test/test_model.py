@@ -152,7 +152,10 @@ class NexusTests(TestCase):
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1400.0, pointsLost=3.0
+                        startTime=1100.0,
+                        endTime=1400.0,
+                        pointsBeforeLoss=33.25,
+                        pointsAfterLoss=30.25,
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1402.0,
@@ -169,7 +172,10 @@ class NexusTests(TestCase):
                 ),
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1402.0, endTime=1700.0, pointsLost=11.25
+                        startTime=1402.0,
+                        endTime=1700.0,
+                        pointsBeforeLoss=30.25,
+                        pointsAfterLoss=19.0,
                     ),
                     actualStartTime=1402.0,
                     actualEndTime=None,
@@ -196,7 +202,10 @@ class NexusTests(TestCase):
             [
                 TestInterval(
                     interval=StartPrompt(
-                        startTime=1100.0, endTime=1400.0, pointsLost=3.0
+                        startTime=1100.0,
+                        endTime=1400.0,
+                        pointsBeforeLoss=33.25,
+                        pointsAfterLoss=30.25,
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1150.0,

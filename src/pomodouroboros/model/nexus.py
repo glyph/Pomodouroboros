@@ -4,11 +4,29 @@ from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Callable, Iterable, Iterator, Sequence
 
-from .boundaries import EvaluationResult, IntervalType, NoUserInterface, PomStartResult, ScoreEvent, UIEventListener, UserInterfaceFactory
+from .boundaries import (
+    EvaluationResult,
+    IntervalType,
+    NoUserInterface,
+    PomStartResult,
+    ScoreEvent,
+    UIEventListener,
+    UserInterfaceFactory,
+)
 from .debugger import debug
 from .ideal import idealScore
 from .intention import Estimate, Intention
-from .intervals import AnyInterval, Break, Duration, Evaluation, GracePeriod, Pomodoro, Session, StartPrompt, handleIdleStartPom
+from .intervals import (
+    AnyInterval,
+    Break,
+    Duration,
+    Evaluation,
+    GracePeriod,
+    Pomodoro,
+    Session,
+    StartPrompt,
+    handleIdleStartPom,
+)
 
 
 @dataclass(frozen=True)
@@ -29,9 +47,13 @@ class GameRules:
         ]
     )
 
+
 _theNoUserInterface = NoUserInterface()
+
+
 def _noUIFactory() -> NoUserInterface:
     return _theNoUserInterface
+
 
 @dataclass
 class Nexus:
@@ -195,7 +217,10 @@ class Nexus:
         )
 
     def addIntention(
-        self, title: str="", description: str="", estimate: float | None=None
+        self,
+        title: str = "",
+        description: str = "",
+        estimate: float | None = None,
     ) -> Intention:
         """
         Add an intention with the given description and time estimate.
@@ -205,9 +230,7 @@ class Nexus:
         )
         if estimate is not None:
             newIntention.estimates.append(
-                Estimate(
-                    duration=estimate, madeAt=self._lastUpdateTime
-                )
+                Estimate(duration=estimate, madeAt=self._lastUpdateTime)
             )
         self.userInterface.intentionAdded(newIntention)
         return newIntention
@@ -323,4 +346,9 @@ def nextInterval(
     if nextDrop <= timestamp:
         return None
     debug(f"{timestamp=} {nextDrop=}")
-    return StartPrompt(timestamp, nextDrop, scoreInfo.pointsLost())
+    return StartPrompt(
+        timestamp,
+        nextDrop,
+        scoreInfo.scoreBeforeLoss(),
+        scoreInfo.scoreAfterLoss(),
+    )

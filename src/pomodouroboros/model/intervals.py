@@ -145,9 +145,18 @@ class StartPrompt:
 
     startTime: float
     endTime: float
-    pointsLost: float
+    pointsBeforeLoss: float
+    pointsAfterLoss: float
 
     intervalType: ClassVar[IntervalType] = IntervalType.StartPrompt
+
+    @property
+    def pointsLost(self) -> float:
+        """
+        Convenience attribute to compute the number of points that will be
+        lost.
+        """
+        return self.pointsBeforeLoss-self.pointsAfterLoss
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()

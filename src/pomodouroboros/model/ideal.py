@@ -1,15 +1,12 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from itertools import count
-from typing import Iterator, TYPE_CHECKING
+from typing import Iterator, Sequence, TYPE_CHECKING
 
-from .boundaries import (
-    EvaluationResult,
-    NoUserInterface,
-    PomStartResult,
-    ScoreEvent,
-)
+from .boundaries import EvaluationResult, NoUserInterface, PomStartResult, ScoreEvent
 from .debugger import debug
+
 
 if TYPE_CHECKING:
     from .nexus import Nexus
@@ -25,6 +22,21 @@ from .intervals import (
 
 
 @dataclass
+class ScoreSummary:
+    """
+    A L{ScoreSummary} is a container for L{ScoreEvent}s that can summarize
+    things about them.
+    """
+    events: Sequence[ScoreEvent]
+
+    @property
+    def totalScore(self) -> float:
+        """
+        Compute the total score for the contained scores.
+        """
+        return sum(each.points for each in self.events)
+
+@dataclass
 class IdealScoreInfo:
     """
     Information about time remaining to the next ideal score loss.
@@ -32,17 +44,27 @@ class IdealScoreInfo:
 
     now: float
     workPeriodEnd: float
-    idealScoreNow: list[ScoreEvent]
+    idealScoreNow: ScoreSummary
     nextPointLoss: float | None
-    idealScoreNext: list[ScoreEvent]
+    idealScoreNext: ScoreSummary
+
+    def scoreBeforeLoss(self) -> float:
+        """
+        What is the score now, before the next loss occurs at C{nextPointLoss}?
+        """
+        return self.idealScoreNow.totalScore
+
+    def scoreAfterLoss(self) -> float:
+        """
+        What will the score be after the next loss occurs at C{nextPointLoss}?
+        """
+        return self.idealScoreNext.totalScore
 
     def pointsLost(self) -> float:
         """
-        Compute, numerically, how many points will be lost at L{self.nextPointLoss}.
+        Mostly just for testing convenience right now.
         """
-        return sum(each.points for each in self.idealScoreNow) - sum(
-            each.points for each in self.idealScoreNext
-        )
+        return self.scoreBeforeLoss() - self.scoreAfterLoss()
 
 
 def idealFuture(
@@ -120,23 +142,23 @@ def idealScore(nexus: Nexus, workPeriodEnd: float) -> IdealScoreInfo:
     if not idealScoreNow:
         return IdealScoreInfo(
             now=workPeriodBegin,
-            idealScoreNow=idealScoreNow,
+            idealScoreNow=ScoreSummary(idealScoreNow),
             workPeriodEnd=workPeriodEnd,
             nextPointLoss=None,
-            idealScoreNext=idealScoreNow,
+            idealScoreNext=ScoreSummary(idealScoreNow),
         )
     latestScoreTime = idealScoreNow[-1].time
     pointLossTime = workPeriodBegin + (workPeriodEnd - latestScoreTime)
     return IdealScoreInfo(
         now=nexus._lastUpdateTime,
-        idealScoreNow=idealScoreNow,
+        idealScoreNow=ScoreSummary(idealScoreNow),
         workPeriodEnd=workPeriodEnd,
         nextPointLoss=pointLossTime,
-        idealScoreNext=list(
+        idealScoreNext=ScoreSummary(list(
             (
                 idealFuture(nexus, pointLossTime + 1.0, workPeriodEnd)
                 if idealScoreNow
                 else currentIdeal
             ).scoreEvents(endTime=workPeriodEnd)
-        ),
+        )),
     )

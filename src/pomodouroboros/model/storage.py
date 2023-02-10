@@ -84,7 +84,8 @@ SavedStartPrompt = TypedDict(
     {
         "startTime": float,
         "endTime": float,
-        "pointsLost": float,
+        "pointsBeforeLoss": float,
+        "pointsAfterLoss": float,
         "intervalType": Literal["StartPrompt"],
     },
 )
@@ -152,7 +153,8 @@ def nexusFromJSON(
             return StartPrompt(
                 startTime=savedInterval["startTime"],
                 endTime=savedInterval["endTime"],
-                pointsLost=savedInterval["pointsLost"],
+                pointsBeforeLoss=savedInterval["pointsBeforeLoss"],
+                pointsAfterLoss=savedInterval["pointsAfterLoss"],
             )
         elif savedInterval["intervalType"] == "Break":
             return Break(
@@ -241,7 +243,8 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
         return {
             "startTime": interval.startTime,
             "endTime": interval.endTime,
-            "pointsLost": interval.pointsLost,
+            "pointsBeforeLoss": interval.pointsBeforeLoss,
+            "pointsAfterLoss": interval.pointsAfterLoss,
             "intervalType": "StartPrompt",
         }
 
