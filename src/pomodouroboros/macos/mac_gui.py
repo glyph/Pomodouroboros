@@ -203,7 +203,7 @@ class HeightSizableTextField(NSTextField):
             return super().intrinsicContentSize()
 
         frame = self.frame()
-        width = 400.0 # frame.size.width
+        width = 400.0  # frame.size.width
         origHeight = frame.size.height
         frame.size.height = 99999.0
         cellHeight = self.cell().cellSizeForBounds_(frame).height
@@ -238,8 +238,7 @@ class PaddedTextFieldCell(NSTextFieldCell):
     """ """
 
     def drawingRectForBounds_(self, rect: NSRect) -> NSRect:
-        """
-        """
+        """ """
         rectInset = NSMakeRect(
             rect.origin.x + leftPadding,
             rect.origin.y + leftPadding,
@@ -248,9 +247,11 @@ class PaddedTextFieldCell(NSTextFieldCell):
         )
         return super().drawingRectForBounds_(rectInset)
 
+
 f"""
 You should start a pomodoro!  In about {seconds} seconds, you'll lose
 """
+
 
 @mainpoint()
 def main(reactor: IReactorTime) -> None:
@@ -258,6 +259,7 @@ def main(reactor: IReactorTime) -> None:
         return newMain(reactor)
     else:
         return oldMain(reactor)
+
 
 def newMain(reactor: IReactorTime) -> None:
     """
@@ -269,25 +271,39 @@ def newMain(reactor: IReactorTime) -> None:
     )
 
     def testing() -> None:
-        explanatoryLabel.setStringValue_("it's a new text value!\n\ntest / END")
+        explanatoryLabel.setStringValue_(
+            "it's a new text value!\n\ntest / END"
+        )
         explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
 
     def justSize() -> None:
         explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
 
     def longerText() -> None:
-        evenLonger = ((" -- ".join([f"{each} this is much longer text " for each in range(25)])) + " >>> END")
+        evenLonger = (
+            " -- ".join(
+                [f"{each} this is much longer text " for each in range(25)]
+            )
+        ) + " >>> END"
         explanatoryLabel.setStringValue_(evenLonger)
         explanatoryLabel.setFrameSize_(explanatoryLabel.intrinsicContentSize())
 
     status = Status("🍅🔰")
-    status.menu([("Testing Menu", testing), ("Just Size", justSize), ("Longer Text", longerText)])
+    status.menu(
+        [
+            ("Testing Menu", testing),
+            ("Just Size", justSize),
+            ("Longer Text", longerText),
+        ]
+    )
     viewItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
         "ignored", "doIt:", "k"
     )
     status.item.menu().insertItem_atIndex_(viewItem, 0)
     print()
-    explanatoryLabel = HeightSizableTextField.wrappingLabelWithString_("Starting Up…")
+    explanatoryLabel = HeightSizableTextField.wrappingLabelWithString_(
+        "Starting Up…"
+    )
     viewItem.setView_(explanatoryLabel)
     muchLongerText = ("X this is much longer text " * 20) + " >>> END"
     # explanatoryLabel.setPreferredMaxLayoutWidth_(400.0)
