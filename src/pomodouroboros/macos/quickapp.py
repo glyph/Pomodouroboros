@@ -4,13 +4,6 @@ import traceback
 from typing import Callable
 
 from objc import ivar
-from twisted.internet.fdesc import setBlocking
-
-
-# Prevent tracebacks or other large messages from truncating when debugging
-# https://github.com/ronaldoussoren/py2app/issues/444
-setBlocking(0)
-setBlocking(1)
 
 from Foundation import NSObject
 from AppKit import (
