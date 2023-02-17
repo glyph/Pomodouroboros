@@ -8,6 +8,8 @@
         <customObject id="-2" userLabel="File's Owner" customClass="PomFilesOwner">
             <connections>
                 <outlet property="intentionDataSource" destination="rFC-Sz-Dx3" id="mys-lY-FJh"/>
+                <outlet property="intentionsTable" destination="Hs4-fh-iIo" id="hqA-bk-aNU"/>
+                <outlet property="intentionsWindow" destination="QvC-M9-y7g" id="Za2-kS-pcg"/>
                 <outlet property="sessionDataSource" destination="0Fz-Nm-f6J" id="8ff-31-vco"/>
                 <outlet property="streakDataSource" destination="q7p-bi-ajt" id="6zN-rW-T09"/>
             </connections>
@@ -144,6 +146,13 @@
                                                                                     <font key="font" metaFont="system"/>
                                                                                 </buttonCell>
                                                                                 <color key="bezelColor" name="systemGreenColor" catalog="System" colorSpace="catalog"/>
+                                                                                <connections>
+                                                                                    <binding destination="Bc1-jb-Gst" name="target" keyPath="objectValue" id="B89-Gz-JxR">
+                                                                                        <dictionary key="options">
+                                                                                            <string key="NSSelectorName">setClicked:</string>
+                                                                                        </dictionary>
+                                                                                    </binding>
+                                                                                </connections>
                                                                             </button>
                                                                             <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Y4E-x5-GaX">
                                                                                 <rect key="frame" x="481" y="187" width="112" height="32"/>
@@ -153,6 +162,13 @@
                                                                                     <font key="font" metaFont="system"/>
                                                                                 </buttonCell>
                                                                                 <color key="bezelColor" name="systemRedColor" catalog="System" colorSpace="catalog"/>
+                                                                                <connections>
+                                                                                    <binding destination="Bc1-jb-Gst" name="target" keyPath="objectValue" id="TD5-LE-5fH">
+                                                                                        <dictionary key="options">
+                                                                                            <string key="NSSelectorName">abandonClicked:</string>
+                                                                                        </dictionary>
+                                                                                    </binding>
+                                                                                </connections>
                                                                             </button>
                                                                             <box fixedFrame="YES" title="Pomodoros" translatesAutoresizingMaskIntoConstraints="NO" id="iGZ-EM-Wef">
                                                                                 <rect key="frame" x="383" y="5" width="206" height="184"/>
@@ -285,6 +301,9 @@
                                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                 <font key="font" metaFont="system"/>
                                             </buttonCell>
+                                            <connections>
+                                                <action selector="newIntentionClicked:" target="-2" id="GLf-FG-I5v"/>
+                                            </connections>
                                         </button>
                                         <textField verticalHuggingPriority="751" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="W2s-5v-oaf">
                                             <rect key="frame" x="2" y="45" width="612" height="16"/>

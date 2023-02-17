@@ -36,6 +36,13 @@ class SessionDataSource: NSObject {
 
 }
 
+class IntentionRow: NSObject {
+    # Outlets
+
+    # Actions
+    @IBAction func estimateClicked(_ sender: NSObject) { }
+}
+
 class IntentionDataSource: NSObject {
     # Outlets
 
@@ -55,6 +62,22 @@ class PomFilesOwner: NSObject {
     @IBOutlet var sessionDataSource: id;
     @IBOutlet var intentionDataSource: id;
     @IBOutlet var streakDataSource: id;
+    @IBOutlet var intentionsWindow: id;
+    @IBOutlet var intentionsTable: id;
+    # Actions
+    @IBAction func newIntentionClicked(_ sender: NSObject) { }
+}
+
+class HeightSizableTextField: NSObject {
+    # Outlets
+
+    # Actions
+
+}
+
+class PaddedTextFieldCell: NSObject {
+    # Outlets
+
     # Actions
 
 }
