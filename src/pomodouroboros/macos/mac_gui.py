@@ -258,19 +258,15 @@ class IntentionDataSource(NSObject):
         if self.nexus is None:
             return 0
         result = len(self.intentionsList)
-        print("norit", result)
         return result
 
     def tableView_objectValueForTableColumn_row_(
         self, tableView: NSTableView, objectValueForTableColumn: object, row: int,
     ) -> IntentionRow:
         with showFailures():
-            print("intention row alloc", row)
             r = self.intentionsList[row]
-            print("intention", r)
             assert self.nexus is not None
             ira = IntentionRow.alloc().initWithIntention_andNexus_(r, self.nexus)
-            print("row", ira)
             return ira
 
 
@@ -307,9 +303,7 @@ class PomFilesOwner(NSObject):
         The 'new intention' button was clicked.
         """
         newIntention = self.nexus.addIntention()
-        print("reloading")
         self.intentionsTable.reloadData()
-        print("reloaded")
 
     def awakeFromNib(self) -> None:
         """
@@ -318,12 +312,6 @@ class PomFilesOwner(NSObject):
         # TODO: update intention data source with initial data from nexus
         self.intentionDataSource.intentionsList = self.nexus.intentions
         self.intentionDataSource.nexus = self.nexus
-        print(
-            "objects:",
-            self.sessionDataSource,
-            self.intentionDataSource,
-            self.streakDataSource,
-        )
 
 
 leftPadding = 15.0
@@ -353,7 +341,6 @@ class HeightSizableTextField(NSTextField):
         """
         The text changed, recalculate please
         """
-        print("tdc", notification)
         super().textDidChange_(notification)
         self.invalidateIntrinsicContentSize()
 
