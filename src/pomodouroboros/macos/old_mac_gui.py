@@ -44,7 +44,7 @@ from .notifs import (
     setupNotifications,
     withdrawIntentPrompt,
 )
-from .quickapp import Status, mainpoint, quit
+from quickmacapp import Status, mainpoint, quit
 from AppKit import (
     NSAlert,
     NSAlertFirstButtonReturn,

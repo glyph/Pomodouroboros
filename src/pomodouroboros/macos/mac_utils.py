@@ -8,7 +8,7 @@ from typing import Callable
 
 from Foundation import NSCalendar, NSCalendarUnitDay, NSCalendarUnitHour, NSCalendarUnitMinute, NSCalendarUnitMonth, NSCalendarUnitNanosecond, NSCalendarUnitSecond, NSCalendarUnitYear, NSDate, NSObject
 
-from .quickapp import Actionable
+from quickmacapp import Actionable
 from AppKit import NSNotificationCenter
 from dateutil.tz import tzlocal
 

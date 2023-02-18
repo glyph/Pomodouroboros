@@ -1,19 +1,5 @@
 import Foundation
 
-class Actionable: NSObject {
-    # Outlets
-
-    # Actions
-    @IBAction func doIt(_ sender: NSObject) { }
-}
-
-class QuickApplication: NSObject {
-    # Outlets
-
-    # Actions
-
-}
-
 class HUDWindow: NSObject {
     # Outlets
 
@@ -40,6 +26,8 @@ class IntentionRow: NSObject {
     # Outlets
 
     # Actions
+    @IBAction func setClicked(_ sender: NSObject) { }
+    @IBAction func abandonClicked(_ sender: NSObject) { }
     @IBAction func estimateClicked(_ sender: NSObject) { }
 }
 
@@ -108,6 +96,13 @@ class DayEditorController: NSObject {
     @IBAction func hideMe(_ sender: NSObject) { }
     @IBAction func dateWasSet(_ sender: NSObject) { }
     @IBAction func refreshStatus(_ sender: NSObject) { }
+}
+
+class Actionable: NSObject {
+    # Outlets
+
+    # Actions
+    @IBAction func doIt(_ sender: NSObject) { }
 }
 
 class NotificationDelegate: NSObject {

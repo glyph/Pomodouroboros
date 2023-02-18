@@ -51,8 +51,11 @@ from AppKit import (
 )
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
+
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
+
+from quickmacapp import Status, mainpoint
 
 from ..model.intention import Intention
 from ..model.intervals import AnyInterval, StartPrompt
@@ -61,7 +64,6 @@ from ..model.storage import loadDefaultNexus
 from ..storage import TEST_MODE
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
-from .quickapp import Status, mainpoint
 
 
 @dataclass
