@@ -8,3 +8,4 @@ mypy-zope
 python-dateutil
 types-python-dateutil
 ulid-py
+quickmacapp
