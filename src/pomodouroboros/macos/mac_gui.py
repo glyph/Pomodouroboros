@@ -180,29 +180,40 @@ class IntentionRow(NSObject):
     A row in the intentions table.
     """
 
-    title: str
-    description: str
-    estimate: str
-
     if TYPE_CHECKING:
 
         @classmethod
         def alloc(self) -> IntentionRow:
             ...
 
-    def initWithIntention_andNexus_(self, intention: Intention, nexus: Nexus) -> IntentionRow:
-        self.title = intention.title
-        self.textDescription = intention.description
-        self.estimate = str(intention.estimates[-1] if intention.estimates else "")
-        self.shouldHideEstimate = True
-        creationDate = datetime.fromtimestamp(intention.created)
+    def title(self) -> str:
+        return self._intention.title
+
+    def setTitle_(self, newTitle: str) -> None:
+        self._intention.title = newTitle
+
+    def textDescription(self) -> str:
+        return self._intention.description
+
+    def setTextDescription_(self, newTextDescription: str) -> None:
+        self._intention.description = newTextDescription
+
+    def estimate(self) -> str:
+        estimates = self._intention.estimates
+        return str(estimates[-1] if estimates else "")
+
+    def creationText(self) -> str:
+        creationDate = datetime.fromtimestamp(self._intention.created)
         modificationDate = creationDate + timedelta(days=2)
-        self.creationText = (
+        return (
             f"Created at {creationDate.isoformat(timespec='minutes')}; "
             f"Modified at {modificationDate.isoformat(timespec='minutes')}"
         )
+
+    def initWithIntention_andNexus_(self, intention: Intention, nexus: Nexus) -> IntentionRow:
+        self._intention = intention
+        self.shouldHideEstimate = True
         self.canEditSummary = False
-        self.actualIntention = intention
         return self
 
     @IBAction
@@ -210,7 +221,7 @@ class IntentionRow(NSObject):
         """
         The 'set' button was clicked. Time to set this intention!
         """
-        print("set intention clicked for", self.actualIntention)
+        print("set intention clicked for", self._intention)
 
     @IBAction
     def abandonClicked_(self, target: object) -> None:
@@ -218,7 +229,7 @@ class IntentionRow(NSObject):
         The 'abandon' button was clicked.  This intention should be abandoned
         (after a confirmation dialog).
         """
-        print("abandon intention clicked for", self.actualIntention)
+        print("abandon intention clicked for", self._intention)
 
     @IBAction
     def estimateClicked_(self, target: object) -> None:
@@ -284,6 +295,7 @@ class PomFilesOwner(NSObject):
     streakDataSource: StreakDataSource = IBOutlet()
     intentionsWindow: NSWindow = IBOutlet()
     intentionsTable: NSTableView = IBOutlet()
+    debugPalette: NSWindow = IBOutlet()
 
     if TYPE_CHECKING:
         @classmethod
@@ -305,6 +317,11 @@ class PomFilesOwner(NSObject):
         newIntention = self.nexus.addIntention()
         self.intentionsTable.reloadData()
 
+    @IBAction
+    def pokeIntentionDescription_(self, sender: NSObject) -> None:
+        self.intentionDataSource.intentionsList[0].description = 'new description'
+        self.intentionsTable.reloadData()
+
     def awakeFromNib(self) -> None:
         """
         Let's get the GUI started.
@@ -312,6 +329,7 @@ class PomFilesOwner(NSObject):
         # TODO: update intention data source with initial data from nexus
         self.intentionDataSource.intentionsList = self.nexus.intentions
         self.intentionDataSource.nexus = self.nexus
+        self.debugPalette.setIsVisible_(True)
 
 
 leftPadding = 15.0

@@ -7,6 +7,7 @@
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="PomFilesOwner">
             <connections>
+                <outlet property="debugPalette" destination="VKS-g9-PNV" id="yd8-IP-Ndd"/>
                 <outlet property="intentionDataSource" destination="rFC-Sz-Dx3" id="mys-lY-FJh"/>
                 <outlet property="intentionsTable" destination="Hs4-fh-iIo" id="hqA-bk-aNU"/>
                 <outlet property="intentionsWindow" destination="QvC-M9-y7g" id="Za2-kS-pcg"/>
@@ -333,10 +334,43 @@
                     </tabView>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-929" y="-1216"/>
+            <point key="canvasLocation" x="-933" y="-1219"/>
         </window>
         <customObject id="0Fz-Nm-f6J" customClass="SessionDataSource"/>
         <customObject id="rFC-Sz-Dx3" customClass="IntentionDataSource"/>
         <customObject id="q7p-bi-ajt" customClass="StreakDataSource"/>
+        <window title="Debug Palette" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" hidesOnDeactivate="YES" releasedWhenClosed="NO" frameAutosaveName="" animationBehavior="default" id="VKS-g9-PNV" userLabel="Debug Palette" customClass="NSPanel">
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES" utility="YES"/>
+            <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
+            <rect key="contentRect" x="425" y="199" width="276" height="378"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="3840" height="1575"/>
+            <view key="contentView" id="Pbu-g8-rZJ">
+                <rect key="frame" x="0.0" y="0.0" width="276" height="378"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3W5-8n-dJG">
+                        <rect key="frame" x="13" y="331" width="138" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="push" title="Poke Description" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="BGt-M1-gxm">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="pokeIntentionDescription:" target="-2" id="hXm-fF-1Md"/>
+                        </connections>
+                    </button>
+                </subviews>
+            </view>
+            <point key="canvasLocation" x="-1619" y="-1261"/>
+        </window>
+        <button verticalHuggingPriority="750" id="Yps-8T-dqG">
+            <rect key="frame" x="0.0" y="0.0" width="82" height="32"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+            <buttonCell key="cell" type="push" title="Button" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="3Oo-9b-0ua">
+                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                <font key="font" metaFont="system"/>
+            </buttonCell>
+            <point key="canvasLocation" x="-1757" y="-1291"/>
+        </button>
     </objects>
 </document>

@@ -26,6 +26,8 @@ class IntentionRow: NSObject {
     # Outlets
 
     # Actions
+    @IBAction func setTitle(_ sender: NSObject) { }
+    @IBAction func setTextDescription(_ sender: NSObject) { }
     @IBAction func setClicked(_ sender: NSObject) { }
     @IBAction func abandonClicked(_ sender: NSObject) { }
     @IBAction func estimateClicked(_ sender: NSObject) { }
@@ -52,8 +54,10 @@ class PomFilesOwner: NSObject {
     @IBOutlet var streakDataSource: id;
     @IBOutlet var intentionsWindow: id;
     @IBOutlet var intentionsTable: id;
+    @IBOutlet var debugPalette: id;
     # Actions
     @IBAction func newIntentionClicked(_ sender: NSObject) { }
+    @IBAction func pokeIntentionDescription(_ sender: NSObject) { }
 }
 
 class HeightSizableTextField: NSObject {
