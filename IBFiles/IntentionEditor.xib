@@ -363,14 +363,5 @@
             </view>
             <point key="canvasLocation" x="-1619" y="-1261"/>
         </window>
-        <button verticalHuggingPriority="750" id="Yps-8T-dqG">
-            <rect key="frame" x="0.0" y="0.0" width="82" height="32"/>
-            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-            <buttonCell key="cell" type="push" title="Button" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="3Oo-9b-0ua">
-                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                <font key="font" metaFont="system"/>
-            </buttonCell>
-            <point key="canvasLocation" x="-1757" y="-1291"/>
-        </button>
     </objects>
 </document>
