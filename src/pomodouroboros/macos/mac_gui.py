@@ -290,12 +290,25 @@ class StreakDataSource(NSObject):
 class PomFilesOwner(NSObject):
     nexus: Nexus
 
-    sessionDataSource: SessionDataSource = IBOutlet()
-    intentionDataSource: IntentionDataSource = IBOutlet()
-    streakDataSource: StreakDataSource = IBOutlet()
-    intentionsWindow: NSWindow = IBOutlet()
-    intentionsTable: NSTableView = IBOutlet()
-    debugPalette: NSWindow = IBOutlet()
+    # Note: Xcode can't see IBOutlet declarations on the same line as their
+    # type hint.
+    sessionDataSource: SessionDataSource
+    sessionDataSource = IBOutlet()
+
+    intentionDataSource: IntentionDataSource
+    intentionDataSource = IBOutlet()
+
+    streakDataSource: StreakDataSource
+    streakDataSource = IBOutlet()
+
+    intentionsWindow: NSWindow
+    intentionsWindow = IBOutlet()
+
+    intentionsTable: NSTableView
+    intentionsTable = IBOutlet()
+
+    debugPalette: NSWindow
+    debugPalette = IBOutlet()
 
     if TYPE_CHECKING:
         @classmethod

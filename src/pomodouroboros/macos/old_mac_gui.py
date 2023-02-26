@@ -47,6 +47,7 @@ from .notifs import (
 from quickmacapp import Status, mainpoint, quit
 from AppKit import (
     NSAlert,
+    NSArrayController,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
@@ -69,6 +70,7 @@ from AppKit import (
     NSRectFillListWithColorsUsingOperation,
     NSResponder,
     NSScreen,
+    NSTableView,
     NSTextField,
     NSTextFieldCell,
     NSView,
@@ -398,8 +400,11 @@ class MenuForwarder(NSResponder):
     status-item menu.
     """
 
-    myMenu: NSMenu = IBOutlet()
-    statusMenu: NSMenu = IBOutlet()
+    myMenu: NSMenu
+    myMenu = IBOutlet()
+
+    statusMenu: NSMenu
+    statusMenu = IBOutlet()
 
     def performKeyEquivalent_(self, event: NSEvent) -> bool:
         for menu in [self.statusMenu, self.myMenu]:
@@ -712,11 +717,21 @@ def poms2Dicts(
 
 
 class DayEditorController(NSObject):
+    arrayController: NSArrayController
     arrayController = IBOutlet()
+
+    editorWindow: NSWindow
     editorWindow = IBOutlet()
+
+    tableView: NSTableView
     tableView = IBOutlet()
-    datePickerCell: Optional[NSCell] = IBOutlet()
-    dayLabelField: Optional[NSTextFieldCell] = IBOutlet()
+
+    datePickerCell: Optional[NSCell]
+    datePickerCell = IBOutlet()
+
+    dayLabelField: Optional[NSTextFieldCell]
+    dayLabelField = IBOutlet()
+
     observer = None
     clock: IReactorTime
     dayLoader: DayLoader
