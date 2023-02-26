@@ -210,7 +210,9 @@ class IntentionRow(NSObject):
             f"Modified at {modificationDate.isoformat(timespec='minutes')}"
         )
 
-    def initWithIntention_andNexus_(self, intention: Intention, nexus: Nexus) -> IntentionRow:
+    def initWithIntention_andNexus_(
+        self, intention: Intention, nexus: Nexus
+    ) -> IntentionRow:
         self._intention = intention
         self.shouldHideEstimate = True
         self.canEditSummary = False
@@ -245,7 +247,10 @@ class IntentionRow(NSObject):
             """
         )
 
+
 from twisted.python.failure import Failure
+
+
 @contextmanager
 def showFailures() -> Iterator[None]:
     """
@@ -256,6 +261,7 @@ def showFailures() -> Iterator[None]:
     except:
         print(Failure().getTraceback())
         raise
+
 
 class IntentionDataSource(NSObject):
     """
@@ -272,12 +278,17 @@ class IntentionDataSource(NSObject):
         return result
 
     def tableView_objectValueForTableColumn_row_(
-        self, tableView: NSTableView, objectValueForTableColumn: object, row: int,
+        self,
+        tableView: NSTableView,
+        objectValueForTableColumn: object,
+        row: int,
     ) -> IntentionRow:
         with showFailures():
             r = self.intentionsList[row]
             assert self.nexus is not None
-            ira = IntentionRow.alloc().initWithIntention_andNexus_(r, self.nexus)
+            ira = IntentionRow.alloc().initWithIntention_andNexus_(
+                r, self.nexus
+            )
             return ira
 
 
@@ -292,25 +303,15 @@ class PomFilesOwner(NSObject):
 
     # Note: Xcode can't see IBOutlet declarations on the same line as their
     # type hint.
-    sessionDataSource: SessionDataSource
-    sessionDataSource = IBOutlet()
-
-    intentionDataSource: IntentionDataSource
-    intentionDataSource = IBOutlet()
-
-    streakDataSource: StreakDataSource
-    streakDataSource = IBOutlet()
-
-    intentionsWindow: NSWindow
-    intentionsWindow = IBOutlet()
-
-    intentionsTable: NSTableView
-    intentionsTable = IBOutlet()
-
-    debugPalette: NSWindow
-    debugPalette = IBOutlet()
+    sessionDataSource = IBOutlet()  # type: SessionDataSource
+    intentionDataSource = IBOutlet()  # type: IntentionDataSource
+    streakDataSource = IBOutlet()  # type: StreakDataSource
+    intentionsWindow = IBOutlet()  # type: NSWindow
+    intentionsTable = IBOutlet()  # type: NSTableView
+    debugPalette = IBOutlet()  # type: NSWindow
 
     if TYPE_CHECKING:
+
         @classmethod
         def alloc(self) -> PomFilesOwner:
             ...
@@ -332,7 +333,9 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
-        self.intentionDataSource.intentionsList[0].description = 'new description'
+        self.intentionDataSource.intentionsList[
+            0
+        ].description = "new description"
         self.intentionsTable.reloadData()
 
     def awakeFromNib(self) -> None:

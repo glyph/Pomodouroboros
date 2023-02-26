@@ -400,11 +400,8 @@ class MenuForwarder(NSResponder):
     status-item menu.
     """
 
-    myMenu: NSMenu
-    myMenu = IBOutlet()
-
-    statusMenu: NSMenu
-    statusMenu = IBOutlet()
+    myMenu = IBOutlet()  # type: NSMenu
+    statusMenu = IBOutlet()  # type: NSMenu
 
     def performKeyEquivalent_(self, event: NSEvent) -> bool:
         for menu in [self.statusMenu, self.myMenu]:
@@ -717,20 +714,11 @@ def poms2Dicts(
 
 
 class DayEditorController(NSObject):
-    arrayController: NSArrayController
-    arrayController = IBOutlet()
-
-    editorWindow: NSWindow
-    editorWindow = IBOutlet()
-
-    tableView: NSTableView
-    tableView = IBOutlet()
-
-    datePickerCell: Optional[NSCell]
-    datePickerCell = IBOutlet()
-
-    dayLabelField: Optional[NSTextFieldCell]
-    dayLabelField = IBOutlet()
+    arrayController = IBOutlet()  # type: NSArrayController
+    editorWindow = IBOutlet()  # type: NSWindow
+    tableView = IBOutlet()  # type: NSTableView
+    datePickerCell = IBOutlet()  # type: Optional[NSCell]
+    dayLabelField = IBOutlet()  # type: Optional[NSTextFieldCell]
 
     observer = None
     clock: IReactorTime
