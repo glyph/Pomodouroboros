@@ -423,9 +423,12 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
-        self.intentionDataSource.tableView_objectValueForTableColumn_row_(
+        irow = self.intentionDataSource.tableView_objectValueForTableColumn_row_(
             self.intentionsTable, None, 0
-        ).setTextDescription_("new description")
+        )
+        irow.willChangeValueForKey_("textDescription")
+        self.nexus.intentions[0].description = "new description"
+        irow.didChangeValueForKey_("textDescription")
 
     def awakeFromNib(self) -> None:
         """
