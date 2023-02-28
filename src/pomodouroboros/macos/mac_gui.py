@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from textwrap import dedent
-from typing import Sequence, TYPE_CHECKING, Iterator
+from typing import (
+    Callable,
+    Generic,
+    Iterator,
+    Sequence,
+    TYPE_CHECKING,
+    TypeVar,
+)
 from zoneinfo import ZoneInfo
-from contextlib import contextmanager
 
 from AppKit import (
     NSAlert,
@@ -51,11 +58,9 @@ from AppKit import (
 )
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
-
+from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
-
-from quickmacapp import Status, mainpoint
 
 from ..model.intention import Intention
 from ..model.intervals import AnyInterval, StartPrompt
@@ -263,18 +268,107 @@ def showFailures() -> Iterator[None]:
         raise
 
 
+from weakref import ref
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+
+@dataclass
+class IDHasher(Generic[T]):
+    """
+    Hash and compare by the identity of another object.
+    """
+
+    value: ref[T]
+    id: int
+
+    def __hash__(self) -> int:
+        """
+        Return the C{id()} of the object when it was live at the creation of
+        this hasher.
+        """
+        return self.id
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Is this equal to another object?  Note that this compares equal only to
+        another L{IDHasher}, not the underlying value object.
+        """
+        if not isinstance(other, IDHasher):
+            return NotImplemented
+        imLive = self.value.__callback__ is not None
+        theyreLive = other.value.__callback__ is not None
+        return (self.id == other.id) and (imLive == theyreLive)
+
+    @classmethod
+    def forDict(cls, aDict: dict[IDHasher[T], U], value: T) -> IDHasher[T]:
+        """
+        Create an IDHasher
+        """
+
+        def finalize(r: ref[T]) -> None:
+            del aDict[self]
+
+        self = IDHasher(ref(value, finalize), id(value))
+        return self
+
+
+@dataclass
+class ModelConverter(Generic[T, U]):
+    """
+    Convert C{T} objects (abstract model; Python objects) to C{U} objects (UI
+    model; Objective C objects).
+    """
+
+    translator: Callable[[T], U]
+    _cache: dict[IDHasher[T], U] = field(default_factory=dict)
+
+    def __getitem__(self, key: T) -> U:
+        """
+        Look up or create the relevant item.
+        """
+        hasher = IDHasher.forDict(self._cache, key)
+        value = self._cache.get(hasher)
+        if value is not None:
+            return value
+        value = self.translator(key)
+        self._cache[hasher] = value
+        return value
+
+
 class IntentionDataSource(NSObject):
     """
     NSTableViewDataSource for the list of intentions.
     """
 
-    intentionsList: Sequence[Intention] = ()
+    _rowCache: ModelConverter[Intention, IntentionRow]
     nexus: Nexus | None = None
+
+    def init(self) -> IntentionDataSource:
+        """
+        here we go
+        """
+        @ModelConverter
+        def translator(intention: Intention) -> IntentionRow:
+            newNexus = self.nexus
+            assert newNexus is not None
+            return IntentionRow.alloc().initWithIntention_andNexus_(
+                intention, newNexus
+            )
+        self._rowCache = translator
+        return self
+
+    def deriveUIModels_(self, newNexus: Nexus) -> None:
+        """
+        Derive the UI model objects from the abstract model objects.
+        """
+        self.nexus = newNexus
 
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
         if self.nexus is None:
             return 0
-        result = len(self.intentionsList)
+        result = len(self.nexus.intentions)
         return result
 
     def tableView_objectValueForTableColumn_row_(
@@ -284,12 +378,8 @@ class IntentionDataSource(NSObject):
         row: int,
     ) -> IntentionRow:
         with showFailures():
-            r = self.intentionsList[row]
             assert self.nexus is not None
-            ira = IntentionRow.alloc().initWithIntention_andNexus_(
-                r, self.nexus
-            )
-            return ira
+            return self._rowCache[self.nexus.intentions[row]]
 
 
 class StreakDataSource(NSObject):
@@ -333,17 +423,15 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
-        self.intentionDataSource.intentionsList[
-            0
-        ].description = "new description"
-        self.intentionsTable.reloadData()
+        self.intentionDataSource.tableView_objectValueForTableColumn_row_(
+            self.intentionsTable, None, 0
+        ).setTextDescription_("new description")
 
     def awakeFromNib(self) -> None:
         """
         Let's get the GUI started.
         """
         # TODO: update intention data source with initial data from nexus
-        self.intentionDataSource.intentionsList = self.nexus.intentions
         self.intentionDataSource.nexus = self.nexus
         self.debugPalette.setIsVisible_(True)
 
