@@ -334,7 +334,7 @@
                     </tabView>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-933" y="-1219"/>
+            <point key="canvasLocation" x="-3177" y="-2608"/>
         </window>
         <customObject id="0Fz-Nm-f6J" customClass="SessionDataSource"/>
         <customObject id="rFC-Sz-Dx3" customClass="IntentionDataSource"/>
@@ -342,14 +342,14 @@
         <window title="Debug Palette" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" hidesOnDeactivate="YES" releasedWhenClosed="NO" frameAutosaveName="" animationBehavior="default" id="VKS-g9-PNV" userLabel="Debug Palette" customClass="NSPanel">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES" utility="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="425" y="199" width="276" height="378"/>
+            <rect key="contentRect" x="425" y="199" width="276" height="135"/>
             <rect key="screenRect" x="0.0" y="0.0" width="3840" height="1575"/>
             <view key="contentView" id="Pbu-g8-rZJ">
-                <rect key="frame" x="0.0" y="0.0" width="276" height="378"/>
+                <rect key="frame" x="0.0" y="0.0" width="276" height="135"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
                     <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3W5-8n-dJG">
-                        <rect key="frame" x="13" y="331" width="138" height="32"/>
+                        <rect key="frame" x="13" y="88" width="138" height="32"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <buttonCell key="cell" type="push" title="Poke Description" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="BGt-M1-gxm">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
@@ -361,7 +361,7 @@
                     </button>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-1619" y="-1261"/>
+            <point key="canvasLocation" x="-3236" y="-2232.5"/>
         </window>
     </objects>
 </document>
