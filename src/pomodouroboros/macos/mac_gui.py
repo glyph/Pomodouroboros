@@ -183,7 +183,7 @@ class IntentionRow(NSObject):
     if TYPE_CHECKING:
 
         @classmethod
-        def alloc(self) -> IntentionRow:
+        def alloc(cls) -> IntentionRow:
             ...
 
     def title(self) -> str:
