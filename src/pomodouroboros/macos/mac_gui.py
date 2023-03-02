@@ -20,6 +20,7 @@ from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus
 from ..storage import TEST_MODE
 from .old_mac_gui import main as oldMain
+from .mac_utils import showFailures
 from .progress_hud import ProgressController
 from AppKit import (
     NSAlert,
@@ -65,7 +66,6 @@ from AppKit import (
 )
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
-from pomodouroboros.macos.progress_hud import bigArcTest
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -256,18 +256,6 @@ class IntentionRow(NSObject):
 from twisted.python.failure import Failure
 
 
-@contextmanager
-def showFailures() -> Iterator[None]:
-    """
-    show failures and stuff
-    """
-    try:
-        yield
-    except:
-        print(Failure().getTraceback())
-        raise
-
-
 from weakref import ref
 
 T = TypeVar("T")
@@ -425,8 +413,9 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     def tryOutArcView_(self, sender: NSObject) -> None:
-        """ """
-        bigArcTest()
+        """
+        nothing for now
+        """
 
     @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
@@ -542,12 +531,12 @@ def newMain(reactor: IReactorTime) -> None:
         ),
     )
     # XXX test session
-    theNexus.addSession(reactor.seconds(), reactor.seconds() + 1000.0)
+    theNexus.addSession(reactor.seconds() + 1.0, reactor.seconds() + 1000.0)
 
     def doAdvance() -> None:
         theNexus.advanceToTime(reactor.seconds())
 
-    LoopingCall(doAdvance).start(10.0)
+    LoopingCall(doAdvance).start(3.0, now=True)
 
     if TEST_MODE:
         # When I'm no longer bootstrapping the application I'll want to *not*

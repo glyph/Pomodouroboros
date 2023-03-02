@@ -2,10 +2,12 @@
 General-purpose PyObjC utilities that might belong in a different package.
 """
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
+from typing import Callable, Iterator
 
+from AppKit import NSNotificationCenter
 from Foundation import (
     NSCalendar,
     NSCalendarUnitDay,
@@ -19,10 +21,9 @@ from Foundation import (
     NSObject,
     NSView,
 )
-
-from quickmacapp import Actionable
-from AppKit import NSNotificationCenter
 from dateutil.tz import tzlocal
+from quickmacapp import Actionable
+from twisted.python.failure import Failure
 
 
 @dataclass
@@ -104,3 +105,15 @@ def localDate(ts: float) -> datetime:
     Use Cocoa to compute a local datetime
     """
     return datetimeFromNSDate(nsDateFromTimestamp(ts))
+
+
+@contextmanager
+def showFailures() -> Iterator[None]:
+    """
+    show failures and stuff
+    """
+    try:
+        yield
+    except:
+        print(Failure().getTraceback())
+        raise
