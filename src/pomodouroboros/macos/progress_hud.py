@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, List
+from typing import Callable, List, TYPE_CHECKING
 
 from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.defer import Deferred
@@ -9,6 +9,8 @@ from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
 from twisted.python.failure import Failure
+
+from .mac_utils import showFailures
 
 
 log = Logger()
@@ -72,141 +74,85 @@ class HUDWindow(NSWindow):
         return None
 
 
-def bigArcTest() -> None:
+class AbstractProgressView(NSView):
     """
-    Test BigArcView
-    """
-    for eachScreen in NSScreen.screens():
-        print("big arc test")
-        arc = BigArcView.alloc().init()
-        print("set opaque")
-        arc.setOpaque_(True)
-        print("set alpha")
-        arc.setAlphaValue_(0.5)
-        print("new window")
-        w = hudWindowOn(eachScreen, fullScreenSizer)
-        w.retain()
-        print("set background")
-        w.setOpaque_(True)
-        w.setBackgroundColor_(NSColor.clearColor())
-        print("setContentView:")
-        w.setContentView_(arc)
-        # w.setContentView_(NSButton.buttonWithTitle_target_action_("testing", None, None))
-        print("displayIfNeeded")
-        w.displayIfNeeded()
-        print("sampleAnimation")
-        arc.sampleAnimation()
-        print("needsDisplay")
-        arc.setNeedsDisplay_(True)
-        print("done")
-        # arc.setHidden_(False)
-
-
-class BigArcView(NSView):
-    """
-    draw an arc the size of this view
+    Base boilerplate for a view that can draw progress.
     """
 
-    percentage: float = 70.0
+    _percentage: float = 0.0
+    _leftColor = NSColor.greenColor()
+    _rightColor = NSColor.redColor()
 
+    _alphaValue: float = 1 / 4
+
+    if TYPE_CHECKING:
+
+        @classmethod
+        def alloc(cls) -> AbstractProgressView:
+            return cls()
+
+        def init(self) -> AbstractProgressView:
+            return self
+
+    # first-party objc methods
+
+    def configureWindow_(self, win: HUDWindow) -> None:
+        win.setContentView_(self)
+        win.setOpaque_(False)
+        win.setBackgroundColor_(NSColor.clearColor())
+
+    def changeAlphaValue_forWindow_(
+        self, newAlphaValue: float, win: NSWindow
+    ) -> None:
+        self._alphaValue = newAlphaValue
+        self.setNeedsDisplay_(True)
+
+    def setPercentage_(self, newPercentage: float) -> None:
+        """
+        Set the percentage-full here.
+        """
+        self._percentage = newPercentage
+        self.setNeedsDisplay_(True)
+
+    def setLeftColor_(self, newLeftColor: NSColor) -> None:
+        self._leftColor = newLeftColor
+        # self.setNeedsDisplay_(True)
+
+    def setRightColor_(self, newRightColor: NSColor) -> None:
+        self._rightColor = newRightColor
+        # self.setNeedsDisplay_(True)
+
+    # NSView Boilerplate
     def isOpaque(self) -> bool:
-        """
-        This view is opaque, try to be faster compositing it
-        """
         return False
 
     @classmethod
     def defaultFocusRingType(cls) -> int:
-        print("BigArcView.defaultFocusRingType")
         return NSFocusRingTypeNone  # type: ignore
 
     def canBecomeKeyView(self) -> bool:
-        print("BigArcView.canBecomeKeyView")
         return False
 
     def movableByWindowBackground(self) -> bool:
-        print("BigArcView.movableByWindowBackground")
         return True
 
     def acceptsFirstMouse_(self, evt: NSEvent) -> bool:
-        print("BigArcView.acceptsFirstMouse_")
         return True
 
     def acceptsFirstResponder(self) -> bool:
-        print("BigArcView.acceptsFirstResponder")
         return False
 
     def wantsDefaultClipping(self) -> bool:
-        print("BigArcView.wantsDefaultClipping")
         return False
-
-    def sampleAnimation(self) -> None:
-        """
-        debug animation to test arc drawing
-        """
-        print("BigArcView.sampleAnimation")
-        print("super init")
-        self.percentage = 65.0
-
-        def bump():
-            self.percentage += 1 / 120
-            self.percentage %= 100.0
-            self.setNeedsDisplay_(True)
-            # self.window().setNeedsDisplay_(True)
-
-        lc = LoopingCall(bump)
-        lc.start(1 / 120)
-
-    def drawRect_(self, rect: NSRect) -> None:
-        """
-        draw the arc (ignore the given rect, draw to bounds)
-        """
-        NSGraphicsContext.saveGraphicsState()
-        super().drawRect_(rect)
-        bounds = self.bounds()
-        NSRectFillListWithColorsUsingOperation(
-            [NSRect((100, 100), (200, 200))],
-            [NSColor.orangeColor()],
-            1,
-            NSCompositingOperationCopy,
-        )
-        # NSRectFillListWithColorsUsingOperation(
-        #     [bounds],
-        #     [NSColor.clearColor()],
-        #     2,
-        #     NSCompositingOperationCopy,
-        # )
-        w, h = bounds.size.width / 2, bounds.size.height / 2
-        center = NSMakePoint(w, h)
-        aPath = NSBezierPath.bezierPath()
-        radius = min([w, h]) * 0.85
-        aPath.appendBezierPathWithPoints_count_(
-            [center],
-            1,
-        )
-        aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
-            center,
-            radius,
-            0,
-            360 * (self.percentage / 100.0),
-        )
-        aPath.appendBezierPathWithPoints_count_(
-            [center],
-            1,
-        )
-        aPath.setLineWidth_(5)
-        NSColor.blueColor().colorWithAlphaComponent_(1 / 4).setStroke()
-        NSColor.redColor().colorWithAlphaComponent_(1 / 4).setFill()
-        aPath.stroke()
-        aPath.fill()
-        NSGraphicsContext.restoreGraphicsState()
 
 
 def fullScreenSizer(screen: NSScreen) -> NSRect:
     """ """
     frame = screen.visibleFrame()
-    return NSRect((frame.origin[0] + 50, frame.origin[1] + 50),
-                  (frame.size.width - 100, frame.size.height - 100))
+    return NSRect(
+        (frame.origin[0] + 50, frame.origin[1] + 50),
+        (frame.size.width - 100, frame.size.height - 100),
+    )
 
 
 def midScreenSizer(screen: NSScreen) -> NSRect:
@@ -222,14 +168,13 @@ def midScreenSizer(screen: NSScreen) -> NSRect:
 
 def hudWindowOn(
     screen: NSScreen,
-    sizer: Callable[[NSScreen], NSRect] = midScreenSizer,
+    sizer: Callable[[NSScreen], NSRect],
     styleMask=NSBorderlessWindowMask,
 ) -> HUDWindow:
     app = NSApp()
     backing = NSBackingStoreBuffered
     defer = False
     contentRect = sizer(screen)
-    print("HUD content rect", contentRect)
     win = HUDWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         contentRect,
         styleMask,
@@ -258,7 +203,11 @@ class ProgressController(object):
     percentage: float = 0.0
     leftColor: NSColor = NSColor.greenColor()
     rightColor: NSColor = NSColor.redColor()
-    progressViews: List[BigProgressView] = field(default_factory=list)
+    progressViewFactory: Callable[
+        [], AbstractProgressView
+    ] = lambda: PieTimer.alloc().init()
+    windowSizer: Callable[[NSScreen], NSRect] = fullScreenSizer
+    progressViews: List[AbstractProgressView] = field(default_factory=list)
     hudWindows: List[HUDWindow] = field(default_factory=list)
     alphaValue: float = 0.1
     shouldBeVisible: bool = False
@@ -347,10 +296,12 @@ class ProgressController(object):
         if self.shouldBeVisible:
             _removeWindows(self)
             for eachScreen in NSScreen.screens():
-                (win := hudWindowOn(eachScreen)).setContentView_(
-                    newProgressView := BigProgressView.alloc().init()
+                newProgressView = self.progressViewFactory()
+                win = hudWindowOn(eachScreen, self.windowSizer)
+                newProgressView.configureWindow_(win)
+                newProgressView.changeAlphaValue_forWindow_(
+                    self.alphaValue, win
                 )
-                win.setAlphaValue_(self.alphaValue)
                 newProgressView.setLeftColor_(self.leftColor)
                 newProgressView.setRightColor_(self.rightColor)
                 newProgressView.setPercentage_(self.percentage)
@@ -363,47 +314,14 @@ class ProgressController(object):
 
     def setAlpha(self, alphaValue: float) -> None:
         self.alphaValue = alphaValue
-        for eachWindow in self.hudWindows:
-            eachWindow.setAlphaValue_(alphaValue)
+        for eachWindow, eachView in zip(self.hudWindows, self.progressViews):
+            eachView.changeAlphaValue_forWindow_(alphaValue, eachWindow)
 
 
-class BigProgressView(NSView):
+class FlatProgressBar(AbstractProgressView):
     """
-    View that draws a big red/green progress bar rectangle
+    An L{AbstractProgressView} that draws itself as a big bar.
     """
-
-    _percentage = 0.0
-    _leftColor = NSColor.greenColor()
-    _rightColor = NSColor.redColor()
-
-    def isOpaque(self) -> bool:
-        """
-        This view is opaque, try to be faster compositing it
-        """
-        return True
-
-    @classmethod
-    def defaultFocusRingType(self) -> int:
-        return NSFocusRingTypeNone  # type: ignore
-
-    def percentage(self) -> float:
-        return self._percentage
-
-    def setPercentage_(self, newPercentage: float) -> None:
-        """
-        Set the percentage-full here.
-        """
-        self._percentage = newPercentage
-        self.setNeedsDisplay_(True)
-        # self.setNeedsDisplay_(True)
-
-    def setLeftColor_(self, newLeftColor: NSColor) -> None:
-        self._leftColor = newLeftColor
-        # self.setNeedsDisplay_(True)
-
-    def setRightColor_(self, newRightColor: NSColor) -> None:
-        self._rightColor = newRightColor
-        # self.setNeedsDisplay_(True)
 
     def drawRect_(self, rect: NSRect) -> None:
         bounds = self.bounds()
@@ -420,20 +338,53 @@ class BigProgressView(NSView):
             NSCompositingOperationCopy,
         )
 
-    def canBecomeKeyView(self) -> bool:
-        return False
-
-    def movableByWindowBackground(self) -> bool:
+    # NSView Boilerplate
+    def isOpaque(self) -> bool:
+        """
+        This view is opaque since it draws on the full window, try to be faster
+        compositing it.
+        """
         return True
 
-    def acceptsFirstMouse_(self, evt: NSEvent) -> bool:
-        return True
 
-    def acceptsFirstResponder(self) -> bool:
-        return False
+class PieTimer(AbstractProgressView):
+    """
+    A timer that draws itself as two large arcs.
+    """
 
-    def wantsDefaultClipping(self) -> bool:
-        return False
+    def drawRect_(self, rect: NSRect) -> None:
+        """
+        draw the arc (ignore the given rect, draw to bounds)
+        """
+        with showFailures():
+            super().drawRect_(rect)
+            bounds = self.bounds()
+            w, h = bounds.size.width / 2, bounds.size.height / 2
+            center = NSMakePoint(w, h)
+            radius = min([w, h]) * 0.95
+
+            def doArc(start: float, end: float) -> NSBezierPath:
+                aPath = NSBezierPath.bezierPath()
+                aPath.appendBezierPathWithPoints_count_([center], 1)
+                aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
+                    center, radius, start, end
+                )
+                aPath.appendBezierPathWithPoints_count_([center], 1)
+                # aPath.setLineWidth_(5)
+                return aPath
+
+            startDegrees = (((360 * self._percentage) + 90) % 360)
+            endDegrees = 90
+            arc1 = doArc(startDegrees, endDegrees)
+            arc2 = doArc(endDegrees, startDegrees)
+            self._leftColor.colorWithAlphaComponent_(
+                self._alphaValue
+            ).setFill()
+            arc1.fill()
+            self._rightColor.colorWithAlphaComponent_(
+                self._alphaValue
+            ).setFill()
+            arc2.fill()
 
 
 def _removeWindows(self: ProgressController) -> None:
