@@ -529,7 +529,7 @@ class DayManager(object):
         self.update()
 
     def update(self) -> None:
-        pulseRate = 10.0
+        pulseRate = 15.0
         currentTimestamp = self.reactor.seconds()
         presentDate = date.today()
         if self.updateDelayedCall is not None:

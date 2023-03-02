@@ -263,7 +263,7 @@ class ProgressController(object):
             if isinstance(ignored, Failure):
                 log.failure("while animating", ignored)
 
-        self._animationInProgress = lc.start(1.0 / 60.0).addCallback(clear)
+        self._animationInProgress = lc.start(1.0 / 30.0).addCallback(clear)
         self.show()
         return self._animationInProgress
 
