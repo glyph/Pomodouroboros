@@ -373,7 +373,7 @@
                     </button>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-2096.5" y="-1913.5"/>
+            <point key="canvasLocation" x="-2054" y="-1899"/>
         </window>
         <window title="Pomodouroboros Editor" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" frameAutosaveName="" animationBehavior="default" id="U7b-Co-sHa">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
