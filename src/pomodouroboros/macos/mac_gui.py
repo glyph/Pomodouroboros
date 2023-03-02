@@ -436,6 +436,8 @@ class PomFilesOwner(NSObject):
         """
         # TODO: update intention data source with initial data from nexus
         self.intentionDataSource.nexus = self.nexus
+        self.debugPalette.setOpaque_(False)
+        self.debugPalette.setBackgroundColor_(NSColor.clearColor())
         self.debugPalette.setIsVisible_(True)
 
 
