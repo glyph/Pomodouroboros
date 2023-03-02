@@ -44,6 +44,7 @@ from AppKit import (
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
+    NSMakePoint,
 )
 
 
@@ -64,6 +65,58 @@ class HUDWindow(NSWindow):
     def makeKeyWindow(self) -> None:
         return None
 
+
+
+
+class BigArcView(NSView):
+    """
+    draw an arc the size of this view
+    """
+
+    percentage: float = 70.0
+
+    def awakeFromNib(self) -> None:
+        """
+        debug animation to test arc drawing
+        """
+        print("init")
+        super().init()
+        print("super init")
+        self.percentage = 65.0
+        def bump():
+            self.percentage += (1/120)
+            self.percentage %= 100.0
+            self.setNeedsDisplay_(True)
+            # self.window().setNeedsDisplay_(True)
+        lc = LoopingCall(bump)
+        lc.start(1/120)
+
+    def drawRect_(self, rect: NSRect) -> None:
+        """
+        draw the arc (ignore the given rect, draw to bounds)
+        """
+        bounds = self.bounds()
+        w, h = bounds.size.width / 2, bounds.size.height / 2
+        center = NSMakePoint(w, h)
+        aPath = NSBezierPath.bezierPath()
+        radius = min([w, h]) * 0.85
+        aPath.appendBezierPathWithPoints_count_(
+            [center], 1,
+        )
+        aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
+            center,
+            radius,
+            0,
+            365 * (self.percentage / 100.),
+        )
+        aPath.appendBezierPathWithPoints_count_(
+            [center], 1,
+        )
+        aPath.setLineWidth_(5)
+        NSColor.blueColor().colorWithAlphaComponent_(1/4).setStroke()
+        NSColor.redColor().colorWithAlphaComponent_(1/4).setFill()
+        aPath.stroke()
+        aPath.fill()
 
 def hudWindowOn(screen: NSScreen) -> HUDWindow:
     app = NSApp()
