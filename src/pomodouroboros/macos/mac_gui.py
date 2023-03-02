@@ -14,6 +14,13 @@ from typing import (
 )
 from zoneinfo import ZoneInfo
 
+from ..model.intention import Intention
+from ..model.intervals import AnyInterval, StartPrompt
+from ..model.nexus import Nexus
+from ..model.storage import loadDefaultNexus
+from ..storage import TEST_MODE
+from .old_mac_gui import main as oldMain
+from .progress_hud import ProgressController
 from AppKit import (
     NSAlert,
     NSAlertFirstButtonReturn,
@@ -58,17 +65,10 @@ from AppKit import (
 )
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
+from pomodouroboros.macos.progress_hud import bigArcTest
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
-
-from ..model.intention import Intention
-from ..model.intervals import AnyInterval, StartPrompt
-from ..model.nexus import Nexus
-from ..model.storage import loadDefaultNexus
-from ..storage import TEST_MODE
-from .old_mac_gui import main as oldMain
-from .progress_hud import ProgressController
 
 
 @dataclass
@@ -349,6 +349,7 @@ class IntentionDataSource(NSObject):
         """
         here we go
         """
+
         @ModelConverter
         def translator(intention: Intention) -> IntentionRow:
             newNexus = self.nexus
@@ -356,6 +357,7 @@ class IntentionDataSource(NSObject):
             return IntentionRow.alloc().initWithIntention_andNexus_(
                 intention, newNexus
             )
+
         self._rowCache = translator
         return self
 
@@ -422,9 +424,16 @@ class PomFilesOwner(NSObject):
         self.intentionsTable.reloadData()
 
     @IBAction
+    def tryOutArcView_(self, sender: NSObject) -> None:
+        """ """
+        bigArcTest()
+
+    @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
-        irow = self.intentionDataSource.tableView_objectValueForTableColumn_row_(
-            self.intentionsTable, None, 0
+        irow = (
+            self.intentionDataSource.tableView_objectValueForTableColumn_row_(
+                self.intentionsTable, None, 0
+            )
         )
         irow.willChangeValueForKey_("textDescription")
         self.nexus.intentions[0].description = "new description"

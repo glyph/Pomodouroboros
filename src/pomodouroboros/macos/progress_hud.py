@@ -1,21 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import Callable, List
 
 from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
-from twisted.python.failure import Failure
 from twisted.logger import Logger
+from twisted.python.failure import Failure
+
 
 log = Logger()
 
 import math
 from ..storage import TEST_MODE
 from AppKit import (
+    NSButton,
     NSAlert,
+    NSWindowStyleMaskTitled,
+    NSGraphicsContext,
+    NSRectFillUsingOperation,
+    NSCompositingOperationClear,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
@@ -66,6 +72,34 @@ class HUDWindow(NSWindow):
         return None
 
 
+def bigArcTest() -> None:
+    """
+    Test BigArcView
+    """
+    for eachScreen in NSScreen.screens():
+        print("big arc test")
+        arc = BigArcView.alloc().init()
+        print("set opaque")
+        arc.setOpaque_(True)
+        print("set alpha")
+        arc.setAlphaValue_(0.5)
+        print("new window")
+        w = hudWindowOn(eachScreen, fullScreenSizer)
+        w.retain()
+        print("set background")
+        w.setOpaque_(True)
+        w.setBackgroundColor_(NSColor.clearColor())
+        print("setContentView:")
+        w.setContentView_(arc)
+        # w.setContentView_(NSButton.buttonWithTitle_target_action_("testing", None, None))
+        print("displayIfNeeded")
+        w.displayIfNeeded()
+        print("sampleAnimation")
+        arc.sampleAnimation()
+        print("needsDisplay")
+        arc.setNeedsDisplay_(True)
+        print("done")
+        # arc.setHidden_(False)
 
 
 class BigArcView(NSView):
@@ -75,62 +109,127 @@ class BigArcView(NSView):
 
     percentage: float = 70.0
 
-    def awakeFromNib(self) -> None:
+    def isOpaque(self) -> bool:
+        """
+        This view is opaque, try to be faster compositing it
+        """
+        return False
+
+    @classmethod
+    def defaultFocusRingType(cls) -> int:
+        print("BigArcView.defaultFocusRingType")
+        return NSFocusRingTypeNone  # type: ignore
+
+    def canBecomeKeyView(self) -> bool:
+        print("BigArcView.canBecomeKeyView")
+        return False
+
+    def movableByWindowBackground(self) -> bool:
+        print("BigArcView.movableByWindowBackground")
+        return True
+
+    def acceptsFirstMouse_(self, evt: NSEvent) -> bool:
+        print("BigArcView.acceptsFirstMouse_")
+        return True
+
+    def acceptsFirstResponder(self) -> bool:
+        print("BigArcView.acceptsFirstResponder")
+        return False
+
+    def wantsDefaultClipping(self) -> bool:
+        print("BigArcView.wantsDefaultClipping")
+        return False
+
+    def sampleAnimation(self) -> None:
         """
         debug animation to test arc drawing
         """
-        print("init")
-        super().init()
+        print("BigArcView.sampleAnimation")
         print("super init")
         self.percentage = 65.0
+
         def bump():
-            self.percentage += (1/120)
+            self.percentage += 1 / 120
             self.percentage %= 100.0
             self.setNeedsDisplay_(True)
             # self.window().setNeedsDisplay_(True)
+
         lc = LoopingCall(bump)
-        lc.start(1/120)
+        lc.start(1 / 120)
 
     def drawRect_(self, rect: NSRect) -> None:
         """
         draw the arc (ignore the given rect, draw to bounds)
         """
+        NSGraphicsContext.saveGraphicsState()
+        super().drawRect_(rect)
         bounds = self.bounds()
+        NSRectFillListWithColorsUsingOperation(
+            [NSRect((100, 100), (200, 200))],
+            [NSColor.orangeColor()],
+            1,
+            NSCompositingOperationCopy,
+        )
+        # NSRectFillListWithColorsUsingOperation(
+        #     [bounds],
+        #     [NSColor.clearColor()],
+        #     2,
+        #     NSCompositingOperationCopy,
+        # )
         w, h = bounds.size.width / 2, bounds.size.height / 2
         center = NSMakePoint(w, h)
         aPath = NSBezierPath.bezierPath()
         radius = min([w, h]) * 0.85
         aPath.appendBezierPathWithPoints_count_(
-            [center], 1,
+            [center],
+            1,
         )
         aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
             center,
             radius,
             0,
-            365 * (self.percentage / 100.),
+            360 * (self.percentage / 100.0),
         )
         aPath.appendBezierPathWithPoints_count_(
-            [center], 1,
+            [center],
+            1,
         )
         aPath.setLineWidth_(5)
-        NSColor.blueColor().colorWithAlphaComponent_(1/4).setStroke()
-        NSColor.redColor().colorWithAlphaComponent_(1/4).setFill()
+        NSColor.blueColor().colorWithAlphaComponent_(1 / 4).setStroke()
+        NSColor.redColor().colorWithAlphaComponent_(1 / 4).setFill()
         aPath.stroke()
         aPath.fill()
+        NSGraphicsContext.restoreGraphicsState()
 
-def hudWindowOn(screen: NSScreen) -> HUDWindow:
-    app = NSApp()
-    frame = screen.frame()
+
+def fullScreenSizer(screen: NSScreen) -> NSRect:
+    """ """
+    frame = screen.visibleFrame()
+    return NSRect((frame.origin[0] + 50, frame.origin[1] + 50),
+                  (frame.size.width - 100, frame.size.height - 100))
+
+
+def midScreenSizer(screen: NSScreen) -> NSRect:
     height = 50
+    frame = screen.visibleFrame()
     hpadding = frame.size.width // 10
     vpadding = frame.size.height // (4 if TEST_MODE else 3)
-    contentRect = NSRect(
+    return NSRect(
         (hpadding + frame.origin[0], vpadding + frame.origin[1]),
         (frame.size.width - (hpadding * 2), height),
     )
-    styleMask = NSBorderlessWindowMask
+
+
+def hudWindowOn(
+    screen: NSScreen,
+    sizer: Callable[[NSScreen], NSRect] = midScreenSizer,
+    styleMask=NSBorderlessWindowMask,
+) -> HUDWindow:
+    app = NSApp()
     backing = NSBackingStoreBuffered
     defer = False
+    contentRect = sizer(screen)
+    print("HUD content rect", contentRect)
     win = HUDWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         contentRect,
         styleMask,
@@ -147,7 +246,7 @@ def hudWindowOn(screen: NSScreen) -> HUDWindow:
     win.setBackgroundColor_(NSColor.blackColor())
     win.setLevel_(NSFloatingWindowLevel)
     win.orderFront_(app)
-    return win                  # type: ignore
+    return win  # type: ignore
 
 
 @dataclass
@@ -206,7 +305,9 @@ class ProgressController(object):
             else:
                 alphaValue = (easedEven * alphaVariance) + baseAlphaValue
             self.setAlpha(alphaValue)
+
         lc = LoopingCall(updateSome)
+
         def clear(ignored: object) -> None:
             self._animationInProgress = None
             if isinstance(ignored, Failure):
