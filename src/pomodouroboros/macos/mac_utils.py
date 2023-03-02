@@ -6,7 +6,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
-from Foundation import NSCalendar, NSCalendarUnitDay, NSCalendarUnitHour, NSCalendarUnitMinute, NSCalendarUnitMonth, NSCalendarUnitNanosecond, NSCalendarUnitSecond, NSCalendarUnitYear, NSDate, NSObject
+from Foundation import (
+    NSCalendar,
+    NSCalendarUnitDay,
+    NSCalendarUnitHour,
+    NSCalendarUnitMinute,
+    NSCalendarUnitMonth,
+    NSCalendarUnitNanosecond,
+    NSCalendarUnitSecond,
+    NSCalendarUnitYear,
+    NSDate,
+    NSObject,
+    NSView,
+)
 
 from quickmacapp import Actionable
 from AppKit import NSNotificationCenter
@@ -27,10 +39,15 @@ class Remover:
             # Unused, but lifecycle management would demand sender be retained
             # by any observer-adding code as well.
             self.sender.release()
-        self.center.removeObserver_name_object_(self.observer, self.name, )
+        self.center.removeObserver_name_object_(
+            self.observer,
+            self.name,
+        )
 
 
-def callOnNotification(nsNotificationName: str, f: Callable[[], None]) -> Remover:
+def callOnNotification(
+    nsNotificationName: str, f: Callable[[], None]
+) -> Remover:
     """
     When the given notification occurs, call the given callable with no
     arguments.
