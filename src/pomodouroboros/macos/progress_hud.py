@@ -188,11 +188,12 @@ def hudWindowOn(
         | NSWindowCollectionBehaviorStationary
     )
     win.setIgnoresMouseEvents_(True)
-    win.setBackgroundColor_(NSColor.blackColor())
     win.setLevel_(NSFloatingWindowLevel)
     win.orderFront_(app)
     return win  # type: ignore
 
+
+DEFAULT_BASE_ALPHA = 0.15
 
 @dataclass
 class ProgressController(object):
@@ -218,7 +219,7 @@ class ProgressController(object):
         clock: IReactorTime,
         percentageElapsed: float,
         pulseTime: float = 1.0,
-        baseAlphaValue: float = 0.15,
+        baseAlphaValue: float = DEFAULT_BASE_ALPHA,
         alphaVariance: float = 0.3,
     ) -> Deferred[None]:
         """
@@ -385,6 +386,13 @@ class PieTimer(AbstractProgressView):
                 self._alphaValue
             ).setFill()
             arc2.fill()
+            lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
+            if lineAlpha > 0:
+                NSColor.whiteColor().colorWithAlphaComponent_(lineAlpha).setStroke()
+                arc1.setLineWidth_(1/4)
+                arc2.setLineWidth_(1/4)
+                arc1.stroke()
+                arc2.stroke()
 
 
 def _removeWindows(self: ProgressController) -> None:
