@@ -87,12 +87,6 @@ from PyObjCTools.AppHelper import callLater
 
 
 NSModalResponse = int
-buttonReturnTo = {
-    NSAlertFirstButtonReturn: IntentionSuccess.Achieved,
-    NSAlertSecondButtonReturn: IntentionSuccess.Focused,
-    NSAlertThirdButtonReturn: IntentionSuccess.Distracted,
-    NSAlertThirdButtonReturn + 1: None,
-}
 
 
 def asyncModal(alert: NSAlert) -> Deferred[NSModalResponse]:
@@ -103,6 +97,7 @@ def asyncModal(alert: NSAlert) -> Deferred[NSModalResponse]:
 
     def runAndReport() -> None:
         try:
+            NSApp().activateIgnoringOtherApps_(True)
             result = alert.runModal()
         except:
             d.errback()
@@ -113,23 +108,57 @@ def asyncModal(alert: NSAlert) -> Deferred[NSModalResponse]:
     return d
 
 
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def alertReturns() -> Iterator[NSModalResponse]:
+    """
+    Enumerate the values used by NSAlert for return values in the order of the
+    buttons that occur.
+    """
+    yield NSAlertFirstButtonReturn
+    yield NSAlertSecondButtonReturn
+    yield NSAlertThirdButtonReturn
+    i = 1
+    while True:
+        yield NSAlertThirdButtonReturn + i
+        i += 1
+
+
+async def choiceAlert(
+    title: str, description: str, values: Iterable[tuple[T, str]]
+) -> T:
+    """
+    Allow the user to choose between the given values, on buttons labeled in
+    the given way.
+    """
+    msg = NSAlert.alloc().init()
+    msg.setMessageText_(title)
+    msg.setInformativeText_(description)
+    potentialResults = {}
+    for (value, label), alertReturn in zip(values, alertReturns()):
+        msg.addButtonWithTitle_(label)
+        potentialResults[alertReturn] = value
+    msg.layout()
+    return potentialResults[await asyncModal(msg)]
+
+
 async def getSuccess(intention: Intention) -> IntentionSuccess | None:
     """
     Show an alert that asks for an evaluation of the success.
     """
-    msg = NSAlert.alloc().init()
-    msg.addButtonWithTitle_("Achieved it")
-    msg.addButtonWithTitle_("Focused on it")
-    msg.addButtonWithTitle_("I was distracted")
-    msg.addButtonWithTitle_("Cancel")
-    msg.setMessageText_("Did you follow your intention?")
-    msg.setInformativeText_(
-        f"Your intention was: “{intention.description}”.  How did you track to it?"
+    return await choiceAlert(
+        "Did you follow your intention?",
+        f"Your intention was: “{intention.description}”.  How did you track to it?",
+        [
+            (IntentionSuccess.Achieved, "Achieved it"),
+            (IntentionSuccess.Focused, "Focused on it"),
+            (IntentionSuccess.Distracted, "I was distracted"),
+            (None, "Cancel"),
+        ],
     )
-    msg.layout()
-    NSApp().activateIgnoringOtherApps_(True)
-    response: NSModalResponse = await asyncModal(msg)
-    return buttonReturnTo[response]
 
 
 async def getString(title: str, question: str, defaultValue: str) -> str:
