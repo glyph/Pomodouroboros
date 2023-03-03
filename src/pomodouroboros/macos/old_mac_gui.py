@@ -19,40 +19,15 @@ from typing import (
     Tuple,
 )
 
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
-from twisted.internet.base import DelayedCall
-from twisted.internet.interfaces import IDelayedCall, IReactorTime
-from twisted.internet.task import LoopingCall
-from twisted.python.failure import Failure
-
-import math
-from ..pommodel import (
-    Break,
-    Day,
-    Intention,
-    IntentionResponse,
-    IntentionSuccess,
-    Interval,
-    Pomodoro,
-)
-from ..storage import DayLoader, TEST_MODE
-from .progress_hud import ProgressController
-from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
-from .notifs import (
-    askForIntent,
-    notify,
-    setupNotifications,
-    withdrawIntentPrompt,
-)
-from quickmacapp import Status, mainpoint, quit
 from AppKit import (
+    NSRunLoop,
     NSAlert,
-    NSArrayController,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
     NSApp,
     NSApplicationDidChangeScreenParametersNotification,
+    NSArrayController,
     NSBackingStoreBuffered,
     NSBezierPath,
     NSBorderlessWindowMask,
@@ -78,10 +53,37 @@ from AppKit import (
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
 )
-from PyObjCTools.AppHelper import callLater
+from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
+from quickmacapp import Status, mainpoint, quit
+from twisted.internet.base import DelayedCall
+from twisted.internet.defer import Deferred
+from twisted.internet.interfaces import IDelayedCall, IReactorTime
+from twisted.internet.task import LoopingCall
+from twisted.python.failure import Failure
+
+import math
+from ..pommodel import (
+    Break,
+    Day,
+    Intention,
+    IntentionResponse,
+    IntentionSuccess,
+    Interval,
+    Pomodoro,
+)
+from ..storage import DayLoader, TEST_MODE
+from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
+from .notifs import (
+    askForIntent,
+    notify,
+    setupNotifications,
+    withdrawIntentPrompt,
+)
+from .progress_hud import ProgressController
+from PyObjCTools.AppHelper import callLater
 
 
 NSModalResponse = int
@@ -93,7 +95,25 @@ buttonReturnTo = {
 }
 
 
-def getSuccess(intention: Intention) -> IntentionSuccess | None:
+def asyncModal(alert: NSAlert) -> Deferred[NSModalResponse]:
+    """
+    Run an NSAlert asynchronously.
+    """
+    d: Deferred[NSModalResponse] = Deferred()
+
+    def runAndReport() -> None:
+        try:
+            result = alert.runModal()
+        except:
+            d.errback()
+        else:
+            d.callback(result)
+
+    NSRunLoop.currentRunLoop().performBlock_(runAndReport)
+    return d
+
+
+async def getSuccess(intention: Intention) -> IntentionSuccess | None:
     """
     Show an alert that asks for an evaluation of the success.
     """
@@ -108,11 +128,11 @@ def getSuccess(intention: Intention) -> IntentionSuccess | None:
     )
     msg.layout()
     NSApp().activateIgnoringOtherApps_(True)
-    response: NSModalResponse = msg.runModal()
+    response: NSModalResponse = await asyncModal(msg)
     return buttonReturnTo[response]
 
 
-def getString(title: str, question: str, defaultValue: str) -> str:
+async def getString(title: str, question: str, defaultValue: str) -> str:
     msg = NSAlert.alloc().init()
     msg.addButtonWithTitle_("OK")
     msg.addButtonWithTitle_("Cancel")
@@ -127,7 +147,7 @@ def getString(title: str, question: str, defaultValue: str) -> str:
     msg.layout()
     NSApp().activateIgnoringOtherApps_(True)
 
-    response: NSModalResponse = msg.runModal()
+    response: NSModalResponse = await asyncModal(msg)
 
     if response == NSAlertFirstButtonReturn:
         result: str = txt.stringValue()
@@ -361,9 +381,11 @@ def expressIntention(
     dayLoader.saveDay(day)
 
 
-def setIntention(clock: IReactorTime, day: Day, dayLoader: DayLoader) -> None:
+async def setIntention(
+    clock: IReactorTime, day: Day, dayLoader: DayLoader
+) -> None:
     try:
-        newIntention = getString(
+        newIntention = await getString(
             title="Set An Intention",
             question="What is your intention?",
             defaultValue="",
@@ -477,8 +499,11 @@ class DayManager(object):
         self.observer.refreshList()
 
     def doSetIntention(self) -> None:
-        setIntention(self.reactor, self.day, self.dayLoader)
-        self.observer.refreshList()
+        async def whatever():
+            await setIntention(self.reactor, self.day, self.dayLoader)
+            self.observer.refreshList()
+
+        Deferred.fromCoroutine(whatever())
 
     def start(self) -> None:
         status = self.status = Status("Starting Up")
@@ -500,7 +525,10 @@ class DayManager(object):
                     "Bonus Pomodoro",
                     self.addBonusPom,
                 ),
-                ("Evaluate", lambda: self.setSuccess()),
+                (
+                    "Evaluate",
+                    lambda: Deferred.fromCoroutine(self.setSuccess()),
+                ),
                 ("Start Profiling", lambda: self.startProfiling()),
                 ("Finish Profiling", lambda: self.stopProfiling()),
                 ("List Pomodoros", doList),
@@ -587,7 +615,7 @@ class DayManager(object):
         except BaseException:
             print(Failure().getTraceback())
 
-    def setSuccess(self) -> None:
+    async def setSuccess(self) -> None:
         pomsToEvaluate = self.day.unEvaluatedPomodoros()
         if not pomsToEvaluate:
             notify(
@@ -600,7 +628,7 @@ class DayManager(object):
         assert (
             aPom.intention is not None
         ), "unEvaluatedPomodoros scans this already"
-        succeeded = getSuccess(aPom.intention)
+        succeeded = await getSuccess(aPom.intention)
         if succeeded is None:
             return
         self.day.evaluateIntention(aPom, succeeded)
