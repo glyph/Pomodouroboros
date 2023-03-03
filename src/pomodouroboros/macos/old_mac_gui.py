@@ -75,7 +75,7 @@ from ..pommodel import (
     Pomodoro,
 )
 from ..storage import DayLoader, TEST_MODE
-from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
+from .mac_utils import callOnNotification, datetimeFromNSDate, localDate, getChoice, getString
 from .notifs import (
     askForIntent,
     notify,
@@ -86,70 +86,11 @@ from .progress_hud import ProgressController
 from PyObjCTools.AppHelper import callLater
 
 
-NSModalResponse = int
-
-
-def asyncModal(alert: NSAlert) -> Deferred[NSModalResponse]:
-    """
-    Run an NSAlert asynchronously.
-    """
-    d: Deferred[NSModalResponse] = Deferred()
-
-    def runAndReport() -> None:
-        try:
-            NSApp().activateIgnoringOtherApps_(True)
-            result = alert.runModal()
-        except:
-            d.errback()
-        else:
-            d.callback(result)
-
-    NSRunLoop.currentRunLoop().performBlock_(runAndReport)
-    return d
-
-
-from typing import TypeVar
-
-T = TypeVar("T")
-
-
-def alertReturns() -> Iterator[NSModalResponse]:
-    """
-    Enumerate the values used by NSAlert for return values in the order of the
-    buttons that occur.
-    """
-    yield NSAlertFirstButtonReturn
-    yield NSAlertSecondButtonReturn
-    yield NSAlertThirdButtonReturn
-    i = 1
-    while True:
-        yield NSAlertThirdButtonReturn + i
-        i += 1
-
-
-async def choiceAlert(
-    title: str, description: str, values: Iterable[tuple[T, str]]
-) -> T:
-    """
-    Allow the user to choose between the given values, on buttons labeled in
-    the given way.
-    """
-    msg = NSAlert.alloc().init()
-    msg.setMessageText_(title)
-    msg.setInformativeText_(description)
-    potentialResults = {}
-    for (value, label), alertReturn in zip(values, alertReturns()):
-        msg.addButtonWithTitle_(label)
-        potentialResults[alertReturn] = value
-    msg.layout()
-    return potentialResults[await asyncModal(msg)]
-
-
 async def getSuccess(intention: Intention) -> IntentionSuccess | None:
     """
     Show an alert that asks for an evaluation of the success.
     """
-    return await choiceAlert(
+    return await getChoice(
         "Did you follow your intention?",
         f"Your intention was: “{intention.description}”.  How did you track to it?",
         [
@@ -159,30 +100,6 @@ async def getSuccess(intention: Intention) -> IntentionSuccess | None:
             (None, "Cancel"),
         ],
     )
-
-
-async def getString(title: str, question: str, defaultValue: str) -> str:
-    msg = NSAlert.alloc().init()
-    msg.addButtonWithTitle_("OK")
-    msg.addButtonWithTitle_("Cancel")
-    msg.setMessageText_(title)
-    msg.setInformativeText_(question)
-
-    txt = NSTextField.alloc().initWithFrame_(NSRect((0, 0), (200, 100)))
-    txt.setMaximumNumberOfLines_(5)
-    txt.setStringValue_(defaultValue)
-    msg.setAccessoryView_(txt)
-    msg.window().setInitialFirstResponder_(txt)
-    msg.layout()
-    NSApp().activateIgnoringOtherApps_(True)
-
-    response: NSModalResponse = await asyncModal(msg)
-
-    if response == NSAlertFirstButtonReturn:
-        result: str = txt.stringValue()
-        return result
-    else:
-        return ""
 
 
 intcb = Callable[["MacPomObserver", Interval, float], None]
