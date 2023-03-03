@@ -7,11 +7,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Iterable, Iterator
 
-from AppKit import NSAlert, NSApp, NSNotificationCenter
-from Foundation import (
+from AppKit import (
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
     NSAlertThirdButtonReturn,
+    NSAlert,
+    NSApp,
+    NSNotificationCenter,
+)
+from Foundation import (
     NSCalendar,
     NSCalendarUnitDay,
     NSCalendarUnitHour,
@@ -185,7 +189,9 @@ async def getChoice(
     return potentialResults[await asyncModal(msg)]
 
 
-async def getString(title: str, question: str, defaultValue: str) -> str | None:
+async def getString(
+    title: str, question: str, defaultValue: str
+) -> str | None:
     """
     Prompt the user for some text.
     """
