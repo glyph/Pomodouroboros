@@ -57,7 +57,7 @@ from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
-from quickmacapp import Status, mainpoint, quit
+from quickmacapp import Status, mainpoint, quit, ask, choose
 from twisted.internet.base import DelayedCall
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IDelayedCall, IReactorTime
@@ -75,7 +75,7 @@ from ..pommodel import (
     Pomodoro,
 )
 from ..storage import DayLoader, TEST_MODE
-from .mac_utils import callOnNotification, datetimeFromNSDate, localDate, getChoice, getString
+from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
 from .notifs import (
     askForIntent,
     notify,
@@ -90,15 +90,15 @@ async def getSuccess(intention: Intention) -> IntentionSuccess | None:
     """
     Show an alert that asks for an evaluation of the success.
     """
-    return await getChoice(
-        "Did you follow your intention?",
-        f"Your intention was: “{intention.description}”.  How did you track to it?",
+    return await choose(
         [
             (IntentionSuccess.Achieved, "Achieved it"),
             (IntentionSuccess.Focused, "Focused on it"),
             (IntentionSuccess.Distracted, "I was distracted"),
             (None, "Cancel"),
         ],
+        "Did you follow your intention?",
+        f"Your intention was: “{intention.description}”.  How did you track to it?",
     )
 
 
@@ -331,11 +331,7 @@ async def setIntention(
     clock: IReactorTime, day: Day, dayLoader: DayLoader
 ) -> None:
     try:
-        newIntention = await getString(
-            title="Set An Intention",
-            question="What is your intention?",
-            defaultValue="",
-        )
+        newIntention = await ask("Set An Intention", "What is your intention?", "")
         if newIntention is None:
             return
         expressIntention(clock, day, newIntention, dayLoader)
