@@ -336,6 +336,8 @@ async def setIntention(
             question="What is your intention?",
             defaultValue="",
         )
+        if newIntention is None:
+            return
         expressIntention(clock, day, newIntention, dayLoader)
     except BaseException:
         # TODO: roll up error reporting into common event-handler

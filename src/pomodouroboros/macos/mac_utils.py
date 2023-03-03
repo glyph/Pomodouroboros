@@ -185,7 +185,7 @@ async def getChoice(
     return potentialResults[await asyncModal(msg)]
 
 
-async def getString(title: str, question: str, defaultValue: str) -> str:
+async def getString(title: str, question: str, defaultValue: str) -> str | None:
     """
     Prompt the user for some text.
     """
@@ -208,5 +208,5 @@ async def getString(title: str, question: str, defaultValue: str) -> str:
     if response == NSAlertFirstButtonReturn:
         result: str = txt.stringValue()
         return result
-    else:
-        return ""
+
+    return None
