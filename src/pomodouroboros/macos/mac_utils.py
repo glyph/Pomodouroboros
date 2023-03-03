@@ -207,7 +207,6 @@ async def getString(
     msg.setAccessoryView_(txt)
     msg.window().setInitialFirstResponder_(txt)
     msg.layout()
-    NSApp().activateIgnoringOtherApps_(True)
 
     response: NSModalResponse = await asyncModal(msg)
 
