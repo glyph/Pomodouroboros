@@ -1,16 +1,16 @@
 #!/bin/zsh -ex
 
-arch -arm64 pip wheel -r requirements.txt -w wheels
-arch -x86_64 pip wheel -r requirements.txt -w wheels
-mkdir -p wheels fused single;
+mkdir -p .wheels/downloaded .wheels/fused .wheels/single;
+arch -arm64 pip wheel -r requirements.txt -w .wheels/downloaded;
+arch -x86_64 pip wheel -r requirements.txt -w .wheels/downloaded;
+mv -v .wheels/downloaded/*arm64* .wheels/downloaded/*x86_64* .wheels/single/;
 
-mv wheels/*arm64* wheels/*x86_64* single;
-
-for needsfusing in single/*arm64*; do
+for needsfusing in .wheels/single/*arm64*; do
     shortfuse="$(basename "${needsfusing}")";
     fusewith="$(echo "${needsfusing}" | sed -e 's/macosx_11_0_arm64/macosx_10_9_x86_64/')";
-    delocate-fuse --verbose --wheel-dir=fused "${needsfusing}" "${fusewith}";
-    mv -v "fused/${shortfuse}" \
-       "fused/$(echo "${shortfuse}" | sed -e s/macosx_11_0_arm64/macosx_11_0_universal2/)";
+    delocate-fuse --verbose --wheel-dir=.wheels/fused "${needsfusing}" "${fusewith}";
+    mv -v ".wheels/fused/${shortfuse}" \
+       ".wheels/fused/$(echo "${shortfuse}" | sed -e s/macosx_11_0_arm64/macosx_11_0_universal2/)";
 done
 
+pip install --force ./.wheels/fused/*.whl;
