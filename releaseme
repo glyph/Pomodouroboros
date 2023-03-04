@@ -8,36 +8,44 @@ python setup.py py2app | cat;
 
 cd dist;
 
-BUNDLE_ID='im.glyph.and.this.is.pomodouroboros';
-NAME='Pomodouroboros';
-
-# set IDENTITY and NOTARIZE_USERNAME
 . "${HOME}/.signing-vars.sh";
 
-find "${NAME}.app" -iname '*.so' -or -iname '*.dylib' |
+# ^ fill out this file with identity-specific stuff:
+
+# NOTARIZE_IDENTITY= # one of the SHA1 certificate hashes from `security find-identity -v -p codesigning`
+# NOTARIZE_TEAM= # the thing in parentheses in the output of that command
+# NOTARIZE_APPLE_ID= # the apple ID of the developer account that retrieved that certificate
+
+. ./.signing-vars.sh
+
+# ^ fill out this file with application-specific stuff
+# APPLICATION_NAME= should be the file name of the .app; Foo for Foo.app
+
+find "${APPLICATION_NAME}.app" -iname '*.so' -or -iname '*.dylib' |
     while read libfile; do
-        codesign --sign "${IDENTITY}" \
+        codesign --sign "${NOTARIZE_IDENTITY}" \
                  --entitlements ../python-entitlements.plist \
                  --deep "${libfile}" \
                  --force \
                  --options runtime;
     done;
 
-codesign --sign "${IDENTITY}" \
+codesign --sign "${NOTARIZE_IDENTITY}" \
          --entitlements ../python-entitlements.plist \
-         --deep "${NAME}.app" \
+         --deep "${APPLICATION_NAME}.app" \
          --force \
          --options runtime;
 
 zip -yr \
-    "${NAME}.app.zip" \
-    "${NAME}.app";
+    "${APPLICATION_NAME}.app.zip" \
+    "${APPLICATION_NAME}.app";
 
 xcrun notarytool submit \
-      "${NAME}.app.zip" \
-      --apple-id="glyf@me.com"
+      "${APPLICATION_NAME}.app.zip" \
+      --apple-id="${NOTARIZE_APPLE_ID}" \
+      --team-id="${NOTARIZE_TEAM_ID}" \
       --wait
 
-xcrun stapler staple "./${NAME}.app";
+xcrun stapler staple "./${APPLICATION_NAME}.app";
 
-zip -qyr "${NAME}.notarized.app.zip" "${NAME}.app";
+zip -qyr "${APPLICATION_NAME}.notarized.app.zip" "${APPLICATION_NAME}.app";
