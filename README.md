@@ -18,9 +18,9 @@ Pomodouroboros’s goal is to:
 
 The way it accomplishes this is to have a pre-existing schedule, where the
 pomodoros are always running, whether you’ve said what you’re going to do with
-them or not.  There’s a progress bar in the middle of your screen showing the
-progress of the current one on your main display, in different colors depending
-on whether you haven’t set an intention yet:
+them or not.  There’s a large, transparent progress pie-chart in the middle of
+your screen showing the progress of the current one on all displays, in
+different colors depending on whether you haven’t set an intention yet:
 
 ![](./screenshots/intention-not-set.png)
 
@@ -31,6 +31,10 @@ If you *have* set one for the current block:
 Or if you’re taking a break:
 
 ![](./screenshots/break.png)
+
+If you successfully set an intention, you can evaluate the pomodoro afterwards:
+
+![](./screenshots/evaluation-prompt.png)
 
 You can also list the pomodoros in the current day (shown here in “test” mode,
 which lets you experiment with a very short “day” that progresses rapidly while
