@@ -1,0 +1,3 @@
+#!/bin/zsh -ex
+
+find dist -type f -exec 'file' '{}' ';'  | grep ': Mach-O 6';
