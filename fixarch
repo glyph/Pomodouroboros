@@ -1,0 +1,16 @@
+#!/bin/zsh -ex
+
+arch -arm64 pip wheel -r requirements.txt -w wheels
+arch -x86_64 pip wheel -r requirements.txt -w wheels
+mkdir -p wheels fused single;
+
+mv wheels/*arm64* wheels/*x86_64* single;
+
+for needsfusing in single/*arm64*; do
+    shortfuse="$(basename "${needsfusing}")";
+    fusewith="$(echo "${needsfusing}" | sed -e 's/macosx_11_0_arm64/macosx_10_9_x86_64/')";
+    delocate-fuse --verbose --wheel-dir=fused "${needsfusing}" "${fusewith}";
+    mv -v "fused/${shortfuse}" \
+       "fused/$(echo "${shortfuse}" | sed -e s/macosx_11_0_arm64/macosx_11_0_universal2/)";
+done
+
