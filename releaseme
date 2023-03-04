@@ -1,5 +1,7 @@
 #!/bin/zsh -ex
 
+./fixarch;
+
 mypy ./src;
 rm -fr ./dist;
 
