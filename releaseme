@@ -33,20 +33,11 @@ zip -yr \
     "${NAME}.app.zip" \
     "${NAME}.app";
 
-# To avoid the need for authentication:
-# xcrun altool --store-password-in-keychain-item NOTARIZE_KEY \
-#   -u "${USERNAME}" \
-#   -p "$(osascript -e 'return text returned of (display dialog "pw" default answer "" with hidden answer)')"
-
-xcrun altool \
-      --notarize-app \
-      --file "${NAME}.app.zip" \
-      --type osx \
-      --username "${NOTARIZE_USERNAME}" \
-      --password "@keychain:NOTARIZE_KEY" \
-      --primary-bundle-id="${BUNDLE_ID}";
-
-read 'ignored?Hit enter when notarization is ready: ';
+xcrun notarytool submit \
+      "${NAME}.app.zip" \
+      --apple-id="glyf@me.com"
+      --wait
 
 xcrun stapler staple "./${NAME}.app";
+
 zip -qyr "${NAME}.notarized.app.zip" "${NAME}.app";
