@@ -4,11 +4,20 @@ Future work:
 - integrate cocoapods
 """
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from os import environ
-from typing import Awaitable, Iterable, Mapping, Sequence, TypeVar
+from typing import (
+    AsyncIterable,
+    Awaitable,
+    Coroutine,
+    Deque,
+    Iterable,
+    Mapping,
+    Sequence,
+    TypeVar,
+)
 
 from packaging.tags import sys_tags
 from wheel_filename import ParsedWheelFilename, parse_wheel_filename
@@ -98,9 +107,7 @@ class SyntaxSugar:
     #     reactor: IReactorProcess
 
     def __getitem__(self, name) -> Command:
-        """
-        
-        """
+        """ """
         return Command(name)
 
     def __getattr__(self, name) -> Command:
@@ -111,21 +118,23 @@ class SyntaxSugar:
 # from twisted.internet import reactor
 c = SyntaxSugar()
 
+
 class KnownArchitecture(StrEnum):
     x86_64 = auto()
     arm64 = auto()
     universal2 = auto()
     purePython = auto()
 
+
 @dataclass(frozen=True)
 class PlatformSpecifics:
-    """
-    
-    """
+    """ """
+
     os: str
     major: int
     minor: int
     architecture: KnownArchitecture
+
 
 def specifics(pwf: ParsedWheelFilename) -> Iterable[PlatformSpecifics]:
     """
@@ -142,6 +151,7 @@ def specifics(pwf: ParsedWheelFilename) -> Iterable[PlatformSpecifics]:
             continue
         yield PlatformSpecifics(os, int(major), int(minor), parsedArch)
 
+
 def wheelNameArchitecture(pwf: ParsedWheelFilename) -> KnownArchitecture:
     """
     Determine the architecture from a wheel.
@@ -153,10 +163,12 @@ def wheelNameArchitecture(pwf: ParsedWheelFilename) -> KnownArchitecture:
         raise ValueError(f"don't know how to handle multi-tag wheels {pwf!r}")
     return allSpecifics[0].architecture
 
+
 @dataclass
 class FusedPair:
     arm64: FilePath[str] | None = None
     x86_64: FilePath[str] | None = None
+
 
 async def fixArchitectures() -> None:
     """
@@ -172,7 +184,15 @@ async def fixArchitectures() -> None:
 
     await c.mkdir("-p", downloadDir, fusedDir, tmpDir)
     for arch in ["arm64", "x86_64"]:
-        await c.arch(f"-{arch}", "pip", "wheel", "-r", "requirements.txt", "-w", downloadDir)
+        await c.arch(
+            f"-{arch}",
+            "pip",
+            "wheel",
+            "-r",
+            "requirements.txt",
+            "-w",
+            downloadDir,
+        )
 
     needsFusing: defaultdict[str, FusedPair] = defaultdict(FusedPair)
 
@@ -181,7 +201,10 @@ async def fixArchitectures() -> None:
         # universal2, *or* have *both* arm64 and x86_64 versions.
         pwf = parse_wheel_filename(child.basename())
         arch = wheelNameArchitecture(pwf)
-        if arch in {KnownArchitecture.universal2, KnownArchitecture.purePython}:
+        if arch in {
+            KnownArchitecture.universal2,
+            KnownArchitecture.purePython,
+        }:
             # This one is fine, no action required.
             continue
         # OK we need to fuse a wheel
@@ -198,13 +221,21 @@ async def fixArchitectures() -> None:
         right = fusor.x86_64
         if right is None:
             raise RuntimeError(f"no x86_64 architecture for {name}")
-        await c['delocate-fuse']("--verbose", f"--wheel-dir={tmpDir}", left.path, right.path)
+        await c["delocate-fuse"](
+            "--verbose", f"--wheel-dir={tmpDir}", left.path, right.path
+        )
         moveFrom = FilePath(tmpDir).child(left.basename())
         # TODO: properly rewrite / unparse structure
-        moveTo = FilePath(fusedDir).child(left.basename().replace("_arm64.whl", "_universal2.whl"))
+        moveTo = FilePath(fusedDir).child(
+            left.basename().replace("_arm64.whl", "_universal2.whl")
+        )
         moveFrom.moveTo(moveTo)
 
-    await c.pip('install', '--force', *[each.path for each in FilePath(fusedDir).globChildren("*.whl")])
+    await c.pip(
+        "install",
+        "--force",
+        *[each.path for each in FilePath(fusedDir).globChildren("*.whl")],
+    )
 
 
 start = Deferred.fromCoroutine
@@ -255,12 +286,7 @@ async def signOneFile(
 
 
 T = TypeVar("T")
-
-
-async def andRelease(sem: DeferredSemaphore, coro: Awaitable[T]) -> T:
-    result = await coro
-    sem.release()
-    return result
+R = TypeVar("R")
 
 
 async def createZipFile(zipFile: FilePath, directoryToZip: FilePath) -> None:
@@ -276,6 +302,36 @@ def signablePathsIn(topPath: FilePath[str]) -> Iterable[FilePath[str]]:
     for p in topPath.walk():
         if p.isfile() and p.splitext()[-1] in {"so", "dylib"}:
             yield p
+
+
+async def parallel(
+    work: Iterable[Coroutine[Deferred[T], T, R]], parallelism: int = 10
+) -> AsyncIterable[R]:
+    """
+    Perform the given work with a limited level of parallelism.
+    """
+    sem = DeferredSemaphore(parallelism)
+    values: Deque[R] = deque()
+
+    async def saveAndRelease(coro: Awaitable[R]) -> None:
+        try:
+            values.append(await coro)
+        finally:
+            sem.release()
+
+    async def drain() -> AsyncIterable[R]:
+        await sem.acquire()
+        while values:
+            yield values.popleft()
+
+    for w in work:
+        async for each in drain():
+            yield each
+        start(saveAndRelease(w))
+
+    for x in range(parallelism):
+        async for each in drain():
+            yield each
 
 
 @dataclass
@@ -343,18 +399,15 @@ class AppBuilder:
         Find all binary files which need to be signed within the bundle and run
         C{codesign} to sign them.
         """
-        sem = DeferredSemaphore(10)
-        for p in signablePathsIn(self.originalAppPath()):
-            await sem.acquire()
-            Deferred.fromCoroutine(
-                andRelease(
-                    sem,
-                    signOneFile(p, self.identityHash, self.entitlementsPath),
-                )
+        top = self.originalAppPath()
+        async for signResult in parallel(
+            (
+                signOneFile(p, self.identityHash, self.entitlementsPath)
+                for p in signablePathsIn(top)
             )
-        for x in range(10):
-            await sem.acquire()
-        await signOneFile(p, self.identityHash, self.entitlementsPath)
+        ):
+            print("signed", signResult)
+        await signOneFile(top, self.identityHash, self.entitlementsPath)
 
     async def notarizeApp(self) -> None:
         """
@@ -373,3 +426,5 @@ class AppBuilder:
         await c.xcrun(
             "xcrun", "stapler", "staple", self.originalAppPath().path
         )
+
+
