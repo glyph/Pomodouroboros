@@ -357,7 +357,7 @@ R = TypeVar("R")
 async def createZipFile(zipFile: FilePath, directoryToZip: FilePath) -> None:
     zipPath = zipFile.asTextMode().path
     dirPath = directoryToZip.asTextMode().path
-    await c.zip("zip", "-yr", zipPath, dirPath)
+    await c.zip("-yr", zipPath, dirPath)
 
 
 def signablePathsIn(topPath: FilePath[str]) -> Iterable[FilePath[str]]:
