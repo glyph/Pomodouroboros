@@ -3,28 +3,23 @@ Future work:
 
 - integrate cocoapods
 """
+from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from os import environ
-from typing import (
-    AsyncIterable,
-    Awaitable,
-    Coroutine,
-    Deque,
-    Iterable,
-    Mapping,
-    Sequence,
-    TypeVar,
-)
+from typing import AsyncIterable, Awaitable, Coroutine, Deque, Iterable, Mapping, Sequence, TypeVar
 
 from packaging.tags import sys_tags
 from wheel_filename import ParsedWheelFilename, parse_wheel_filename
 
 from twisted.internet.defer import Deferred, DeferredSemaphore
+from twisted.internet.error import ProcessDone, ProcessTerminated
 from twisted.internet.interfaces import IReactorProcess
+from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.utils import getProcessOutputAndValue
+from twisted.python.failure import Failure
 from twisted.python.filepath import FilePath
 from twisted.python.procutils import which
 
@@ -45,9 +40,37 @@ class ProcessResult:
         """
         if self.status != 0:
             raise RuntimeError(
-                f"process {self.invocation.executable} {self.invocation.argv} exited with error {self.status}\n{self.output.decode('utf-8', 'replace')}"
+                f"process {self.invocation.executable} {self.invocation.argv} "
+                f"exited with error {self.status}\n"
+                f"{self.output.decode('utf-8', 'replace')}"
             )
 
+@dataclass
+class InvocationProcessProtocol(ProcessProtocol):
+    def __init__(self, invocation: Invocation, quiet: bool) -> None:
+        super().__init__()
+        self.invocation = invocation
+        self.d = Deferred[int]()
+        self.quiet = quiet
+        self.output = b""
+        self.errors = b""
+
+
+    def show(self, data: bytes) -> None:
+        if not self.quiet:
+            print(f"{self.invocation.executable} {' '.join(self.invocation.argv)}:", data.decode("utf-8", "replace"))
+
+    def outReceived(self, outData: bytes) -> None:
+        self.output += outData
+        self.show(outData)
+
+    def errReceived(self, errData: bytes) -> None:
+        self.errors += errData
+        self.show(errData)
+
+    def processEnded(self, reason: Failure) -> None:
+        pd: ProcessDone | ProcessTerminated = reason.value
+        self.d.callback(pd.exitCode)
 
 @dataclass
 class Invocation:
@@ -59,15 +82,15 @@ class Invocation:
     argv: Sequence[str]
 
     async def __call__(
-        self, *, env: Mapping[str, str] = environ
+        self, *, env: Mapping[str, str] = environ, quiet: bool = False
     ) -> ProcessResult:
-        """
-        Run the subprocess asynchronously.
-        """
-        output, value = await getProcessOutputAndValue(
-            self.executable, self.argv, env
-        )
-        return ProcessResult(value, output, self)
+        from twisted.internet import reactor
+        ipp = InvocationProcessProtocol(self, quiet)
+        IReactorProcess(reactor).spawnProcess(ipp, self.executable, [self.executable, *self.argv], environ)
+        value = await ipp.d
+        if value != 0:
+            raise RuntimeError(f"{self.executable} {self.argv} exited with error {value}")
+        return ProcessResult(value, ipp.output, self)
 
 
 @dataclass
@@ -84,12 +107,12 @@ class Command:
         return Invocation(which(self.name)[0], argv)
 
     async def __call__(
-        self, *args: str, env: Mapping[str, str] = environ
+        self, *args: str, env: Mapping[str, str] = environ, quiet: bool = False
     ) -> ProcessResult:
         """
         Immedately run.
         """
-        return await self[args](env=env)
+        return await self[args](env=env, quiet=quiet)
 
 
 @dataclass
@@ -103,8 +126,6 @@ class SyntaxSugar:
         await c["docker-compose"]("--help")
 
     """
-
-    #     reactor: IReactorProcess
 
     def __getitem__(self, name) -> Command:
         """ """
@@ -168,6 +189,39 @@ def wheelNameArchitecture(pwf: ParsedWheelFilename) -> KnownArchitecture:
 class FusedPair:
     arm64: FilePath[str] | None = None
     x86_64: FilePath[str] | None = None
+    universal2: FilePath[str] | None = None
+
+
+async def findSingleArchitectureBinaries(
+    paths: Iterable[FilePath[str]],
+) -> AsyncIterable[FilePath[str]]:
+    """
+    Find any binaries under a given path that are single-architecture (i.e.
+    those that will not run on an older Mac because they're fat binary).
+    """
+
+    async def checkOne(path: FilePath[str]) -> tuple[FilePath[str], bool]:
+        """
+        Check the given path for a single-architecture binary, returning True
+        if it is one and False if not.
+        """
+        if path.islink():
+            return path, False
+        if not path.isfile():
+            return path, False
+        # universal binaries begin "Mach-O universal binary with 2 architectures"
+        print("?", end="", flush=True)
+        isSingle = (await c.file("-b", path.path, quiet=True)).output.startswith(
+            b"Mach-O 64-bit bundle"
+        )
+        return path, isSingle
+
+    async for eachPath, isSingleBinary in parallel(
+        (checkOne(subpath) for path in paths for subpath in path.walk()),
+        16
+    ):
+        if isSingleBinary:
+            yield eachPath
 
 
 async def fixArchitectures() -> None:
@@ -186,7 +240,7 @@ async def fixArchitectures() -> None:
     for arch in ["arm64", "x86_64"]:
         await c.arch(
             f"-{arch}",
-            "pip",
+            which("pip")[0],
             "wheel",
             "-r",
             "requirements.txt",
@@ -201,11 +255,7 @@ async def fixArchitectures() -> None:
         # universal2, *or* have *both* arm64 and x86_64 versions.
         pwf = parse_wheel_filename(child.basename())
         arch = wheelNameArchitecture(pwf)
-        if arch in {
-            KnownArchitecture.universal2,
-            KnownArchitecture.purePython,
-        }:
-            # This one is fine, no action required.
+        if arch == KnownArchitecture.purePython:
             continue
         # OK we need to fuse a wheel
         fusor = needsFusing[pwf.project]
@@ -213,8 +263,14 @@ async def fixArchitectures() -> None:
             fusor.x86_64 = child
         if arch == KnownArchitecture.arm64:
             fusor.arm64 = child
+        if arch == KnownArchitecture.universal2:
+            fusor.universal2 = child
 
-    for name, fusor in needsFusing.items():
+    async def fuseOne(name: str, fusor: FusedPair) -> None:
+        if fusor.universal2 is not None:
+            print(f"{name} has universal2; skipping")
+            return
+
         left = fusor.arm64
         if left is None:
             raise RuntimeError(f"no amd64 architecture for {name}")
@@ -230,6 +286,11 @@ async def fixArchitectures() -> None:
             left.basename().replace("_arm64.whl", "_universal2.whl")
         )
         moveFrom.moveTo(moveTo)
+
+    async for each in parallel(
+        fuseOne(name, fusor) for (name, fusor) in needsFusing.items()
+    ):
+        pass
 
     await c.pip(
         "install",
@@ -247,7 +308,7 @@ async def validateArchitectures(path: FilePath) -> None:
     """
     await c.arch(
         "-arm64",
-        "pip",
+        which("pip")[0],
         "wheel",
         "-r",
         "requirements.txt",
@@ -256,7 +317,7 @@ async def validateArchitectures(path: FilePath) -> None:
     )
     await c.arch(
         "-x86_64",
-        "pip",
+        which("pip")[0],
         "wheel",
         "-r",
         "requirements.txt",
@@ -266,13 +327,16 @@ async def validateArchitectures(path: FilePath) -> None:
 
 
 async def signOneFile(
-    fileToSign: FilePath, codesigningIdentity: str, entitlements: FilePath
+    fileToSign: FilePath[str],
+    codesigningIdentity: str,
+    entitlements: FilePath[str],
 ) -> None:
     """
     Code sign a single file.
     """
-    fileStr = fileToSign.asTextMode().path
-    entitlementsStr = fileToSign.asTextMode().path
+    fileStr = fileToSign.path
+    entitlementsStr = entitlements.path
+    print("✓", end="", flush=True)
     await c.codesign(
         "--sign",
         codesigningIdentity,
@@ -282,6 +346,7 @@ async def signOneFile(
         "--force",
         "--options",
         "runtime",
+        fileStr,
     )
 
 
@@ -300,7 +365,9 @@ def signablePathsIn(topPath: FilePath[str]) -> Iterable[FilePath[str]]:
     What files need to be individually code-signed within a given bundle?
     """
     for p in topPath.walk():
-        if p.isfile() and p.splitext()[-1] in {"so", "dylib"}:
+        ext = p.splitext()[-1]
+        print(ext)
+        if ext in {".so", ".dylib", ".framework"}:
             yield p
 
 
@@ -406,7 +473,7 @@ class AppBuilder:
                 for p in signablePathsIn(top)
             )
         ):
-            print("signed", signResult)
+            pass
         await signOneFile(top, self.identityHash, self.entitlementsPath)
 
     async def notarizeApp(self) -> None:
@@ -426,5 +493,3 @@ class AppBuilder:
         await c.xcrun(
             "xcrun", "stapler", "staple", self.originalAppPath().path
         )
-
-
