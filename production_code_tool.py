@@ -491,5 +491,5 @@ class AppBuilder:
             f"--wait",
         )
         await c.xcrun(
-            "xcrun", "stapler", "staple", self.originalAppPath().path
+            "stapler", "staple", self.originalAppPath().path
         )
