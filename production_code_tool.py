@@ -9,7 +9,16 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from os import environ
-from typing import AsyncIterable, Awaitable, Coroutine, Deque, Iterable, Mapping, Sequence, TypeVar
+from typing import (
+    AsyncIterable,
+    Awaitable,
+    Coroutine,
+    Deque,
+    Iterable,
+    Mapping,
+    Sequence,
+    TypeVar,
+)
 
 from packaging.tags import sys_tags
 from wheel_filename import ParsedWheelFilename, parse_wheel_filename
@@ -45,6 +54,7 @@ class ProcessResult:
                 f"{self.output.decode('utf-8', 'replace')}"
             )
 
+
 @dataclass
 class InvocationProcessProtocol(ProcessProtocol):
     def __init__(self, invocation: Invocation, quiet: bool) -> None:
@@ -55,10 +65,12 @@ class InvocationProcessProtocol(ProcessProtocol):
         self.output = b""
         self.errors = b""
 
-
     def show(self, data: bytes) -> None:
         if not self.quiet:
-            print(f"{self.invocation.executable} {' '.join(self.invocation.argv)}:", data.decode("utf-8", "replace"))
+            print(
+                f"{self.invocation.executable} {' '.join(self.invocation.argv)}:",
+                data.decode("utf-8", "replace"),
+            )
 
     def outReceived(self, outData: bytes) -> None:
         self.output += outData
@@ -71,6 +83,7 @@ class InvocationProcessProtocol(ProcessProtocol):
     def processEnded(self, reason: Failure) -> None:
         pd: ProcessDone | ProcessTerminated = reason.value
         self.d.callback(pd.exitCode)
+
 
 @dataclass
 class Invocation:
@@ -85,11 +98,16 @@ class Invocation:
         self, *, env: Mapping[str, str] = environ, quiet: bool = False
     ) -> ProcessResult:
         from twisted.internet import reactor
+
         ipp = InvocationProcessProtocol(self, quiet)
-        IReactorProcess(reactor).spawnProcess(ipp, self.executable, [self.executable, *self.argv], environ)
+        IReactorProcess(reactor).spawnProcess(
+            ipp, self.executable, [self.executable, *self.argv], environ
+        )
         value = await ipp.d
         if value != 0:
-            raise RuntimeError(f"{self.executable} {self.argv} exited with error {value}")
+            raise RuntimeError(
+                f"{self.executable} {self.argv} exited with error {value}"
+            )
         return ProcessResult(value, ipp.output, self)
 
 
@@ -211,14 +229,13 @@ async def findSingleArchitectureBinaries(
             return path, False
         # universal binaries begin "Mach-O universal binary with 2 architectures"
         print("?", end="", flush=True)
-        isSingle = (await c.file("-b", path.path, quiet=True)).output.startswith(
-            b"Mach-O 64-bit bundle"
-        )
+        isSingle = (
+            await c.file("-b", path.path, quiet=True)
+        ).output.startswith(b"Mach-O 64-bit bundle")
         return path, isSingle
 
     async for eachPath, isSingleBinary in parallel(
-        (checkOne(subpath) for path in paths for subpath in path.walk()),
-        16
+        (checkOne(subpath) for path in paths for subpath in path.walk()), 16
     ):
         if isSingleBinary:
             yield eachPath
@@ -490,6 +507,4 @@ class AppBuilder:
             f"--keychain-profile={self.notarizeProfile}",
             f"--wait",
         )
-        await c.xcrun(
-            "stapler", "staple", self.originalAppPath().path
-        )
+        await c.xcrun("stapler", "staple", self.originalAppPath().path)
