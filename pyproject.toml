@@ -5,6 +5,9 @@ requires = [
     "wheel",
     "quickmacapp",
 ]
+setup-requires = [
+    "py2app",
+]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
