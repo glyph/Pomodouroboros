@@ -541,6 +541,8 @@ class DayManager(object):
                 self.previouslyActiveApp.activateWithOptions_(0)
                 app = NSApplication.sharedApplication()
                 app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+                from time import sleep
+                sleep(0.1)
                 app.activateIgnoringOtherApps_(True)
         else:
             self.previouslyActiveApp = whichApp
