@@ -20,7 +20,6 @@ from typing import (
 )
 
 from AppKit import (
-    NSRunLoop,
     NSAlert,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
@@ -44,6 +43,7 @@ from AppKit import (
     NSRectFill,
     NSRectFillListWithColorsUsingOperation,
     NSResponder,
+    NSRunLoop,
     NSScreen,
     NSTableView,
     NSTextField,
@@ -57,7 +57,7 @@ from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
-from quickmacapp import Status, mainpoint, quit, ask, choose
+from quickmacapp import Status, ask, choose, mainpoint, quit
 from twisted.internet.base import DelayedCall
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IDelayedCall, IReactorTime
@@ -84,6 +84,7 @@ from .notifs import (
 )
 from .progress_hud import ProgressController
 from PyObjCTools.AppHelper import callLater
+from pomodouroboros.macos.mac_utils import callOnNotification
 
 
 async def getSuccess(intention: Intention) -> IntentionSuccess | None:
@@ -331,7 +332,9 @@ async def setIntention(
     clock: IReactorTime, day: Day, dayLoader: DayLoader
 ) -> None:
     try:
-        newIntention = await ask("Set An Intention", "What is your intention?", "")
+        newIntention = await ask(
+            "Set An Intention", "What is your intention?", ""
+        )
         if newIntention is None:
             return
         expressIntention(clock, day, newIntention, dayLoader)
@@ -389,6 +392,7 @@ class DayManager(object):
     profile: Optional[Profile] = None
     updateDelayedCall: Optional[IDelayedCall] = None
     status: Optional[Status] = None
+    previouslyActiveApp: NSRunningApplication = field(init=False)
 
     @classmethod
     def new(
@@ -449,13 +453,20 @@ class DayManager(object):
 
         Deferred.fromCoroutine(whatever())
 
+    def showEditorWindow(self) -> None:
+        app = NSApplication.sharedApplication()
+        self.editController.editorWindow.setIsVisible_(True)
+        self.editController.refreshStatus_(self.day)
+        self.editController.editorWindow.makeKeyAndOrderFront_(None)
+
     def start(self) -> None:
         status = self.status = Status("Starting Up")
 
         def doList() -> None:
-            self.editController.editorWindow.setIsVisible_(True)
-            self.editController.refreshStatus_(self.day)
             NSApp().activateIgnoringOtherApps_(True)
+
+        def doLog() -> None:
+            NSLog("hello world")
 
         def raiseException() -> NoReturn:
             # from Foundation import NSException
@@ -476,10 +487,26 @@ class DayManager(object):
                 ("Start Profiling", lambda: self.startProfiling()),
                 ("Finish Profiling", lambda: self.stopProfiling()),
                 ("List Pomodoros", doList),
+                ("Log Something", doLog),
                 ("Break", raiseException),
                 ("Reposition Window", lambda: self.screensChanged()),
                 ("Quit", quit),
             ]
+        )
+
+        self.previouslyActiveApp = (
+            NSWorkspace.sharedWorkspace().menuBarOwningApplication()
+        )
+
+        (
+            NSWorkspace.sharedWorkspace()
+            .notificationCenter()
+            .addObserver_selector_name_object_(
+                self,
+                "someApplicationActivated:",
+                NSWorkspaceDidActivateApplicationNotification,
+                None,
+            )
         )
 
         mf = MenuForwarder.alloc().init()
@@ -488,7 +515,7 @@ class DayManager(object):
 
         (
             NSNib.alloc()
-            .initWithNibNamed_bundle_("StandardMenus.nib", None)
+            .initWithNibNamed_bundle_("MainMenu.nib", None)
             .instantiateWithOwner_topLevelObjects_(mf, None)
         )
 
@@ -499,6 +526,24 @@ class DayManager(object):
         NSApp().keyEquivalentHandler = mf
 
         self.update()
+
+    def someApplicationActivated_(self, notification: Any) -> None:
+        NSLog(f"active {notification} {__file__}")
+        whichApp = notification.userInfo()[NSWorkspaceApplicationKey]
+
+        if whichApp == NSRunningApplication.currentApplication():
+            if self.editController.currentlyRegular:
+                NSLog("show editor window")
+                self.showEditorWindow()
+            else:
+                NSLog("reactivate workaround")
+                self.editController.currentlyRegular = True
+                self.previouslyActiveApp.activateWithOptions_(0)
+                app = NSApplication.sharedApplication()
+                app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+                app.activateIgnoringOtherApps_(True)
+        else:
+            self.previouslyActiveApp = whichApp
 
     def update(self) -> None:
         pulseRate = 15.0
@@ -695,6 +740,7 @@ class DayEditorController(NSObject):
     observer = None
     clock: IReactorTime
     dayLoader: DayLoader
+    currentlyRegular: bool = False
 
     def initWithClock_andDayLoader_(
         self, clock: IReactorTime, dayLoader: DayLoader
@@ -703,9 +749,14 @@ class DayEditorController(NSObject):
         self.dayLoader = dayLoader
         return self
 
-    @IBAction
-    def hideMe_(self, sender) -> None:
-        self.editorWindow.setIsVisible_(False)
+    def windowWillClose_(self, notification: Any) -> None:
+        """
+        The goal-list window will close.
+        """
+        self.currentlyRegular = False
+        NSApplication.sharedApplication().setActivationPolicy_(
+            NSApplicationActivationPolicyAccessory
+        )
 
     @IBAction
     def dateWasSet_(self, sender: object) -> None:
@@ -759,6 +810,19 @@ class DayEditorController(NSObject):
         self.tableView.selectRowIndexes_byExtendingSelection_(
             NSIndexSet.indexSetWithIndex_(previouslySelectedRow), False
         )
+
+
+from AppKit import (
+    NSApplicationDidBecomeActiveNotification,
+    NSLog,
+    NSWorkspaceDidActivateApplicationNotification,
+    NSWorkspace,
+    NSWorkspaceApplicationKey,
+    NSRunningApplication,
+    NSApplicationActivationPolicyRegular,
+    NSApplicationActivationPolicyAccessory,
+    NSApplication,
+)
 
 
 def main(reactor: IReactorTime) -> None:
