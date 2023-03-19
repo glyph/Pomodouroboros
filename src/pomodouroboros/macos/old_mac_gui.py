@@ -20,6 +20,16 @@ from typing import (
 )
 
 from AppKit import (
+    NSApplicationDidBecomeActiveNotification,
+    NSLog,
+    NSWorkspaceDidActivateApplicationNotification,
+    NSWorkspace,
+    NSWorkspaceApplicationKey,
+    NSRunningApplication,
+    NSApplicationActivationPolicyRegular,
+    NSApplicationActivationPolicyAccessory,
+    NSApplication,
+    NSApplicationActivateIgnoringOtherApps,
     NSAlert,
     NSAlertFirstButtonReturn,
     NSAlertSecondButtonReturn,
@@ -538,10 +548,13 @@ class DayManager(object):
             else:
                 NSLog("reactivate workaround")
                 self.editController.currentlyRegular = True
-                self.previouslyActiveApp.activateWithOptions_(0)
+                self.previouslyActiveApp.activateWithOptions_(
+                    NSApplicationActivateIgnoringOtherApps
+                )
                 app = NSApplication.sharedApplication()
                 app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
                 from time import sleep
+
                 sleep(0.1)
                 app.activateIgnoringOtherApps_(True)
         else:
@@ -812,19 +825,6 @@ class DayEditorController(NSObject):
         self.tableView.selectRowIndexes_byExtendingSelection_(
             NSIndexSet.indexSetWithIndex_(previouslySelectedRow), False
         )
-
-
-from AppKit import (
-    NSApplicationDidBecomeActiveNotification,
-    NSLog,
-    NSWorkspaceDidActivateApplicationNotification,
-    NSWorkspace,
-    NSWorkspaceApplicationKey,
-    NSRunningApplication,
-    NSApplicationActivationPolicyRegular,
-    NSApplicationActivationPolicyAccessory,
-    NSApplication,
-)
 
 
 def main(reactor: IReactorTime) -> None:
