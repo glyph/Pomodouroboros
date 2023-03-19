@@ -475,9 +475,6 @@ class DayManager(object):
         def doList() -> None:
             NSApp().activateIgnoringOtherApps_(True)
 
-        def doLog() -> None:
-            NSLog("hello world")
-
         def raiseException() -> NoReturn:
             # from Foundation import NSException
             # NSException.raise_format_("SampleException", "a thing happened")
@@ -497,7 +494,6 @@ class DayManager(object):
                 ("Start Profiling", lambda: self.startProfiling()),
                 ("Finish Profiling", lambda: self.stopProfiling()),
                 ("List Pomodoros", doList),
-                ("Log Something", doLog),
                 ("Break", raiseException),
                 ("Reposition Window", lambda: self.screensChanged()),
                 ("Quit", quit),
