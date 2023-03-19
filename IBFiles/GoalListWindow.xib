@@ -20,7 +20,7 @@
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="196" y="240" width="940" height="420"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="3840" height="1575"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="775"/>
             <view key="contentView" wantsLayer="YES" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="940" height="420"/>
                 <autoresizingMask key="autoresizingMask"/>
@@ -30,8 +30,8 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="pDE-yo-jA2">
                             <font key="font" metaFont="system"/>
-                            <date key="date" timeIntervalSinceReferenceDate="699080174.38311899">
-                                <!--2023-02-26 04:56:14 +0000-->
+                            <date key="date" timeIntervalSinceReferenceDate="700907282.21855199">
+                                <!--2023-03-19 08:28:02 +0000-->
                             </date>
                             <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -284,6 +284,9 @@
                     <constraint firstItem="KHb-kw-qIX" firstAttribute="top" secondItem="U6C-w5-wMP" secondAttribute="bottom" constant="8" symbolic="YES" id="vG6-i3-rfU"/>
                 </constraints>
             </view>
+            <connections>
+                <outlet property="delegate" destination="-2" id="QjZ-Q4-8JP"/>
+            </connections>
             <point key="canvasLocation" x="356" y="151"/>
         </window>
         <arrayController id="XNf-x2-cC2"/>
