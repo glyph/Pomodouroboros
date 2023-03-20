@@ -52,9 +52,11 @@ from AppKit import (
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
-    NSWindowCollectionBehaviorCanJoinAllApplications,
     NSMakePoint,
 )
+
+# https://github.com/ronaldoussoren/pyobjc/issues/540
+NSWindowCollectionBehaviorCanJoinAllApplications =  1 << 18
 
 
 class HUDWindow(NSWindow):
