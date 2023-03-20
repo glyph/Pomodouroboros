@@ -52,6 +52,7 @@ from AppKit import (
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
+    NSWindowCollectionBehaviorCanJoinAllApplications,
     NSMakePoint,
 )
 
@@ -186,6 +187,7 @@ def hudWindowOn(
     win.setCollectionBehavior_(
         NSWindowCollectionBehaviorCanJoinAllSpaces
         | NSWindowCollectionBehaviorStationary
+        | NSWindowCollectionBehaviorCanJoinAllApplications
     )
     win.setIgnoresMouseEvents_(True)
     win.setLevel_(NSFloatingWindowLevel)
