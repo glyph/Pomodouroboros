@@ -415,9 +415,11 @@ class DayManager(object):
         """
         Sometimes, fullscreen application stop getting the HUD overlay.
         """
-        NSLog("space activated, recreating windows")
+        NSLog("space activated, switching to accessory and recreating HUD")
+        self.editController.editorWindow.close()
+        NSLog("window closed")
         self.screensChanged()
-        NSLog("did recreate windows")
+        NSLog("did recreate HUD")
 
     def startProfiling(self) -> None:
         """
