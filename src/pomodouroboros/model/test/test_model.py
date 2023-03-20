@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Generic, Type, TypeVar, cast
+from typing import Type, TypeVar
 from unittest import TestCase
 
 from twisted.internet.interfaces import IReactorTime

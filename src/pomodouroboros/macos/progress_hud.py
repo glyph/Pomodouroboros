@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, List, TYPE_CHECKING
 
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
+from Foundation import NSRect
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -18,36 +18,17 @@ log = Logger()
 import math
 from ..storage import TEST_MODE
 from AppKit import (
-    NSButton,
-    NSAlert,
-    NSWindowStyleMaskTitled,
-    NSGraphicsContext,
-    NSRectFillUsingOperation,
-    NSCompositingOperationClear,
-    NSAlertFirstButtonReturn,
-    NSAlertSecondButtonReturn,
-    NSAlertThirdButtonReturn,
     NSApp,
-    NSApplicationDidChangeScreenParametersNotification,
     NSBackingStoreBuffered,
     NSBezierPath,
     NSBorderlessWindowMask,
-    NSCell,
     NSColor,
     NSCompositingOperationCopy,
     NSEvent,
     NSFloatingWindowLevel,
     NSFocusRingTypeNone,
-    NSMenu,
-    NSMenuItem,
-    NSNib,
-    NSNotificationCenter,
-    NSRectFill,
     NSRectFillListWithColorsUsingOperation,
-    NSResponder,
     NSScreen,
-    NSTextField,
-    NSTextFieldCell,
     NSView,
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,

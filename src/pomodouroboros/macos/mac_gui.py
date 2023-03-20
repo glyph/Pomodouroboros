@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from textwrap import dedent
 from typing import (
     Callable,
     Generic,
-    Iterator,
-    Sequence,
     TYPE_CHECKING,
     TypeVar,
 )
-from zoneinfo import ZoneInfo
 
 from ..model.intention import Intention
 from ..model.intervals import AnyInterval, StartPrompt
@@ -23,46 +19,20 @@ from .old_mac_gui import main as oldMain
 from .mac_utils import showFailures
 from .progress_hud import ProgressController
 from AppKit import (
-    NSAlert,
-    NSAlertFirstButtonReturn,
-    NSAlertSecondButtonReturn,
-    NSAlertThirdButtonReturn,
-    NSApp,
     NSApplication,
     NSApplicationActivationPolicyRegular,
-    NSApplicationDidChangeScreenParametersNotification,
-    NSBackingStoreBuffered,
-    NSBezierPath,
-    NSBorderlessWindowMask,
-    NSCell,
     NSColor,
-    NSCompositingOperationCopy,
-    NSEvent,
-    NSFloatingWindowLevel,
-    NSFocusRingTypeNone,
     NSMakeRect,
     NSMakeSize,
     NSMenu,
     NSMenuItem,
     NSNib,
     NSNotification,
-    NSNotificationCenter,
     NSRect,
-    NSRectFill,
-    NSRectFillListWithColorsUsingOperation,
-    NSResponder,
-    NSScreen,
     NSSize,
     NSTableView,
     NSTextField,
     NSTextFieldCell,
-    NSView,
-    NSViewHeightSizable,
-    NSViewNotSizable,
-    NSViewWidthSizable,
-    NSWindow,
-    NSWindowCollectionBehaviorCanJoinAllSpaces,
-    NSWindowCollectionBehaviorStationary,
 )
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
@@ -253,7 +223,6 @@ class IntentionRow(NSObject):
         )
 
 
-from twisted.python.failure import Failure
 
 
 from weakref import ref

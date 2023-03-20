@@ -6,7 +6,7 @@ from functools import singledispatch
 from os import makedirs
 from typing import Literal, TypeAlias, TypedDict, Union, cast
 
-from .boundaries import IntervalType, NoUserInterface, UserInterfaceFactory
+from .boundaries import IntervalType, UserInterfaceFactory
 from .intention import Estimate, Intention
 from .intervals import AnyInterval, Break, Duration, GracePeriod, Pomodoro, Session, StartPrompt
 from .nexus import Nexus

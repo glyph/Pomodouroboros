@@ -5,14 +5,9 @@ General-purpose PyObjC utilities that might belong in a different package.
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterator
 
 from AppKit import (
-    NSAlertFirstButtonReturn,
-    NSAlertSecondButtonReturn,
-    NSAlertThirdButtonReturn,
-    NSAlert,
-    NSApp,
     NSNotificationCenter,
 )
 from Foundation import (
@@ -26,14 +21,9 @@ from Foundation import (
     NSCalendarUnitYear,
     NSDate,
     NSObject,
-    NSRunLoop,
-    NSTextField,
-    NSView,
-    NSRect,
 )
 from dateutil.tz import tzlocal
 from quickmacapp import Actionable
-from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 
 

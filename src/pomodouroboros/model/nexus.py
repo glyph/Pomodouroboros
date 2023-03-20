@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Callable, Iterable, Iterator, Sequence
+from typing import Iterable, Iterator, Sequence
 
 from .boundaries import (
     EvaluationResult,

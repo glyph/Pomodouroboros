@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import count
-from typing import Iterator, Sequence, TYPE_CHECKING
+from typing import Sequence, TYPE_CHECKING
 
-from .boundaries import EvaluationResult, NoUserInterface, PomStartResult, ScoreEvent
+from .boundaries import EvaluationResult, PomStartResult, ScoreEvent
 from .debugger import debug
 
 
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 from .intervals import (
     AnyInterval,
     Break,
-    Duration,
     GracePeriod,
     Pomodoro,
 )

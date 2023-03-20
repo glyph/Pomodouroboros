@@ -5,7 +5,7 @@ import os
 from cProfile import Profile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import (
     Any,
     Callable,
@@ -20,7 +20,6 @@ from typing import (
 )
 
 from AppKit import (
-    NSApplicationDidBecomeActiveNotification,
     NSLog,
     NSWorkspaceDidActivateApplicationNotification,
     NSWorkspace,
@@ -30,51 +29,22 @@ from AppKit import (
     NSApplicationActivationPolicyAccessory,
     NSApplication,
     NSApplicationActivateIgnoringOtherApps,
-    NSAlert,
-    NSAlertFirstButtonReturn,
-    NSAlertSecondButtonReturn,
-    NSAlertThirdButtonReturn,
     NSApp,
     NSApplicationDidChangeScreenParametersNotification,
-    NSArrayController,
-    NSBackingStoreBuffered,
-    NSBezierPath,
-    NSBorderlessWindowMask,
-    NSCell,
     NSColor,
-    NSCompositingOperationCopy,
     NSEvent,
-    NSFloatingWindowLevel,
-    NSFocusRingTypeNone,
-    NSMenu,
-    NSMenuItem,
     NSNib,
-    NSNotificationCenter,
-    NSRectFill,
-    NSRectFillListWithColorsUsingOperation,
     NSResponder,
-    NSRunLoop,
-    NSScreen,
-    NSTableView,
-    NSTextField,
-    NSTextFieldCell,
-    NSView,
-    NSWindow,
-    NSWindowCollectionBehaviorCanJoinAllSpaces,
-    NSWindowCollectionBehaviorStationary,
 )
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSRect
+from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
 from objc import IBAction, IBOutlet
-from quickmacapp import Status, ask, choose, mainpoint, quit
-from twisted.internet.base import DelayedCall
+from quickmacapp import Status, ask, choose, quit
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IDelayedCall, IReactorTime
-from twisted.internet.task import LoopingCall
 from twisted.python.failure import Failure
 
-import math
 from ..pommodel import (
     Break,
     Day,
@@ -370,7 +340,6 @@ def nowNative() -> datetime:
     return datetime.now(tz=tzlocal())
 
 
-import traceback
 
 
 class MenuForwarder(NSResponder):
@@ -824,7 +793,7 @@ class DayEditorController(NSObject):
 
 
 def main(reactor: IReactorTime) -> None:
-    import traceback, sys
+    pass
 
     dayLoader = DayLoader()
     ctrl = DayEditorController.alloc().initWithClock_andDayLoader_(

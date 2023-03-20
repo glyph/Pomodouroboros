@@ -3,12 +3,11 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
 from itertools import islice
-from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
+from typing import Iterable, TYPE_CHECKING
 
-from ulid import ULID, new as new_ulid
 
-from .boundaries import EvaluationResult, IntervalType, PomStartResult, ScoreEvent
-from .scoring import AttemptedEstimation, BreakCompleted, EstimationAccuracy, IntentionCompleted, IntentionCreatedEvent
+from .boundaries import EvaluationResult, ScoreEvent
+from .scoring import AttemptedEstimation, EstimationAccuracy, IntentionCompleted, IntentionCreatedEvent
 
 
 if TYPE_CHECKING:
