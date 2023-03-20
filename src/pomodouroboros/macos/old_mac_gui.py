@@ -22,6 +22,7 @@ from typing import (
 from AppKit import (
     NSLog,
     NSWorkspaceDidActivateApplicationNotification,
+    NSWorkspaceActiveSpaceDidChangeNotification,
     NSWorkspace,
     NSWorkspaceApplicationKey,
     NSRunningApplication,
@@ -35,6 +36,12 @@ from AppKit import (
     NSEvent,
     NSNib,
     NSResponder,
+    NSMenu,
+    NSArrayController,
+    NSWindow,
+    NSTableView,
+    NSCell,
+    NSTextFieldCell,
 )
 from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject
 from dateutil.relativedelta import relativedelta
@@ -340,16 +347,17 @@ def nowNative() -> datetime:
     return datetime.now(tz=tzlocal())
 
 
-
-
 class MenuForwarder(NSResponder):
     """
     Event responder for handling menu keyboard shortcuts defined in the
     status-item menu.
     """
 
-    myMenu = IBOutlet()  # type: NSMenu
-    statusMenu = IBOutlet()  # type: NSMenu
+    myMenu: NSMenu
+    myMenu = IBOutlet()
+
+    statusMenu: NSMenu
+    statusMenu = IBOutlet()
 
     def performKeyEquivalent_(self, event: NSEvent) -> bool:
         for menu in [self.statusMenu, self.myMenu]:
@@ -402,6 +410,14 @@ class DayManager(object):
 
     def screensChanged(self) -> None:
         self.progressController.redisplay()
+
+    def spaceActivated_(self, notification) -> None:
+        """
+        Sometimes, fullscreen application stop getting the HUD overlay.
+        """
+        NSLog("space activated, recreating windows")
+        self.screensChanged()
+        NSLog("did recreate windows")
 
     def startProfiling(self) -> None:
         """
@@ -473,15 +489,19 @@ class DayManager(object):
             NSWorkspace.sharedWorkspace().menuBarOwningApplication()
         )
 
-        (
-            NSWorkspace.sharedWorkspace()
-            .notificationCenter()
-            .addObserver_selector_name_object_(
-                self,
-                "someApplicationActivated:",
-                NSWorkspaceDidActivateApplicationNotification,
-                None,
-            )
+        wsnc = NSWorkspace.sharedWorkspace().notificationCenter()
+
+        wsnc.addObserver_selector_name_object_(
+            self,
+            "someApplicationActivated:",
+            NSWorkspaceDidActivateApplicationNotification,
+            None,
+        )
+        wsnc.addObserver_selector_name_object_(
+            self,
+            "spaceActivated:",
+            NSWorkspaceActiveSpaceDidChangeNotification,
+            None,
         )
 
         mf = MenuForwarder.alloc().init()
@@ -711,11 +731,20 @@ def poms2Dicts(
 
 
 class DayEditorController(NSObject):
-    arrayController = IBOutlet()  # type: NSArrayController
-    editorWindow = IBOutlet()  # type: NSWindow
-    tableView = IBOutlet()  # type: NSTableView
-    datePickerCell = IBOutlet()  # type: Optional[NSCell]
-    dayLabelField = IBOutlet()  # type: Optional[NSTextFieldCell]
+    arrayController: NSArrayController
+    arrayController = IBOutlet()
+
+    editorWindow: NSWindow
+    editorWindow = IBOutlet()
+
+    tableView: NSTableView
+    tableView = IBOutlet()
+
+    datePickerCell: Optional[NSCell]
+    datePickerCell = IBOutlet()
+
+    dayLabelField: Optional[NSTextFieldCell]
+    dayLabelField = IBOutlet()
 
     observer = None
     clock: IReactorTime

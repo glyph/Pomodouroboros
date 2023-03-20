@@ -33,6 +33,7 @@ from AppKit import (
     NSTableView,
     NSTextField,
     NSTextFieldCell,
+    NSWindow,
 )
 from Foundation import NSObject
 from objc import IBAction, IBOutlet
@@ -355,9 +356,15 @@ class PomFilesOwner(NSObject):
     sessionDataSource = IBOutlet()  # type: SessionDataSource
     intentionDataSource = IBOutlet()  # type: IntentionDataSource
     streakDataSource = IBOutlet()  # type: StreakDataSource
-    intentionsWindow = IBOutlet()  # type: NSWindow
-    intentionsTable = IBOutlet()  # type: NSTableView
-    debugPalette = IBOutlet()  # type: NSWindow
+
+    intentionsWindow: NSWindow
+    intentionsWindow = IBOutlet()
+
+    intentionsTable: NSTableView
+    intentionsTable = IBOutlet()
+
+    debugPalette: NSWindow
+    debugPalette = IBOutlet()
 
     if TYPE_CHECKING:
 
