@@ -57,7 +57,7 @@ from AppKit import (
 
 # https://github.com/ronaldoussoren/pyobjc/issues/540
 NSWindowCollectionBehaviorCanJoinAllApplications =  1 << 18
-
+NSWindowCollectionBehaviorAuxiliary = 1 << 17
 
 class HUDWindow(NSWindow):
     """
@@ -189,7 +189,7 @@ def hudWindowOn(
     win.setCollectionBehavior_(
         NSWindowCollectionBehaviorCanJoinAllSpaces
         | NSWindowCollectionBehaviorStationary
-        | NSWindowCollectionBehaviorCanJoinAllApplications
+        | NSWindowCollectionBehaviorAuxiliary
     )
     win.setIgnoresMouseEvents_(True)
     win.setLevel_(NSFloatingWindowLevel)
