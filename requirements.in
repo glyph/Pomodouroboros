@@ -1,4 +1,7 @@
 # requirements
+py2app
+pip-tools
+
 pyobjc-framework-Cocoa
 pyobjc-framework-ExceptionHandling
 pyobjc-framework-UserNotifications
