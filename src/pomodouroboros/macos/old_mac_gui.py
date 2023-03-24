@@ -413,9 +413,6 @@ class DayManager(object):
         )
         return self
 
-    def screensChanged(self) -> None:
-        self.progressController.redisplay()
-
     def startProfiling(self) -> None:
         """
         start profiling the python
@@ -478,7 +475,7 @@ class DayManager(object):
                 ("Finish Profiling", lambda: self.stopProfiling()),
                 ("List Pomodoros", doList),
                 ("Break", raiseException),
-                ("Reposition Window", lambda: self.screensChanged()),
+                ("Reposition Window", lambda: self.progressController.redisplay()),
                 ("Quit", quit),
             ]
         )
@@ -788,8 +785,6 @@ class DayEditorController(NSObject):
 
 
 def main(reactor: IReactorTime) -> None:
-    pass
-
     dayLoader = DayLoader()
     ctrl = DayEditorController.alloc().initWithClock_andDayLoader_(
         reactor, dayLoader
@@ -805,7 +800,7 @@ def main(reactor: IReactorTime) -> None:
     dayManager.start()
 
     def onSpaceChange() -> None:
-        dayManager.screensChanged()
+        dayManager.progressController.redisplay()
 
     SometimesBackground(ctrl.editorWindow, onSpaceChange).startObserving()
     callOnNotification(
