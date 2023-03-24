@@ -415,6 +415,9 @@ class DayManager(object):
         """
         Sometimes, fullscreen application stop getting the HUD overlay.
         """
+        if NSRunningApplication.currentApplication() == NSWorkspace.sharedWorkspace().menuBarOwningApplication():
+            NSLog("my space activated, not doing anything")
+            return
         NSLog("space activated, switching to accessory and recreating HUD")
         self.editController.editorWindow.close()
         NSLog("window closed")
