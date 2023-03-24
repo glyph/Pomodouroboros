@@ -8,7 +8,9 @@ from datetime import datetime
 from typing import Callable, Iterator
 
 from AppKit import (
+    NSNotification,
     NSNotificationCenter,
+    NSWindowWillCloseNotification,
 )
 from Foundation import (
     NSCalendar,
@@ -25,6 +27,35 @@ from Foundation import (
 from dateutil.tz import tzlocal
 from quickmacapp import Actionable
 from twisted.python.failure import Failure
+
+
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+)
+
+from AppKit import (
+    NSLog,
+    NSWorkspaceDidActivateApplicationNotification,
+    NSWorkspaceActiveSpaceDidChangeNotification,
+    NSWorkspace,
+    NSWorkspaceApplicationKey,
+    NSRunningApplication,
+    NSApplicationActivationPolicyRegular,
+    NSApplicationActivationPolicyAccessory,
+    NSApplication,
+    NSApplicationActivateIgnoringOtherApps,
+    NSWindow,
+)
+from Foundation import NSLog, NSObject
+from dateutil.tz import tzlocal
+from twisted.python.failure import Failure
+
+
 
 
 @dataclass
@@ -118,5 +149,98 @@ def showFailures() -> Iterator[None]:
     except:
         print(Failure().getTraceback())
         raise
+
+@dataclass
+class SometimesBackground:
+    """
+    An application that is sometimes in the background but has a window that,
+    when visible, can own the menubar, become key, etc.  However, when that
+    window is closed, we withdraw to the menu bar and continue running in the
+    background, as an accessory.
+    """
+
+    mainWindow: NSWindow
+    onSpaceChange: Callable[[], None]
+    currentlyRegular: bool = False
+    previouslyActiveApp: NSRunningApplication = field(init=False)
+
+    def someApplicationActivated_(self, notification: Any) -> None:
+        NSLog(f"active {notification} {__file__}")
+        whichApp = notification.userInfo()[NSWorkspaceApplicationKey]
+
+        if whichApp == NSRunningApplication.currentApplication():
+            if self.currentlyRegular:
+                NSLog("show editor window")
+                self.mainWindow.setIsVisible_(True)
+            else:
+                NSLog("reactivate workaround")
+                self.currentlyRegular = True
+                self.previouslyActiveApp.activateWithOptions_(
+                    NSApplicationActivateIgnoringOtherApps
+                )
+                app = NSApplication.sharedApplication()
+                app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+                from time import sleep
+
+                sleep(0.1)
+                app.activateIgnoringOtherApps_(True)
+        else:
+            self.previouslyActiveApp = whichApp
+
+
+    def someSpaceActivated_(self, notification) -> None:
+        """
+        Sometimes, fullscreen application stop getting the HUD overlay.
+        """
+        if NSRunningApplication.currentApplication() == NSWorkspace.sharedWorkspace().menuBarOwningApplication():
+            NSLog("my space activated, not doing anything")
+            return
+        NSLog("space activated, closing window")
+        self.mainWindow.close()
+        self.onSpaceChange()
+        NSLog("window closed")
+
+
+    def someWindowWillClose_(self, notification: NSNotification) -> None:
+        """
+        The main window that we're observing will close.
+        """
+        NSLog(f"it's a window {notification}")
+        if notification.object() == self.mainWindow:
+            NSLog("it's our window; switching to HUD")
+            self.currentlyRegular = False
+            NSApplication.sharedApplication().setActivationPolicy_(
+                NSApplicationActivationPolicyAccessory
+            )
+        else:
+            NSLog("not ours, though")
+
+
+    def startObserving(self) -> None:
+        """
+        Attach the various callbacks.
+        """
+        NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
+            self, "someWindowWillClose:", NSWindowWillCloseNotification, None
+        )
+        wsnc = NSWorkspace.sharedWorkspace().notificationCenter()
+
+        self.previouslyActiveApp = (
+            NSWorkspace.sharedWorkspace().menuBarOwningApplication()
+        )
+
+        wsnc.addObserver_selector_name_object_(
+            self,
+            "someApplicationActivated:",
+            NSWorkspaceDidActivateApplicationNotification,
+            None,
+        )
+
+        wsnc.addObserver_selector_name_object_(
+            self,
+            "someSpaceActivated:",
+            NSWorkspaceActiveSpaceDidChangeNotification,
+            None,
+        )
 
 

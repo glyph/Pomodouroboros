@@ -19,39 +19,6 @@ from typing import (
     Tuple,
 )
 
-from AppKit import (
-    NSLog,
-    NSWorkspaceDidActivateApplicationNotification,
-    NSWorkspaceActiveSpaceDidChangeNotification,
-    NSWorkspace,
-    NSWorkspaceApplicationKey,
-    NSRunningApplication,
-    NSApplicationActivationPolicyRegular,
-    NSApplicationActivationPolicyAccessory,
-    NSApplication,
-    NSApplicationActivateIgnoringOtherApps,
-    NSApp,
-    NSApplicationDidChangeScreenParametersNotification,
-    NSColor,
-    NSEvent,
-    NSNib,
-    NSResponder,
-    NSMenu,
-    NSArrayController,
-    NSWindow,
-    NSTableView,
-    NSCell,
-    NSTextFieldCell,
-)
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject
-from dateutil.relativedelta import relativedelta
-from dateutil.tz import tzlocal
-from objc import IBAction, IBOutlet
-from quickmacapp import Status, ask, choose, quit
-from twisted.internet.defer import Deferred
-from twisted.internet.interfaces import IDelayedCall, IReactorTime
-from twisted.python.failure import Failure
-
 from ..pommodel import (
     Break,
     Day,
@@ -70,8 +37,36 @@ from .notifs import (
     withdrawIntentPrompt,
 )
 from .progress_hud import ProgressController
+from AppKit import (
+    NSApp,
+    NSApplication,
+    NSApplicationDidChangeScreenParametersNotification,
+    NSArrayController,
+    NSCell,
+    NSColor,
+    NSEvent,
+    NSLog,
+    NSMenu,
+    NSNib,
+    NSNotification,
+    NSResponder,
+    NSTableView,
+    NSTextFieldCell,
+    NSWindow,
+)
+from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSDate
 from PyObjCTools.AppHelper import callLater
-from pomodouroboros.macos.mac_utils import callOnNotification
+from dateutil.relativedelta import relativedelta
+from dateutil.tz import tzlocal
+from objc import IBAction, IBOutlet
+from pomodouroboros.macos.mac_utils import (
+    SometimesBackground,
+    callOnNotification,
+)
+from quickmacapp import Status, ask, choose, quit
+from twisted.internet.defer import Deferred
+from twisted.internet.interfaces import IDelayedCall, IReactorTime
+from twisted.python.failure import Failure
 
 
 async def getSuccess(intention: Intention) -> IntentionSuccess | None:
@@ -144,6 +139,7 @@ class MacPomObserver(object):
         self.active = True
         self.progressController.show()
         notify("Starting Break", "Take it easy for a while.")
+        NSLog("refreshing before break start")
         self.refreshList()
 
     def pomodoroStarting(self, day: Day, startingPomodoro: Pomodoro) -> None:
@@ -160,11 +156,13 @@ class MacPomObserver(object):
 
             def doExpressIntention(userText: str) -> None:
                 expressIntention(self.clock, day, userText, self.dayLoader)
+                NSLog("refreshing after expressing intention")
                 self.refreshList()
 
             askForIntent(doExpressIntention)
         else:
             notify("Pomodoro Starting", startingPomodoro.intention.description)
+        NSLog("refreshing after pomodoro start")
         self.refreshList()
 
     def elapsedWithNoIntention(self, pomodoro: Pomodoro) -> None:
@@ -177,12 +175,14 @@ class MacPomObserver(object):
                 "The pomodoro elapsed with no intention specified."
             ),
         )
+        NSLog("refreshing after pomodoro failed")
         self.refreshList()
 
     def tooLongToEvaluate(self, pomodoro: Pomodoro) -> None:
         """
         A pomodoro took too long to evaluate.
         """
+        NSLog("refreshing after too-long-to-evaluate")
         self.refreshList()
 
     @_intention(IntentionResponse.CanBeSet)
@@ -256,6 +256,7 @@ class MacPomObserver(object):
         if canSetIntention != self.lastIntentionResponse:
             self.lastIntentionResponse = canSetIntention
             responses[canSetIntention](self, interval, percentageElapsed)
+            NSLog("refreshing after intention status change")
             self.refreshList()
         self.active = True
         self.progressController.animatePercentage(
@@ -272,6 +273,7 @@ class MacPomObserver(object):
         """
         self.active = False
         self.progressController.hide()
+        NSLog("refreshing after day over")
         self.refreshList()
 
 
@@ -379,7 +381,6 @@ class DayManager(object):
     profile: Optional[Profile] = None
     updateDelayedCall: Optional[IDelayedCall] = None
     status: Optional[Status] = None
-    previouslyActiveApp: NSRunningApplication = field(init=False)
 
     @classmethod
     def new(
@@ -392,7 +393,11 @@ class DayManager(object):
         progressController = ProgressController()
 
         def listRefresher() -> None:
-            reactor.callLater(0, self.update)
+            def refreshListOnLoop():
+                NSLog("refreshing list from listRefresher")
+                self.update()
+
+            reactor.callLater(0, refreshListOnLoop)
             if editController.editorWindow.isVisible():
                 editController.refreshStatus_(self.day)
 
@@ -410,19 +415,6 @@ class DayManager(object):
 
     def screensChanged(self) -> None:
         self.progressController.redisplay()
-
-    def spaceActivated_(self, notification) -> None:
-        """
-        Sometimes, fullscreen application stop getting the HUD overlay.
-        """
-        if NSRunningApplication.currentApplication() == NSWorkspace.sharedWorkspace().menuBarOwningApplication():
-            NSLog("my space activated, not doing anything")
-            return
-        NSLog("space activated, switching to accessory and recreating HUD")
-        self.editController.editorWindow.close()
-        NSLog("window closed")
-        self.screensChanged()
-        NSLog("did recreate HUD")
 
     def startProfiling(self) -> None:
         """
@@ -444,11 +436,13 @@ class DayManager(object):
 
     def addBonusPom(self) -> None:
         bonus(localDate(self.reactor.seconds()), self.day, self.dayLoader)
+        NSLog("refreshing after adding bonus pom")
         self.observer.refreshList()
 
     def doSetIntention(self) -> None:
         async def whatever():
             await setIntention(self.reactor, self.day, self.dayLoader)
+            NSLog("refreshing after setting intention")
             self.observer.refreshList()
 
         Deferred.fromCoroutine(whatever())
@@ -456,7 +450,6 @@ class DayManager(object):
     def showEditorWindow(self) -> None:
         app = NSApplication.sharedApplication()
         self.editController.editorWindow.setIsVisible_(True)
-        self.editController.refreshStatus_(self.day)
         self.editController.editorWindow.makeKeyAndOrderFront_(None)
 
     def start(self) -> None:
@@ -490,25 +483,6 @@ class DayManager(object):
             ]
         )
 
-        self.previouslyActiveApp = (
-            NSWorkspace.sharedWorkspace().menuBarOwningApplication()
-        )
-
-        wsnc = NSWorkspace.sharedWorkspace().notificationCenter()
-
-        wsnc.addObserver_selector_name_object_(
-            self,
-            "someApplicationActivated:",
-            NSWorkspaceDidActivateApplicationNotification,
-            None,
-        )
-        wsnc.addObserver_selector_name_object_(
-            self,
-            "spaceActivated:",
-            NSWorkspaceActiveSpaceDidChangeNotification,
-            None,
-        )
-
         mf = MenuForwarder.alloc().init()
 
         mf.statusMenu = status.item.menu()
@@ -525,32 +499,11 @@ class DayManager(object):
         # the table is receiving key events to move the selection around?)
         NSApp().keyEquivalentHandler = mf
 
+        NSLog("kicking off first update")
         self.update()
 
-    def someApplicationActivated_(self, notification: Any) -> None:
-        NSLog(f"active {notification} {__file__}")
-        whichApp = notification.userInfo()[NSWorkspaceApplicationKey]
-
-        if whichApp == NSRunningApplication.currentApplication():
-            if self.editController.currentlyRegular:
-                NSLog("show editor window")
-                self.showEditorWindow()
-            else:
-                NSLog("reactivate workaround")
-                self.editController.currentlyRegular = True
-                self.previouslyActiveApp.activateWithOptions_(
-                    NSApplicationActivateIgnoringOtherApps
-                )
-                app = NSApplication.sharedApplication()
-                app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
-                from time import sleep
-
-                sleep(0.1)
-                app.activateIgnoringOtherApps_(True)
-        else:
-            self.previouslyActiveApp = whichApp
-
     def update(self) -> None:
+        NSLog("updating")
         pulseRate = 15.0
         currentTimestamp = self.reactor.seconds()
         presentDate = date.today()
@@ -601,6 +554,7 @@ class DayManager(object):
 
             def nextUpdate() -> None:
                 self.updateDelayedCall = None
+                NSLog("updating on timer")
                 self.update()
 
             self.updateDelayedCall = self.reactor.callLater(
@@ -634,6 +588,7 @@ class DayManager(object):
         )
         adjective = "successful" if didIt else "failed"
         noun = "success" if didIt else "failure"
+        NSLog("refreshing after set success")
         self.observer.refreshList()
         notify(
             f"pomodoro {noun}".title(),
@@ -754,7 +709,6 @@ class DayEditorController(NSObject):
     observer = None
     clock: IReactorTime
     dayLoader: DayLoader
-    currentlyRegular: bool = False
 
     def initWithClock_andDayLoader_(
         self, clock: IReactorTime, dayLoader: DayLoader
@@ -763,14 +717,21 @@ class DayEditorController(NSObject):
         self.dayLoader = dayLoader
         return self
 
-    def windowWillClose_(self, notification: Any) -> None:
+    def awakeFromNib(self) -> None:
         """
-        The goal-list window will close.
+        set the date to the current date
         """
-        self.currentlyRegular = False
-        NSApplication.sharedApplication().setActivationPolicy_(
-            NSApplicationActivationPolicyAccessory
-        )
+        assert self.datePickerCell is not None
+        now = NSDate.alloc().init()
+        self.datePickerCell.setDateValue_(now)
+        self.dateWasSet_(self.datePickerCell)
+
+    def windowDidBecomeKey_(self, notification: NSNotification) -> None:
+        """
+        The editor window became key, time to refresh the thing.
+        """
+        NSLog("became key but not refreshing data fingers crossed")
+        self.tableView.reloadData()
 
     @IBAction
     def dateWasSet_(self, sender: object) -> None:
@@ -842,7 +803,12 @@ def main(reactor: IReactorTime) -> None:
     withdrawIntentPrompt()
     dayManager = DayManager.new(reactor, ctrl, dayLoader)
     dayManager.start()
+
+    def onSpaceChange() -> None:
+        dayManager.screensChanged()
+
+    SometimesBackground(ctrl.editorWindow, onSpaceChange).startObserving()
     callOnNotification(
         NSApplicationDidChangeScreenParametersNotification,
-        dayManager.screensChanged,
+        onSpaceChange,
     )
