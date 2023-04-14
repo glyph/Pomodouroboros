@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Callable, List, TYPE_CHECKING
+from math import sqrt, cos, sin
 
-from Foundation import NSRect
+from Foundation import NSRect, NSPoint
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -333,6 +334,30 @@ class FlatProgressBar(AbstractProgressView):
         return True
 
 
+def move(start: NSPoint, towards: NSPoint, distance: float) -> NSPoint:
+    """
+    Return the L{Point} that's the result of moving C{distance} from C{start}
+    along the line towards C{towards}.
+    """
+    a = towards.x - start.x
+    b = towards.y - start.y
+    c = sqrt((a**2) + (b**2))
+
+    return NSMakePoint(
+        start.x + (a * (distance / c)),
+        start.y + (b * (distance / c)),
+    )
+
+def edge(start: NSPoint, radius: float, theta: float) -> NSPoint:
+    """
+    Return the point on the edge of the circle.
+    """
+    return NSMakePoint(
+        start.x + radius * cos(theta),
+        y = start.y + radius * sin(theta),
+    )
+
+
 class PieTimer(AbstractProgressView):
     """
     A timer that draws itself as two large arcs.
@@ -347,15 +372,28 @@ class PieTimer(AbstractProgressView):
             bounds = self.bounds()
             w, h = bounds.size.width / 2, bounds.size.height / 2
             center = NSMakePoint(w, h)
+
             radius = min([w, h]) * 0.95
 
             def doArc(start: float, end: float) -> NSBezierPath:
+                thickness = 0.1
+                innerRadius = radius * (1-thickness)
+
+                # outerStart = edge(center, radius, start)
+                # innerStart = edge(center, innerRadius, start)
+                # outerEnd = edge(center, radius, end)
+                # innerEnd = edge(center, innerRadius, end)
+
                 aPath = NSBezierPath.bezierPath()
-                aPath.appendBezierPathWithPoints_count_([center], 1)
+                # aPath.appendBezierPathWithPoints_count_([innerStart], 1)
                 aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
                     center, radius, start, end
                 )
-                aPath.appendBezierPathWithPoints_count_([center], 1)
+                # already at outerEnd
+                # aPath.appendBezierPathWithPoints_count_([innerEnd], 1)
+                aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
+                    center, radius * (1-thickness), end, start, True
+                )
                 # aPath.setLineWidth_(5)
                 return aPath
 
