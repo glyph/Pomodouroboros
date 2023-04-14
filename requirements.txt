@@ -83,16 +83,16 @@ pycparser==2.21
     # via cffi
 pyhamcrest==2.0.4
     # via twisted
-pyobjc-core==9.0.1
+pyobjc-core==9.1b1
     # via
     #   pyobjc-framework-cfnetwork
     #   pyobjc-framework-cocoa
     #   pyobjc-framework-exceptionhandling
     #   pyobjc-framework-usernotifications
     #   twisted
-pyobjc-framework-cfnetwork==9.0.1
+pyobjc-framework-cfnetwork==9.1b1
     # via twisted
-pyobjc-framework-cocoa==9.0.1
+pyobjc-framework-cocoa==9.1b1
     # via
     #   -r requirements.in
     #   pyobjc-framework-cfnetwork
@@ -100,11 +100,11 @@ pyobjc-framework-cocoa==9.0.1
     #   pyobjc-framework-usernotifications
     #   quickmacapp
     #   twisted
-pyobjc-framework-exceptionhandling==9.0.1
+pyobjc-framework-exceptionhandling==9.1b1
     # via
     #   -r requirements.in
     #   quickmacapp
-pyobjc-framework-usernotifications==9.0.1
+pyobjc-framework-usernotifications==9.1b1
     # via
     #   -r requirements.in
     #   quickmacapp
