@@ -18,6 +18,7 @@ log = Logger()
 
 import math
 from ..storage import TEST_MODE
+from ..model.hud import HudParameters, HudSize, Position, get_drawing_params
 
 from objc import super
 
@@ -134,13 +135,23 @@ class AbstractProgressView(NSView):
         return False
 
 
-def fullScreenSizer(screen: NSScreen) -> NSRect:
+PARAMETERS = HudParameters(
+    size=HudSize.MEDIUM,
+    h_position=Position.END,
+    v_position=Position.END,
+    full=False,
+)
+
+def screenSizer(screen: NSScreen) -> NSRect:
     """ """
-    frame = screen.visibleFrame()
-    return NSRect(
-        (frame.origin[0] + 50, frame.origin[1] + 50),
-        (frame.size.width - 100, frame.size.height - 100),
+    bounding_box, _ignored = get_drawing_params(
+        PARAMETERS, screen.visibleFrame()
     )
+    (top_x, top_y), (bottom_x, bottom_y) = bounding_box
+    width = bottom_x - top_x
+    height = bottom_y - top_y
+    print("woohoo", top_x, top_y, width, height, screen.visibleFrame())
+    return NSRect((top_x, top_y), (width, height))
 
 
 def midScreenSizer(screen: NSScreen) -> NSRect:
@@ -196,7 +207,7 @@ class ProgressController(object):
     progressViewFactory: Callable[
         [], AbstractProgressView
     ] = lambda: PieTimer.alloc().init()
-    windowSizer: Callable[[NSScreen], NSRect] = fullScreenSizer
+    windowSizer: Callable[[NSScreen], NSRect] = screenSizer
     progressViews: List[AbstractProgressView] = field(default_factory=list)
     hudWindows: List[HUDWindow] = field(default_factory=list)
     alphaValue: float = 0.1

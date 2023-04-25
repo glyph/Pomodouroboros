@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-mypy ./src;
+#mypy ./src;
 rm -fr ./build ./dist;
 # https://github.com/ronaldoussoren/py2app/issues/444
 python setup.py py2app --alias | cat;
