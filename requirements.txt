@@ -44,7 +44,7 @@ hyperframe==6.0.1
     # via h2
 hyperlink==21.0.0
     # via twisted
-hypothesis==6.72.2
+hypothesis==6.72.4
     # via twisted
 idna==3.4
     # via
@@ -116,7 +116,7 @@ pyserial==3.5
     # via twisted
 python-dateutil==2.8.2
     # via -r requirements.in
-quickmacapp==2023.3.3
+quickmacapp==2023.4.24
     # via -r requirements.in
 service-identity==21.1.0
     # via twisted
