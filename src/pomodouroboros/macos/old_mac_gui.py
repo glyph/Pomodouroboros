@@ -58,7 +58,7 @@ from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSDate
 from PyObjCTools.AppHelper import callLater
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
-from objc import IBAction, IBOutlet
+from objc import IBAction, IBOutlet, super
 from pomodouroboros.macos.mac_utils import (
     SometimesBackground,
     callOnNotification,

@@ -36,7 +36,7 @@ from AppKit import (
     NSWindow,
 )
 from Foundation import NSObject
-from objc import IBAction, IBOutlet
+from objc import IBAction, IBOutlet, super
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall

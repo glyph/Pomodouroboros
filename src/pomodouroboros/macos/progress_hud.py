@@ -18,6 +18,9 @@ log = Logger()
 
 import math
 from ..storage import TEST_MODE
+
+from objc import super
+
 from AppKit import (
     NSApp,
     NSBackingStoreBuffered,
