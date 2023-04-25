@@ -5,4 +5,4 @@ rm -fr ./build ./dist;
 # https://github.com/ronaldoussoren/py2app/issues/444
 python setup.py py2app --alias | cat;
 rm -fr ./build;
-./dist/Pomodouroboros.app/Contents/MacOS/Pomodouroboros;
+exec ./dist/Pomodouroboros.app/Contents/MacOS/Pomodouroboros
