@@ -70,6 +70,8 @@ class Nexus:
     The list of active streak intervals currently being worked on.
     """
 
+    _configuration: Configuration
+
     _lastUpdateTime: float = field(init=False, default=0.0)
     _userInterface: UIEventListener | None = None
     _upcomingDurations: Iterator[Duration] = iter(())
