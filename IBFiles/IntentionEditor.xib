@@ -9,6 +9,7 @@
             <connections>
                 <outlet property="debugPalette" destination="VKS-g9-PNV" id="yd8-IP-Ndd"/>
                 <outlet property="intentionDataSource" destination="rFC-Sz-Dx3" id="mys-lY-FJh"/>
+                <outlet property="intentionsTable" destination="LiW-pP-5cA" id="Xs9-3U-eCr"/>
                 <outlet property="sessionDataSource" destination="0Fz-Nm-f6J" id="8ff-31-vco"/>
                 <outlet property="streakDataSource" destination="q7p-bi-ajt" id="6zN-rW-T09"/>
             </connections>
@@ -76,6 +77,9 @@
                                                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                                 <font key="font" metaFont="system"/>
                                                             </buttonCell>
+                                                            <connections>
+                                                                <action selector="newIntentionClicked:" target="-2" id="iLJ-iQ-5sY"/>
+                                                            </connections>
                                                         </button>
                                                         <scrollView autohidesScrollers="YES" horizontalLineScroll="17" horizontalPageScroll="10" verticalLineScroll="17" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="F3b-tD-FzK">
                                                             <rect key="frame" x="0.0" y="30" width="215" height="652"/>
@@ -91,7 +95,7 @@
                                                                         <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                         <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                                         <tableColumns>
-                                                                            <tableColumn identifier="AutomaticTableColumnIdentifier.0" width="201" minWidth="40" maxWidth="1000" id="WpJ-C0-f9z">
+                                                                            <tableColumn identifier="title" width="201" minWidth="40" maxWidth="1000" id="WpJ-C0-f9z">
                                                                                 <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="IntentionTitle">
                                                                                     <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                                                     <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
@@ -103,11 +107,11 @@
                                                                                 </textFieldCell>
                                                                                 <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                                                                 <prototypeCellViews>
-                                                                                    <tableCellView id="PNG-xM-Zu8">
+                                                                                    <tableCellView id="PNG-xM-Zu8" userLabel="Intention Title Table Cell View">
                                                                                         <rect key="frame" x="8" y="0.0" width="196" height="0.0"/>
                                                                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                                                         <subviews>
-                                                                                            <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="iwF-uL-Jfa">
+                                                                                            <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="iwF-uL-Jfa" userLabel="Intention Title Table View Cell">
                                                                                                 <rect key="frame" x="0.0" y="0.0" width="196" height="16"/>
                                                                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
                                                                                                 <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="Table View Cell" id="eIy-rG-lN9">
@@ -115,6 +119,9 @@
                                                                                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                                                                     <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                                                 </textFieldCell>
+                                                                                                <connections>
+                                                                                                    <binding destination="PNG-xM-Zu8" name="value" keyPath="objectValue.title" id="IFb-VS-l4O"/>
+                                                                                                </connections>
                                                                                             </textField>
                                                                                         </subviews>
                                                                                         <connections>
@@ -124,6 +131,9 @@
                                                                                 </prototypeCellViews>
                                                                             </tableColumn>
                                                                         </tableColumns>
+                                                                        <connections>
+                                                                            <outlet property="dataSource" destination="rFC-Sz-Dx3" id="Zkb-aQ-UsA"/>
+                                                                        </connections>
                                                                     </tableView>
                                                                 </subviews>
                                                             </clipView>
@@ -820,8 +830,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="0VN-am-jg8">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="704765326.72257996">
-                                                    <!--2023-05-03 00:08:46 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="704792096.33402598">
+                                                    <!--2023-05-03 07:34:56 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1312,8 +1322,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="2ek-VJ-F3s">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="704765326.73809302">
-                                                    <!--2023-05-03 00:08:46 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="704792096.35173595">
+                                                    <!--2023-05-03 07:34:56 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1370,6 +1380,7 @@
             </view>
             <point key="canvasLocation" x="-3092.5" y="-2139"/>
         </window>
+        <userDefaultsController representsSharedInstance="YES" id="DIz-2o-LJs"/>
     </objects>
     <resources>
         <image name="NSAddTemplate" width="18" height="17"/>

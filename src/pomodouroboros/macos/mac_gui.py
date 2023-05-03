@@ -163,7 +163,9 @@ class IntentionRow(NSObject):
             ...
 
     def title(self) -> str:
-        return self._intention.title
+        result = self._intention.title
+        print("returning title", repr(result))
+        return result
 
     def setTitle_(self, newTitle: str) -> None:
         self._intention.title = newTitle
@@ -319,6 +321,12 @@ class IntentionDataSource(NSObject):
         self._rowCache = translator
         return self
 
+    def title(self) -> str:
+        """
+        
+        """
+        return "the wrong thing"
+
     def deriveUIModels_(self, newNexus: Nexus) -> None:
         """
         Derive the UI model objects from the abstract model objects.
@@ -331,15 +339,25 @@ class IntentionDataSource(NSObject):
         result = len(self.nexus.intentions)
         return result
 
+    def rowObjectAt_(self, index: int) -> IntentionRow:
+        """
+        
+        """
+        assert self.nexus is not None
+        return self._rowCache[self.nexus.intentions[index]]
+
     def tableView_objectValueForTableColumn_row_(
         self,
         tableView: NSTableView,
-        objectValueForTableColumn: object,
+        objectValueForTableColumn: NSObject,
         row: int,
-    ) -> IntentionRow:
+    ) -> str:
         with showFailures():
-            assert self.nexus is not None
-            return self._rowCache[self.nexus.intentions[row]]
+            rowValue = self.rowObjectAt_(row)
+            return rowValue
+            # columnValue = rowValue.title()
+            # print("col-id", repr(objectValueForTableColumn.identifier()))
+            # return columnValue
 
 
 class StreakDataSource(NSObject):
@@ -389,14 +407,21 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
+        print("poking description & title")
         irow = (
-            self.intentionDataSource.tableView_objectValueForTableColumn_row_(
-                self.intentionsTable, None, 0
-            )
+            # self.intentionDataSource.tableView_objectValueForTableColumn_row_(
+            #     self.intentionsTable, None, 0
+            # )
+            self.intentionDataSource.rowObjectAt_(0)
         )
         irow.willChangeValueForKey_("textDescription")
         self.nexus.intentions[0].description = "new description"
         irow.didChangeValueForKey_("textDescription")
+
+        irow.willChangeValueForKey_("title")
+        self.nexus.intentions[0].title = "new title"
+        irow.didChangeValueForKey_("title")
+        print(".... changed?", irow.title())
 
     def awakeFromNib(self) -> None:
         """
