@@ -10,14 +10,7 @@ from typing import (
     TypeVar,
 )
 
-from ..model.intention import Intention
-from ..model.intervals import AnyInterval, StartPrompt
-from ..model.nexus import Nexus
-from ..model.storage import loadDefaultNexus
-from ..storage import TEST_MODE
-from .old_mac_gui import main as oldMain
-from .mac_utils import showFailures
-from .progress_hud import ProgressController
+import objc
 from AppKit import (
     NSApplication,
     NSApplicationActivationPolicyRegular,
@@ -35,11 +28,20 @@ from AppKit import (
     NSTextFieldCell,
     NSWindow,
 )
-from Foundation import NSObject
+from Foundation import NSIndexSet, NSObject
 from objc import IBAction, IBOutlet, super
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
+
+from ..model.intention import Intention
+from ..model.intervals import AnyInterval, StartPrompt
+from ..model.nexus import Nexus
+from ..model.storage import loadDefaultNexus
+from ..storage import TEST_MODE
+from .mac_utils import showFailures
+from .old_mac_gui import main as oldMain
+from .progress_hud import ProgressController
 
 
 @dataclass
@@ -226,8 +228,6 @@ class IntentionRow(NSObject):
         )
 
 
-
-
 from weakref import ref
 
 T = TypeVar("T")
@@ -304,11 +304,14 @@ class IntentionDataSource(NSObject):
 
     _rowCache: ModelConverter[Intention, IntentionRow]
     nexus: Nexus | None = None
+    selectedIntention: IntentionRow | None = objc.object_property()
+    hasNoSelection: bool = objc.object_property()
 
     def init(self) -> IntentionDataSource:
         """
         here we go
         """
+        self.hasNoSelection = True
 
         @ModelConverter
         def translator(intention: Intention) -> IntentionRow:
@@ -321,11 +324,23 @@ class IntentionDataSource(NSObject):
         self._rowCache = translator
         return self
 
-    def title(self) -> str:
+    def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
         """
-        
+        The selection changed.  Detail view is bound to 
         """
-        return "the wrong thing"
+        tableView = notification.object()
+        idx = tableView.selectedRow()
+        if idx == -1:
+            self.selectedIntention = None
+            self.hasNoSelection = True
+            return
+        print("selecting", idx)
+        contentObject = self.rowObjectAt_(idx)
+        # oof this can't be right
+        print("selected", contentObject)
+        self.selectedIntention = contentObject
+        self.hasNoSelection = False
+        print("added!")
 
     def deriveUIModels_(self, newNexus: Nexus) -> None:
         """
@@ -340,9 +355,7 @@ class IntentionDataSource(NSObject):
         return result
 
     def rowObjectAt_(self, index: int) -> IntentionRow:
-        """
-        
-        """
+        """ """
         assert self.nexus is not None
         return self._rowCache[self.nexus.intentions[index]]
 
@@ -404,6 +417,10 @@ class PomFilesOwner(NSObject):
         """
         newIntention = self.nexus.addIntention()
         self.intentionsTable.reloadData()
+        self.intentionsTable.selectRowIndexes_byExtendingSelection_(
+            NSIndexSet.indexSetWithIndex_(len(self.nexus.intentions) - 1),
+            False,
+        )
 
     @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
