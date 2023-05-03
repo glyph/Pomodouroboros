@@ -388,12 +388,6 @@ class PomFilesOwner(NSObject):
         self.intentionsTable.reloadData()
 
     @IBAction
-    def tryOutArcView_(self, sender: NSObject) -> None:
-        """
-        nothing for now
-        """
-
-    @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
         irow = (
             self.intentionDataSource.tableView_objectValueForTableColumn_row_(

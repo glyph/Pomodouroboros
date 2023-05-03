@@ -16,7 +16,6 @@
 		F08257CF2825F2C80007B95F /* GoalListWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = GoalListWindow.xib; sourceTree = "<group>"; };
 		F0A554F4298499190086B05F /* IntentionEditor.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = IntentionEditor.xib; sourceTree = "<group>"; };
 		F0A554F52984A5580086B05F /* MainMenu.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
-		F0EA07AC282E112D00E38FDF /* StandardMenus.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = StandardMenus.xib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -37,7 +36,6 @@
 			isa = PBXGroup;
 			children = (
 				F08257CF2825F2C80007B95F /* GoalListWindow.xib */,
-				F0EA07AC282E112D00E38FDF /* StandardMenus.xib */,
 				F0A554F52984A5580086B05F /* MainMenu.xib */,
 				F0A554F4298499190086B05F /* IntentionEditor.xib */,
 				F033AB9029AB1DA4004271F5 /* Python */,
