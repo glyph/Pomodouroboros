@@ -41,8 +41,9 @@ from AppKit import (
 )
 
 # https://github.com/ronaldoussoren/pyobjc/issues/540
-NSWindowCollectionBehaviorCanJoinAllApplications =  1 << 18
+NSWindowCollectionBehaviorCanJoinAllApplications = 1 << 18
 NSWindowCollectionBehaviorAuxiliary = 1 << 17
+
 
 class HUDWindow(NSWindow):
     """
@@ -134,12 +135,19 @@ class AbstractProgressView(NSView):
         return False
 
 
-def fullScreenSizer(screen: NSScreen) -> NSRect:
-    """ """
+def fullScreenSizer(
+    screen: NSScreen, hpadding: int = 50, vpadding: int = 50
+) -> NSRect:
+    """
+    Return a rectangle that is inset from the full screen with some padding.
+    """
     frame = screen.visibleFrame()
     return NSRect(
-        (frame.origin[0] + 50, frame.origin[1] + 50),
-        (frame.size.width - 100, frame.size.height - 100),
+        (frame.origin[0] + hpadding, frame.origin[1] + vpadding),
+        (
+            frame.size.width - (hpadding * 2),
+            frame.size.height - (vpadding * 2),
+        ),
     )
 
 
@@ -183,6 +191,7 @@ def hudWindowOn(
 
 
 DEFAULT_BASE_ALPHA = 0.15
+
 
 @dataclass
 class ProgressController(object):
@@ -351,13 +360,14 @@ def move(start: NSPoint, towards: NSPoint, distance: float) -> NSPoint:
         start.y + (b * (distance / c)),
     )
 
+
 def edge(start: NSPoint, radius: float, theta: float) -> NSPoint:
     """
     Return the point on the edge of the circle.
     """
     return NSMakePoint(
         start.x + radius * cos(theta),
-        y = start.y + radius * sin(theta),
+        y=start.y + radius * sin(theta),
     )
 
 
@@ -378,9 +388,12 @@ class PieTimer(AbstractProgressView):
 
             radius = min([w, h]) * 0.95
 
+            if TEST_MODE:
+                radius *= 0.7
+
             def doArc(start: float, end: float) -> NSBezierPath:
                 thickness = 0.1
-                innerRadius = radius * (1-thickness)
+                innerRadius = radius * (1 - thickness)
 
                 # outerStart = edge(center, radius, start)
                 # innerStart = edge(center, innerRadius, start)
@@ -395,12 +408,12 @@ class PieTimer(AbstractProgressView):
                 # already at outerEnd
                 # aPath.appendBezierPathWithPoints_count_([innerEnd], 1)
                 aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
-                    center, radius * (1-thickness), end, start, True
+                    center, radius * (1 - thickness), end, start, True
                 )
                 # aPath.setLineWidth_(5)
                 return aPath
 
-            startDegrees = (((360 * self._percentage) + 90) % 360)
+            startDegrees = ((360 * self._percentage) + 90) % 360
             endDegrees = 90
             arc1 = doArc(startDegrees, endDegrees)
             arc2 = doArc(endDegrees, startDegrees)
@@ -414,9 +427,11 @@ class PieTimer(AbstractProgressView):
             arc2.fill()
             lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
             if lineAlpha > 0:
-                NSColor.whiteColor().colorWithAlphaComponent_(lineAlpha).setStroke()
-                arc1.setLineWidth_(1/4)
-                arc2.setLineWidth_(1/4)
+                NSColor.whiteColor().colorWithAlphaComponent_(
+                    lineAlpha
+                ).setStroke()
+                arc1.setLineWidth_(1 / 4)
+                arc2.setLineWidth_(1 / 4)
                 arc1.stroke()
                 arc2.stroke()
 
