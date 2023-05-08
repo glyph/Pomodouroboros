@@ -3,14 +3,26 @@ General-purpose PyObjC utilities that might belong in a different package.
 """
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Iterator
+from typing import Any, Callable, Iterator, TypeVar
 
+import objc
 from AppKit import (
+    NSApplication,
+    NSApplicationActivateIgnoringOtherApps,
+    NSApplicationActivationPolicyAccessory,
+    NSApplicationActivationPolicyRegular,
+    NSLog,
     NSNotification,
     NSNotificationCenter,
+    NSRunningApplication,
+    NSWindow,
     NSWindowWillCloseNotification,
+    NSWorkspace,
+    NSWorkspaceActiveSpaceDidChangeNotification,
+    NSWorkspaceApplicationKey,
+    NSWorkspaceDidActivateApplicationNotification,
 )
 from Foundation import (
     NSCalendar,
@@ -22,37 +34,11 @@ from Foundation import (
     NSCalendarUnitSecond,
     NSCalendarUnitYear,
     NSDate,
+    NSLog,
     NSObject,
 )
 from dateutil.tz import tzlocal
 from quickmacapp import Actionable
-from twisted.python.failure import Failure
-
-
-from contextlib import contextmanager
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import (
-    Any,
-    Callable,
-    Iterator,
-)
-
-from AppKit import (
-    NSLog,
-    NSWorkspaceDidActivateApplicationNotification,
-    NSWorkspaceActiveSpaceDidChangeNotification,
-    NSWorkspace,
-    NSWorkspaceApplicationKey,
-    NSRunningApplication,
-    NSApplicationActivationPolicyRegular,
-    NSApplicationActivationPolicyAccessory,
-    NSApplication,
-    NSApplicationActivateIgnoringOtherApps,
-    NSWindow,
-)
-from Foundation import NSLog, NSObject
-from dateutil.tz import tzlocal
 from twisted.python.failure import Failure
 
 
@@ -74,6 +60,40 @@ class Remover:
             self.observer,
             self.name,
         )
+
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+
+@dataclass
+class Forwarder:
+    """
+    Forward a set of attributes to an original other attribute.
+
+    Use at class scope.
+    """
+
+    original: str
+
+    def forwarded(self, name: str) -> Any:
+        """
+        Create an attribute that will forward to C{name}.
+
+        Returns L{Any} as a type so it can be assigned to an attribute at class
+        scope annotated with the appropriate type.
+        """
+        prop = objc.object_property()
+
+        @prop.getter
+        def getter(oself: S) -> Any:
+            return getattr(getattr(oself, self.original), name)
+
+        @getter.setter
+        def setter(oself: S, value: T) -> None:
+            setattr(getattr(oself, self.original), name, value)
+
+        return prop
 
 
 def callOnNotification(
