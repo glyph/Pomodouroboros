@@ -301,7 +301,7 @@ class IntentionDataSource(NSObject):
     # pragma mark Attributes
 
     intentionRowMap: ModelConverter[Intention, IntentionRow]
-    nexus: Nexus
+    nexus: Nexus | None = None
 
     selectedIntention: IntentionRow | None = objc.object_property()
     "everything in the detail view is bound to this"
@@ -328,6 +328,7 @@ class IntentionDataSource(NSObject):
 
         @ModelConverter
         def translator(intention: Intention) -> IntentionRow:
+            assert self.nexus is not None, "what"
             return IntentionRow.alloc().initWithIntention_andNexus_(
                 intention, self.nexus
             )
@@ -562,6 +563,10 @@ def newMain(reactor: IReactorTime) -> None:
             nexus, reactor
         ),
     )
+    theNexus.userInterface
+    # hmm. UI is lazily constructed which is not great, violates the mac's
+    # assumptions about launching, makes it seem sluggish, so let's force it to
+    # be eager here.
     # XXX test session
     theNexus.addSession(reactor.seconds() + 1.0, reactor.seconds() + 1000.0)
 
