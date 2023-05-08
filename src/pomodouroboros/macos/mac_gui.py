@@ -1,14 +1,11 @@
 from __future__ import annotations
 
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from functools import wraps
 from textwrap import dedent
-from typing import (
-    Callable,
-    Generic,
-    TYPE_CHECKING,
-    TypeVar,
-)
+from typing import Any, Callable, Generic, TYPE_CHECKING, TypeVar
 
 import objc
 from AppKit import (
@@ -39,7 +36,7 @@ from ..model.intervals import AnyInterval, StartPrompt
 from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus
 from ..storage import TEST_MODE
-from .mac_utils import showFailures
+from .mac_utils import showFailures, Forwarder
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
 
@@ -155,33 +152,46 @@ class SessionDataSource(NSObject):
 
 class IntentionRow(NSObject):
     """
-    A row in the intentions table.
+    A row in the intentions table; ObjC wrapper for L{IntentionRow}.
     """
 
+    # pragma mark Initialization
     if TYPE_CHECKING:
 
         @classmethod
         def alloc(cls) -> IntentionRow:
             ...
 
-    def title(self) -> str:
-        result = self._intention.title
-        print("returning title", repr(result))
-        return result
+    def initWithIntention_andNexus_(
+        self, intention: Intention, nexus: Nexus
+    ) -> IntentionRow:
+        super().init()
+        self.intention = intention
+        self.shouldHideEstimate = True
+        self.canEditSummary = False
+        return self
 
-    def setTitle_(self, newTitle: str) -> None:
-        self._intention.title = newTitle
+    # pragma mark Attributes
 
-    def textDescription(self) -> str:
-        return self._intention.description
+    intention: Intention = objc.object_property()
+    shouldHideEstimate = objc.object_property()
+    canEditSummary = objc.object_property()
 
-    def setTextDescription_(self, newTextDescription: str) -> None:
-        self._intention.description = newTextDescription
+    forwarded = Forwarder("intention").forwarded
 
+    title: str = forwarded("title")
+    textDescription: str = forwarded("description")
+
+    _estimate = objc.object_property()
+
+    @_estimate.getter
     def estimate(self) -> str:
         estimates = self._intention.estimates
         return str(estimates[-1] if estimates else "")
 
+    _creationText = objc.object_property()
+
+    @_creationText.getter
     def creationText(self) -> str:
         creationDate = datetime.fromtimestamp(self._intention.created)
         modificationDate = creationDate + timedelta(days=2)
@@ -190,48 +200,12 @@ class IntentionRow(NSObject):
             f"Modified at {modificationDate.isoformat(timespec='minutes')}"
         )
 
-    def initWithIntention_andNexus_(
-        self, intention: Intention, nexus: Nexus
-    ) -> IntentionRow:
-        self._intention = intention
-        self.shouldHideEstimate = True
-        self.canEditSummary = False
-        return self
-
-    @IBAction
-    def setClicked_(self, target: object) -> None:
-        """
-        The 'set' button was clicked. Time to set this intention!
-        """
-        print("set intention clicked for", self._intention)
-
-    @IBAction
-    def abandonClicked_(self, target: object) -> None:
-        """
-        The 'abandon' button was clicked.  This intention should be abandoned
-        (after a confirmation dialog).
-        """
-        print("abandon intention clicked for", self._intention)
-
-    @IBAction
-    def estimateClicked_(self, target: object) -> None:
-        self.shouldHideEstimate = not self.shouldHideEstimate
-
-    def pomodoroListSummaryText(self) -> str:
-        return dedent(
-            """\
-            • list
-            • of
-            • pomodoros
-            • placeholder
-            """
-        )
-
 
 from weakref import ref
 
 T = TypeVar("T")
 U = TypeVar("U")
+S = TypeVar("S")
 
 
 @dataclass
@@ -297,67 +271,16 @@ class ModelConverter(Generic[T, U]):
         return value
 
 
-class IntentionDataSource(NSObject):
-    """
-    NSTableViewDataSource for the list of intentions.
-    """
+"""
+data source template:
 
-    _rowCache: ModelConverter[Intention, IntentionRow]
-    nexus: Nexus | None = None
-    selectedIntention: IntentionRow | None = objc.object_property()
-    hasNoSelection: bool = objc.object_property()
-
-    def init(self) -> IntentionDataSource:
-        """
-        here we go
-        """
-        self.hasNoSelection = True
-
-        @ModelConverter
-        def translator(intention: Intention) -> IntentionRow:
-            newNexus = self.nexus
-            assert newNexus is not None
-            return IntentionRow.alloc().initWithIntention_andNexus_(
-                intention, newNexus
-            )
-
-        self._rowCache = translator
-        return self
-
-    def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
-        """
-        The selection changed.  Detail view is bound to 
-        """
-        tableView = notification.object()
-        idx = tableView.selectedRow()
-        if idx == -1:
-            self.selectedIntention = None
-            self.hasNoSelection = True
-            return
-        print("selecting", idx)
-        contentObject = self.rowObjectAt_(idx)
-        # oof this can't be right
-        print("selected", contentObject)
-        self.selectedIntention = contentObject
-        self.hasNoSelection = False
-        print("added!")
-
-    def deriveUIModels_(self, newNexus: Nexus) -> None:
-        """
-        Derive the UI model objects from the abstract model objects.
-        """
-        self.nexus = newNexus
+class _(NSObject):
+    def awakeWithNexus_(self, newNexus: Nexus) -> None:
+        ...
+    # pragma mark NSTableViewDataSource
 
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
-        if self.nexus is None:
-            return 0
-        result = len(self.nexus.intentions)
-        return result
-
-    def rowObjectAt_(self, index: int) -> IntentionRow:
-        """ """
-        assert self.nexus is not None
-        return self._rowCache[self.nexus.intentions[index]]
+        ...
 
     def tableView_objectValueForTableColumn_row_(
         self,
@@ -365,12 +288,116 @@ class IntentionDataSource(NSObject):
         objectValueForTableColumn: NSObject,
         row: int,
     ) -> str:
+        ...
+
+"""
+
+
+class IntentionDataSource(NSObject):
+    """
+    NSTableViewDataSource for the list of intentions.
+    """
+
+    # pragma mark Attributes
+
+    intentionRowMap: ModelConverter[Intention, IntentionRow]
+    nexus: Nexus
+
+    selectedIntention: IntentionRow | None = objc.object_property()
+    "everything in the detail view is bound to this"
+
+    hasNoSelection: bool = objc.object_property()
+    "detail view's 'hidden' is bound to this"
+
+    # pragma mark Initialization and awakening
+
+    def init(self) -> IntentionDataSource:
+        """
+        Construct an L{IntentionDataSource}.  This is constructed in the nib.
+        """
+        self.hasNoSelection = True
+        self.selectedIntention = None
+        return self
+
+    def awakeWithNexus_(self, newNexus: Nexus) -> None:
+        """
+        Complete initialization after awakeFromNib by associating everything
+        with a 'nexus'.
+        """
+        self.nexus = newNexus
+
+        @ModelConverter
+        def translator(intention: Intention) -> IntentionRow:
+            return IntentionRow.alloc().initWithIntention_andNexus_(
+                intention, self.nexus
+            )
+
+        self.intentionRowMap = translator
+
+    # pragma mark My own methods
+
+    def rowObjectAt_(self, index: int) -> IntentionRow:
+        """
+        Look up a row object at the given index.
+        """
+        assert self.nexus is not None
+        return self.intentionRowMap[self.nexus.intentions[index]]
+
+    # pragma mark NSTableViewDelegate
+
+    def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
+        """
+        The selection changed.
+        """
+        tableView = notification.object()
+        idx = tableView.selectedRow()
+
+        if idx == -1:
+            self.selectedIntention = None
+            self.hasNoSelection = True
+            return
+
+        self.selectedIntention = self.rowObjectAt_(idx)
+        self.hasNoSelection = False
+
+    # pragma mark NSTableViewDataSource
+
+    def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
+        """
+        Implement NSTableViewDataSource numberOfRowsInTableView:
+        """
+        if self.nexus is None:
+            return 0
+        result = len(self.nexus.intentions)
+        return result
+
+    def tableView_objectValueForTableColumn_row_(
+        self,
+        tableView: NSTableView,
+        objectValueForTableColumn: NSObject,
+        row: int,
+    ) -> str:
+        """
+        Implement NSTableViewDataSource tableView:objectValueForTableColumn:row:
+        """
         with showFailures():
             rowValue = self.rowObjectAt_(row)
             return rowValue
-            # columnValue = rowValue.title()
-            # print("col-id", repr(objectValueForTableColumn.identifier()))
-            # return columnValue
+
+
+class IntentionPomodorosDataSource(NSObject):
+    # pragma mark NSTableViewDataSource
+
+    def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
+        return 0
+
+    def tableView_objectValueForTableColumn_row_(
+        self,
+        tableView: NSTableView,
+        objectValueForTableColumn: NSObject,
+        row: int,
+    ) -> str:
+        return "placeholder"
 
 
 class StreakDataSource(NSObject):
@@ -424,28 +451,21 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
-        print("poking description & title")
         irow = (
             # self.intentionDataSource.tableView_objectValueForTableColumn_row_(
             #     self.intentionsTable, None, 0
             # )
             self.intentionDataSource.rowObjectAt_(0)
         )
-        irow.willChangeValueForKey_("textDescription")
-        self.nexus.intentions[0].description = "new description"
-        irow.didChangeValueForKey_("textDescription")
-
-        irow.willChangeValueForKey_("title")
-        self.nexus.intentions[0].title = "new title"
-        irow.didChangeValueForKey_("title")
-        print(".... changed?", irow.title())
+        irow.textDescription = "new description"
+        irow.title = "new title"
 
     def awakeFromNib(self) -> None:
         """
         Let's get the GUI started.
         """
         # TODO: update intention data source with initial data from nexus
-        self.intentionDataSource.nexus = self.nexus
+        self.intentionDataSource.awakeWithNexus_(self.nexus)
         self.debugPalette.setOpaque_(False)
         self.debugPalette.setBackgroundColor_(NSColor.clearColor())
         self.debugPalette.setIsVisible_(True)
