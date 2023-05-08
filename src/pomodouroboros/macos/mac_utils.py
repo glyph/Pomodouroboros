@@ -56,8 +56,6 @@ from dateutil.tz import tzlocal
 from twisted.python.failure import Failure
 
 
-
-
 @dataclass
 class Remover:
     center: NSNotificationCenter
@@ -150,6 +148,7 @@ def showFailures() -> Iterator[None]:
         print(Failure().getTraceback())
         raise
 
+
 @dataclass
 class SometimesBackground:
     """
@@ -187,19 +186,20 @@ class SometimesBackground:
         else:
             self.previouslyActiveApp = whichApp
 
-
     def someSpaceActivated_(self, notification) -> None:
         """
         Sometimes, fullscreen application stop getting the HUD overlay.
         """
-        if NSRunningApplication.currentApplication() == NSWorkspace.sharedWorkspace().menuBarOwningApplication():
+        if (
+            NSRunningApplication.currentApplication()
+            == NSWorkspace.sharedWorkspace().menuBarOwningApplication()
+        ):
             NSLog("my space activated, not doing anything")
             return
         NSLog("space activated, closing window")
         self.mainWindow.close()
         self.onSpaceChange()
         NSLog("window closed")
-
 
     def someWindowWillClose_(self, notification: NSNotification) -> None:
         """
@@ -214,7 +214,6 @@ class SometimesBackground:
             )
         else:
             NSLog("not ours, though")
-
 
     def startObserving(self) -> None:
         """
@@ -242,5 +241,3 @@ class SometimesBackground:
             NSWorkspaceActiveSpaceDidChangeNotification,
             None,
         )
-
-
