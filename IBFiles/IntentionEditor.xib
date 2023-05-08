@@ -67,7 +67,7 @@
                                             <rect key="frame" x="0.0" y="0.0" width="823" height="682"/>
                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                             <subviews>
-                                                <customView fixedFrame="YES" id="PTp-GL-f4J">
+                                                <customView fixedFrame="YES" id="PTp-GL-f4J" userLabel="Intentions List Container">
                                                     <rect key="frame" x="0.0" y="0.0" width="136" height="682"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <subviews>
@@ -150,11 +150,11 @@
                                                         </scrollView>
                                                     </subviews>
                                                 </customView>
-                                                <customView fixedFrame="YES" id="JFq-bN-AmQ">
+                                                <customView fixedFrame="YES" id="JFq-bN-AmQ" userLabel="Intentions Detail Container">
                                                     <rect key="frame" x="137" y="0.0" width="686" height="682"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <subviews>
-                                                        <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Aur-7m-uXk">
+                                                        <customView hidden="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Aur-7m-uXk" userLabel="Intentions Initial Button Container">
                                                             <rect key="frame" x="0.0" y="0.0" width="686" height="682"/>
                                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                             <subviews>
@@ -178,7 +178,7 @@
                                                                 </binding>
                                                             </connections>
                                                         </customView>
-                                                        <customView hidden="YES" id="gUu-lh-XAs">
+                                                        <customView hidden="YES" id="gUu-lh-XAs" userLabel="Intention Form Container">
                                                             <rect key="frame" x="0.0" y="0.0" width="686" height="682"/>
                                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                             <subviews>
@@ -217,6 +217,7 @@
                                                                                 <color key="insertionPointColor" name="textColor" catalog="System" colorSpace="catalog"/>
                                                                                 <connections>
                                                                                     <binding destination="rFC-Sz-Dx3" name="value" keyPath="selectedIntention.textDescription" id="wiM-j3-IKW"/>
+                                                                                    <outlet property="delegate" destination="Z3a-RV-wSy" id="dm0-Am-Obk"/>
                                                                                 </connections>
                                                                             </textView>
                                                                         </subviews>
@@ -424,6 +425,9 @@
                                                                     <rect key="frame" x="605" y="637" width="64" height="28"/>
                                                                     <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
                                                                     <color key="color" red="0.05813049898" green="0.055541899059999997" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                                                    <connections>
+                                                                        <binding destination="rFC-Sz-Dx3" name="enabled" keyPath="selectedIntention.hasColor" id="azb-L0-ab0"/>
+                                                                    </connections>
                                                                 </colorWell>
                                                                 <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="gc5-Cg-YdN">
                                                                     <rect key="frame" x="541" y="642" width="59" height="18"/>
@@ -432,6 +436,9 @@
                                                                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                                                         <font key="font" metaFont="system"/>
                                                                     </buttonCell>
+                                                                    <connections>
+                                                                        <binding destination="rFC-Sz-Dx3" name="value" keyPath="selectedIntention.hasColor" id="rcp-Yo-hta"/>
+                                                                    </connections>
                                                                 </button>
                                                                 <scrollView autohidesScrollers="YES" horizontalLineScroll="17" horizontalPageScroll="10" verticalLineScroll="17" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="nep-yn-Gps">
                                                                     <rect key="frame" x="100" y="310" width="566" height="197"/>
@@ -1424,6 +1431,7 @@
             </view>
             <point key="canvasLocation" x="-3092.5" y="-2139"/>
         </window>
+        <customObject id="Z3a-RV-wSy" userLabel="Tab Order Helper" customClass="TabOrderFriendlyTextViewDelegate"/>
         <userDefaultsController representsSharedInstance="YES" id="DIz-2o-LJs"/>
     </objects>
     <resources>
