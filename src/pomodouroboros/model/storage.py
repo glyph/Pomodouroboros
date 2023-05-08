@@ -321,7 +321,10 @@ def loadFromFile(filename: str) -> JSON:
 
 defaultNexusFile = expanduser("~/.local/share/pomodouroboros/current-nexus.json")
 
-def loadDefaultNexus(currentTime: float, userInterfaceFactory: UserInterfaceFactory) -> Nexus:
+def loadDefaultNexus(
+    currentTime: float,
+    userInterfaceFactory: UserInterfaceFactory,
+) -> Nexus:
     """
     Load the default nexus.
     """
