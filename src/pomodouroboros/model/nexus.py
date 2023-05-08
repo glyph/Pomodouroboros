@@ -226,7 +226,9 @@ class Nexus:
         Add an intention with the given description and time estimate.
         """
         self._intentions.append(
-            newIntention := Intention(self._lastUpdateTime, title, description)
+            newIntention := Intention(
+                self._lastUpdateTime, self._lastUpdateTime, title, description
+            )
         )
         if estimate is not None:
             newIntention.estimates.append(

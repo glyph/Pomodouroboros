@@ -27,6 +27,7 @@ SavedIntention = TypedDict(
     "SavedIntention",
     {
         "created": float,
+        "modified": float,
         "description": str,
         "estimates": list[SavedEstimate],
         # "pomodoros": list[SavedPomodoroID],
@@ -126,6 +127,7 @@ def nexusFromJSON(
         intention = Intention(
             title=savedIntention["title"],
             created=savedIntention["created"],
+            modified = savedIntention["modified"],
             description=savedIntention["description"],
             estimates=[
                 Estimate(
@@ -261,6 +263,7 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
         "intentions": [
             {
                 "created": intention.created,
+                "modified": intention.modified,
                 "title": intention.title,
                 "description": intention.description,
                 "estimates": [

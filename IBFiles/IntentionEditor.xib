@@ -140,7 +140,7 @@
                                                                 </subviews>
                                                             </clipView>
                                                             <scroller key="horizontalScroller" hidden="YES" wantsLayer="YES" verticalHuggingPriority="750" horizontal="YES" id="3vI-yG-os3">
-                                                                <rect key="frame" x="1" y="665" width="134" height="16"/>
+                                                                <rect key="frame" x="1" y="648" width="134" height="16"/>
                                                                 <autoresizingMask key="autoresizingMask"/>
                                                             </scroller>
                                                             <scroller key="verticalScroller" hidden="YES" wantsLayer="YES" verticalHuggingPriority="750" horizontal="NO" id="C5f-zf-TxD">
@@ -281,6 +281,9 @@
                                                                         <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                     </textFieldCell>
+                                                                    <connections>
+                                                                        <binding destination="rFC-Sz-Dx3" name="value" keyPath="selectedIntention.modificationText" id="T2P-Cl-KQe"/>
+                                                                    </connections>
                                                                 </textField>
                                                                 <textField verticalHuggingPriority="750" fixedFrame="YES" preferredMaxLayoutWidth="96" translatesAutoresizingMaskIntoConstraints="NO" id="9vI-XX-gEp">
                                                                     <rect key="frame" x="497" y="640" width="38" height="21"/>
@@ -454,7 +457,7 @@
                                                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                                 <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                                                 <tableColumns>
-                                                                                    <tableColumn width="52" minWidth="10" maxWidth="3.4028234663852886e+38" id="DFj-7C-hNH">
+                                                                                    <tableColumn identifier="date" width="52" minWidth="10" maxWidth="3.4028234663852886e+38" id="DFj-7C-hNH">
                                                                                         <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Date">
                                                                                             <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                                                             <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -466,7 +469,7 @@
                                                                                         </textFieldCell>
                                                                                         <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                                                                         <prototypeCellViews>
-                                                                                            <tableCellView id="eW6-Oa-uao">
+                                                                                            <tableCellView id="eW6-Oa-uao" userLabel="date table cell view">
                                                                                                 <rect key="frame" x="8" y="0.0" width="50" height="0.0"/>
                                                                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                                                                 <subviews>
@@ -478,6 +481,9 @@
                                                                                                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                                                         </textFieldCell>
+                                                                                                        <connections>
+                                                                                                            <binding destination="eW6-Oa-uao" name="value" keyPath="objectValue.date" id="sNx-rg-Vcr"/>
+                                                                                                        </connections>
                                                                                                     </textField>
                                                                                                 </subviews>
                                                                                                 <connections>
@@ -615,6 +621,9 @@
                                                                                         </prototypeCellViews>
                                                                                     </tableColumn>
                                                                                 </tableColumns>
+                                                                                <connections>
+                                                                                    <outlet property="dataSource" destination="8xN-s7-Y7R" id="wLE-Zp-mmQ"/>
+                                                                                </connections>
                                                                             </tableView>
                                                                         </subviews>
                                                                     </clipView>
@@ -881,8 +890,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="0VN-am-jg8">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="705208508.99554801">
-                                                    <!--2023-05-08 03:15:08 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="705218943.66513097">
+                                                    <!--2023-05-08 06:09:03 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1373,8 +1382,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="2ek-VJ-F3s">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="705208509.01202905">
-                                                    <!--2023-05-08 03:15:09 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="705218943.68347597">
+                                                    <!--2023-05-08 06:09:03 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1432,6 +1441,7 @@
             <point key="canvasLocation" x="-3092.5" y="-2139"/>
         </window>
         <customObject id="Z3a-RV-wSy" userLabel="Tab Order Helper" customClass="TabOrderFriendlyTextViewDelegate"/>
+        <customObject id="8xN-s7-Y7R" customClass="IntentionPomodorosDataSource"/>
         <userDefaultsController representsSharedInstance="YES" id="DIz-2o-LJs"/>
     </objects>
     <resources>

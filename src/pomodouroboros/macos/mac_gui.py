@@ -200,8 +200,8 @@ class IntentionRow(NSObject):
     canEditSummary = objc.object_property()
 
     hasColor = objc.object_property()  # this one probably needs to be
-                                       # forwarded once we get color support
-                                       # into the intention model
+    # forwarded once we get color support
+    # into the intention model
 
     forwarded = Forwarder("intention").forwarded
 
@@ -212,19 +212,23 @@ class IntentionRow(NSObject):
 
     @_estimate.getter
     def estimate(self) -> str:
-        estimates = self._intention.estimates
+        estimates = self.intention.estimates
         return str(estimates[-1] if estimates else "")
 
     _creationText = objc.object_property()
 
     @_creationText.getter
     def creationText(self) -> str:
-        creationDate = datetime.fromtimestamp(self._intention.created)
-        modificationDate = creationDate + timedelta(days=2)
-        return (
-            f"Created at {creationDate.isoformat(timespec='minutes')}; "
-            f"Modified at {modificationDate.isoformat(timespec='minutes')}"
-        )
+        creationDate = datetime.fromtimestamp(self.intention.created)
+        return f"{creationDate.isoformat(timespec='minutes')}"
+
+    _modificationText = objc.object_property()
+
+    @_modificationText.getter
+    def modificationText(self):
+        """ """
+        modificationDate = datetime.fromtimestamp(self.intention.modified)
+        return f"{modificationDate.isoformat(timespec='minutes')}"
 
 
 from weakref import ref
@@ -416,15 +420,30 @@ class IntentionPomodorosDataSource(NSObject):
     # pragma mark NSTableViewDataSource
 
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
-        return 0
+        return 7
 
     def tableView_objectValueForTableColumn_row_(
         self,
         tableView: NSTableView,
         objectValueForTableColumn: NSObject,
         row: int,
-    ) -> str:
-        return "placeholder"
+    ) -> dict:
+        # oip: OneIntentionPom = OneIntentionPom.alloc().init()
+        # return oip
+        return {
+            "date": "synthetic date value"
+        }
+
+class OneIntentionPom(NSObject):
+    date = objc.object_property()
+
+    @date.getter                # type:ignore
+    def date(self) -> str:
+        return "date property text"
+
+    def init(self) -> OneIntentionPom:
+        super().init()
+        return self
 
 
 class StreakDataSource(NSObject):

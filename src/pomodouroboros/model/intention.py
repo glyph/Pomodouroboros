@@ -33,6 +33,7 @@ class Intention:
     """
 
     created: float
+    modified: float
     title: str
     description: str
     estimates: list[Estimate] = field(default_factory=list)
