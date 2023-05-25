@@ -10,7 +10,7 @@ from twisted.python.filepath import FilePath
 from .pommodel import Day
 
 
-TEST_MODE = bool(environ.get("TEST_MODE"))
+TEST_MODE = bool(environ.get("TEST_MODE") or environ.get("ARGVZERO", "").endswith("/TestPomodouroboros"))
 
 defaultBaseLocation = FilePath(expanduser("~/.local/share/pomodouroboros"))
 if TEST_MODE:
