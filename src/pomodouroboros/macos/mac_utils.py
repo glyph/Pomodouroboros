@@ -225,15 +225,11 @@ class SometimesBackground:
         """
         The main window that we're observing will close.
         """
-        NSLog(f"it's a window {notification}")
         if notification.object() == self.mainWindow:
-            NSLog("it's our window; switching to HUD")
             self.currentlyRegular = False
             NSApplication.sharedApplication().setActivationPolicy_(
                 NSApplicationActivationPolicyAccessory
             )
-        else:
-            NSLog("not ours, though")
 
     def startObserving(self) -> None:
         """

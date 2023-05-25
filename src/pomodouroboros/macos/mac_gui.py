@@ -8,24 +8,10 @@ from textwrap import dedent
 from typing import Any, Callable, Generic, TYPE_CHECKING, TypeVar
 
 import objc
-from AppKit import (
-    NSApplication,
-    NSApplicationActivationPolicyRegular,
-    NSColor,
-    NSMakeRect,
-    NSMakeSize,
-    NSMenu,
-    NSMenuItem,
-    NSNib,
-    NSNotification,
-    NSRect,
-    NSSize,
-    NSTableView,
-    NSTextField,
-    NSTextFieldCell,
-    NSTextView,
-    NSWindow,
-)
+from AppKit import (NSApplication, NSApplicationActivationPolicyRegular,
+    NSColor, NSMakeRect, NSMakeSize, NSMenu, NSMenuItem, NSNib,
+    NSNotification, NSRect, NSSize, NSTableView, NSTextField, NSTextFieldCell,
+    NSTextView, NSWindow)
 from Foundation import NSIndexSet, NSObject
 from objc import IBAction, IBOutlet, super
 from quickmacapp import Status, mainpoint
@@ -37,9 +23,10 @@ from ..model.intervals import AnyInterval, StartPrompt
 from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus
 from ..storage import TEST_MODE
-from .mac_utils import showFailures, Forwarder
+from .mac_utils import Forwarder, showFailures
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
+from pomodouroboros.macos.mac_utils import SometimesBackground
 
 
 @dataclass
@@ -112,6 +99,8 @@ class MacUserInterface:
         NSNib.alloc().initWithNibNamed_bundle_(
             "IntentionEditor.nib", None
         ).instantiateWithOwner_topLevelObjects_(owner, None)
+        pc = ProgressController()
+        SometimesBackground(owner.intentionsWindow, pc.redisplay).startObserving()
 
         def openWindow() -> None:
             owner.intentionsWindow.makeKeyAndOrderFront_(owner)
@@ -120,7 +109,7 @@ class MacUserInterface:
         status = Status("🍅🔰")
         status.menu([("Open Window", openWindow)])
         return cls(
-            ProgressController(),
+            pc,
             clock,
             nexus,
             makeMenuLabel(status.item.menu()),
@@ -601,10 +590,6 @@ def newMain(reactor: IReactorTime) -> None:
     """
     New pomodoro.model.nexus-based implementation of the UI.
     """
-
-    NSApplication.sharedApplication().setActivationPolicy_(
-        NSApplicationActivationPolicyRegular
-    )
 
     theNexus = loadDefaultNexus(
         reactor.seconds(),
