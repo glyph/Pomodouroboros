@@ -220,7 +220,7 @@ class IntentionRow(NSObject):
     @_creationText.getter
     def creationText(self) -> str:
         creationDate = datetime.fromtimestamp(self.intention.created)
-        return f"{creationDate.isoformat(timespec='minutes')}"
+        return f"{creationDate.isoformat(timespec='minutes', sep=' ')}"
 
     _modificationText = objc.object_property()
 
@@ -228,7 +228,7 @@ class IntentionRow(NSObject):
     def modificationText(self):
         """ """
         modificationDate = datetime.fromtimestamp(self.intention.modified)
-        return f"{modificationDate.isoformat(timespec='minutes')}"
+        return f"{modificationDate.isoformat(timespec='minutes', sep=' ')}"
 
 
 from weakref import ref
@@ -431,7 +431,11 @@ class IntentionPomodorosDataSource(NSObject):
         # oip: OneIntentionPom = OneIntentionPom.alloc().init()
         # return oip
         return {
-            "date": "synthetic date value"
+            "date": "synthetic date value",
+            "startTime": "synthetic start time",
+            "endTime": "synthetic end time",
+            "evaluation": "here you go",
+            "inSession": "\N{CHECK MARK}",
         }
 
 class OneIntentionPom(NSObject):
