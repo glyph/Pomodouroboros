@@ -5,28 +5,28 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import wraps
 from textwrap import dedent
-from typing import Any, Callable, Generic, TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Sequence, TypeVar
 
 import objc
 from AppKit import (NSApplication, NSApplicationActivationPolicyRegular,
-    NSColor, NSMakeRect, NSMakeSize, NSMenu, NSMenuItem, NSNib,
-    NSNotification, NSRect, NSSize, NSTableView, NSTextField, NSTextFieldCell,
-    NSTextView, NSWindow)
+                    NSColor, NSMakeRect, NSMakeSize, NSMenu, NSMenuItem, NSNib,
+                    NSNotification, NSRect, NSSize, NSTableView, NSTextField,
+                    NSTextFieldCell, NSTextView, NSWindow)
 from Foundation import NSIndexSet, NSObject
 from objc import IBAction, IBOutlet, super
+from pomodouroboros.macos.mac_utils import SometimesBackground
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
 from ..model.intention import Intention
-from ..model.intervals import AnyInterval, StartPrompt
+from ..model.intervals import AnyInterval, Pomodoro, StartPrompt
 from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus
 from ..storage import TEST_MODE
 from .mac_utils import Forwarder, showFailures
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
-from pomodouroboros.macos.mac_utils import SometimesBackground
 
 
 @dataclass
@@ -93,9 +93,6 @@ class MacUserInterface:
         Create a MacUserInterface and all its constituent widgets.
         """
         owner = PomFilesOwner.alloc().initWithNexus_(nexus).retain()
-        NSNib.alloc().initWithNibNamed_bundle_(
-            "MainMenu.nib", None
-        ).instantiateWithOwner_topLevelObjects_(None, None)
         NSNib.alloc().initWithNibNamed_bundle_(
             "IntentionEditor.nib", None
         ).instantiateWithOwner_topLevelObjects_(owner, None)
@@ -328,6 +325,9 @@ class IntentionDataSource(NSObject):
     hasNoSelection: bool = objc.object_property()
     "detail view's 'hidden' is bound to this"
 
+    pomsData: IntentionPomodorosDataSource
+    pomsData = IBOutlet()
+
     # pragma mark Initialization and awakening
 
     def init(self) -> IntentionDataSource:
@@ -378,6 +378,7 @@ class IntentionDataSource(NSObject):
             return
 
         self.selectedIntention = self.rowObjectAt_(idx)
+        self.pomsData.backingData = self.selectedIntention.intention.pomodoros
         self.hasNoSelection = False
 
     # pragma mark NSTableViewDataSource
@@ -405,11 +406,16 @@ class IntentionDataSource(NSObject):
             return rowValue
 
 
+from zoneinfo import ZoneInfo
+from Foundation import NSTimeZone
+
+TZ = ZoneInfo(NSTimeZone.localTimeZone().name())
 class IntentionPomodorosDataSource(NSObject):
     # pragma mark NSTableViewDataSource
+    backingData: Sequence[Pomodoro] = []
 
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
-        return 7
+        return len(self.backingData)
 
     def tableView_objectValueForTableColumn_row_(
         self,
@@ -419,24 +425,19 @@ class IntentionPomodorosDataSource(NSObject):
     ) -> dict:
         # oip: OneIntentionPom = OneIntentionPom.alloc().init()
         # return oip
+        realPom = self.backingData[row]
+        dt = datetime.fromtimestamp(realPom.startTime, TZ)
+        et = datetime.fromtimestamp(realPom.endTime, TZ)
+        e = realPom.evaluation
         return {
-            "date": "synthetic date value",
-            "startTime": "synthetic start time",
-            "endTime": "synthetic end time",
-            "evaluation": "here you go",
-            "inSession": "\N{CHECK MARK}",
+            "date": str(dt.date()),
+            "startTime": str(dt.time()),
+            "endTime": str(et.time()),
+            "evaluation": "" if e is None else str(e.result),
+            # TODO: should be a clickable link to the session that this was in,
+            # but first we need that feature from the model.
+            "inSession": "???",
         }
-
-class OneIntentionPom(NSObject):
-    date = objc.object_property()
-
-    @date.getter                # type:ignore
-    def date(self) -> str:
-        return "date property text"
-
-    def init(self) -> OneIntentionPom:
-        super().init()
-        return self
 
 
 class StreakDataSource(NSObject):
