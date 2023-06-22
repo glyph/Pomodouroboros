@@ -6,13 +6,30 @@ from datetime import datetime, timedelta
 from functools import wraps
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Callable, Generic, Sequence, TypeVar
+from zoneinfo import ZoneInfo
 
 import objc
-from AppKit import (NSApplication, NSApplicationActivationPolicyRegular,
-                    NSColor, NSMakeRect, NSMakeSize, NSMenu, NSMenuItem, NSNib,
-                    NSNotification, NSRect, NSSize, NSTableView, NSTextField,
-                    NSTextFieldCell, NSTextView, NSWindow)
+from AppKit import (
+    NSApplication,
+    NSApplicationActivationPolicyRegular,
+    NSColor,
+    NSMakeRect,
+    NSMakeSize,
+    NSMenu,
+    NSMenuItem,
+    NSNib,
+    NSNotification,
+    NSRect,
+    NSSize,
+    NSTableView,
+    NSTextField,
+    NSTextFieldCell,
+    NSTextView,
+    NSWindow,
+)
 from Foundation import NSIndexSet, NSObject
+from Foundation import NSTimeZone
+
 from objc import IBAction, IBOutlet, super
 from pomodouroboros.macos.mac_utils import Attr, SometimesBackground
 from quickmacapp import Status, mainpoint
@@ -28,7 +45,13 @@ from ..storage import TEST_MODE
 from .mac_utils import Forwarder, showFailures
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
-from .text_fields import HeightSizableTextField
+from .text_fields import makeMenuLabel, HeightSizableTextField
+
+# Imported only for side-effect of becoming known to ObjC runtime
+from .tab_order import TabOrderFriendlyTextViewDelegate as _
+
+
+TZ = ZoneInfo(NSTimeZone.localTimeZone().name())
 
 
 @dataclass
@@ -99,7 +122,9 @@ class MacUserInterface:
             "IntentionEditor.nib", None
         ).instantiateWithOwner_topLevelObjects_(owner, None)
         pc = ProgressController()
-        SometimesBackground(owner.intentionsWindow, pc.redisplay).startObserving()
+        SometimesBackground(
+            owner.intentionsWindow, pc.redisplay
+        ).startObserving()
 
         def openWindow() -> None:
             owner.intentionsWindow.makeKeyAndOrderFront_(owner)
@@ -115,49 +140,10 @@ class MacUserInterface:
         )
 
 
-def makeMenuLabel(menu: NSMenu, index: int = 0) -> HeightSizableTextField:
-    """
-    Make a label in the given menu
-    """
-    viewItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-        "ignored", "doIt:", "k"
-    )
-    menu.insertItem_atIndex_(viewItem, 0)
-    explanatoryLabel: HeightSizableTextField = (
-        HeightSizableTextField.wrappingLabelWithString_("Starting Up…")
-    )
-    viewItem.setView_(explanatoryLabel)
-    explanatoryLabel.setMaximumNumberOfLines_(100)
-    explanatoryLabel.setSelectable_(False)
-    explanatoryLabel.setTextColor_(NSColor.secondaryLabelColor())
-    return explanatoryLabel
-
-
 class SessionDataSource(NSObject):
     """
     NSTableViewDataSource for the list of active sessions.
     """
-
-
-class TabOrderFriendlyTextViewDelegate(NSObject):
-    """
-    Act as a NSTextViewDelegate to allow for tab/backtab (i.e. shift-tab) to
-    cycle through focus elements, since we're not going to be putting literal
-    tabs into descriptions.
-    """
-
-    def textView_doCommandBySelector_(
-        self, aTextView: NSTextView, aSelector: str
-    ) -> bool:
-        match aSelector:
-            case "insertTab:":
-                aTextView.window().selectNextKeyView_(None)
-                return True
-            case "insertBacktab:":
-                aTextView.window().selectPreviousKeyView_(None)
-                return True
-            case _:
-                return False
 
 
 class IntentionRow(NSObject):
@@ -375,11 +361,6 @@ class IntentionDataSource(NSObject):
             return rowValue
 
 
-from zoneinfo import ZoneInfo
-
-from Foundation import NSTimeZone
-
-TZ = ZoneInfo(NSTimeZone.localTimeZone().name())
 class IntentionPomodorosDataSource(NSObject):
     # pragma mark NSTableViewDataSource
     backingData: Sequence[Pomodoro] = []
@@ -414,6 +395,7 @@ class StreakDataSource(NSObject):
     """
     NSTableViewDataSource for the list of streaks.
     """
+
     # backingData: Sequence[Streak]
 
     def awakeWithNexus_(self, newNexus: Nexus) -> None:
@@ -431,7 +413,6 @@ class StreakDataSource(NSObject):
         row: int,
     ) -> str:
         return "uh oh"
-
 
 
 class PomFilesOwner(NSObject):

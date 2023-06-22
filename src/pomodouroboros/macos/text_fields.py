@@ -93,3 +93,21 @@ class PaddedTextFieldCell(NSTextFieldCell):
         return super().drawingRectForBounds_(rectInset)
 
 
+def makeMenuLabel(menu: NSMenu, index: int = 0) -> HeightSizableTextField:
+    """
+    Make a multi-line label in the given menu that will be height-sized to its
+    height.
+    """
+    viewItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        "ignored", "doIt:", "k"
+    )
+    menu.insertItem_atIndex_(viewItem, 0)
+    explanatoryLabel: HeightSizableTextField = (
+        HeightSizableTextField.wrappingLabelWithString_("Starting Up…")
+    )
+    viewItem.setView_(explanatoryLabel)
+    explanatoryLabel.setMaximumNumberOfLines_(100)
+    explanatoryLabel.setSelectable_(False)
+    explanatoryLabel.setTextColor_(NSColor.secondaryLabelColor())
+    return explanatoryLabel
+
