@@ -14,7 +14,7 @@ from AppKit import (NSApplication, NSApplicationActivationPolicyRegular,
                     NSTextFieldCell, NSTextView, NSWindow)
 from Foundation import NSIndexSet, NSObject
 from objc import IBAction, IBOutlet, super
-from pomodouroboros.macos.mac_utils import SometimesBackground
+from pomodouroboros.macos.mac_utils import Attr, SometimesBackground
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -181,38 +181,45 @@ class IntentionRow(NSObject):
 
     # pragma mark Attributes
 
+    _forwarded = Forwarder("intention").forwarded
+
     intention: Intention = objc.object_property()
     shouldHideEstimate = objc.object_property()
     canEditSummary = objc.object_property()
+    hasColor = objc.object_property()
+    colorValue = objc.object_property()
+    estimate = objc.object_property()
+    creationText = objc.object_property()
+    modificationText = objc.object_property()
+    title: Attr[str] = _forwarded("title")
+    textDescription: Attr[str] = _forwarded("description")
 
-    hasColor = objc.object_property()  # this one probably needs to be
-    # forwarded once we get color support
-    # into the intention model
+    del _forwarded
 
-    forwarded = Forwarder("intention").forwarded
+    # pragma mark Accessors & Mutators
 
-    title: str = forwarded("title")
-    textDescription: str = forwarded("description")
+    @colorValue.getter
+    def _getColorValue(self) -> NSColor:
+        return self._colorValue
 
-    _estimate = objc.object_property()
+    @colorValue.setter
+    def _setColorValue(self, colorValue: NSColor) -> None:
+        print("setting", colorValue)
+        self._colorValue = colorValue
+        print("set", colorValue)
 
-    @_estimate.getter
-    def estimate(self) -> str:
+    @estimate.getter
+    def _getEstimate(self) -> str:
         estimates = self.intention.estimates
         return str(estimates[-1] if estimates else "")
 
-    _creationText = objc.object_property()
-
-    @_creationText.getter
-    def creationText(self) -> str:
+    @creationText.getter
+    def _getCreationText(self) -> str:
         creationDate = datetime.fromtimestamp(self.intention.created)
         return f"{creationDate.isoformat(timespec='minutes', sep=' ')}"
 
-    _modificationText = objc.object_property()
-
-    @_modificationText.getter
-    def modificationText(self):
-        """ """
+    @modificationText.getter
+    def _getModificationText(self):
         modificationDate = datetime.fromtimestamp(self.intention.modified)
         return f"{modificationDate.isoformat(timespec='minutes', sep=' ')}"
 
@@ -407,6 +414,7 @@ class IntentionDataSource(NSObject):
 
 
 from zoneinfo import ZoneInfo
+
 from Foundation import NSTimeZone
 
 TZ = ZoneInfo(NSTimeZone.localTimeZone().name())
@@ -444,6 +452,24 @@ class StreakDataSource(NSObject):
     """
     NSTableViewDataSource for the list of streaks.
     """
+    # backingData: Sequence[Streak]
+
+    def awakeWithNexus_(self, newNexus: Nexus) -> None:
+        ...
+
+    # pragma mark NSTableViewDataSource
+
+    def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
+        return 0
+
+    def tableView_objectValueForTableColumn_row_(
+        self,
+        tableView: NSTableView,
+        objectValueForTableColumn: NSObject,
+        row: int,
+    ) -> str:
+        return "uh oh"
+
 
 
 class PomFilesOwner(NSObject):
@@ -506,6 +532,8 @@ class PomFilesOwner(NSObject):
         """
         # TODO: update intention data source with initial data from nexus
         self.intentionDataSource.awakeWithNexus_(self.nexus)
+        self.streakDataSource.awakeWithNexus_(self.nexus)
+
         self.debugPalette.setOpaque_(False)
         self.debugPalette.setBackgroundColor_(NSColor.clearColor())
         self.debugPalette.setIsVisible_(True)
@@ -592,6 +620,7 @@ def newMain(reactor: IReactorTime) -> None:
     New pomodoro.model.nexus-based implementation of the UI.
     """
 
+    NSColor.setIgnoresAlpha_(False)
     theNexus = loadDefaultNexus(
         reactor.seconds(),
         userInterfaceFactory=lambda nexus: MacUserInterface.build(

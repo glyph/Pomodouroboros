@@ -70,6 +70,8 @@ class Descriptor(Protocol[ForGetting, ForSetting]):
 PyType = TypeVar("PyType")
 ObjCType = TypeVar("ObjCType")
 
+Attr = Descriptor[T, T]
+
 
 def passthru(value: T) -> T:
     return value

@@ -424,9 +424,10 @@
                                                                 <colorWell fixedFrame="YES" wellStyle="expanded" translatesAutoresizingMaskIntoConstraints="NO" id="pgW-Ae-TNu">
                                                                     <rect key="frame" x="605" y="637" width="64" height="28"/>
                                                                     <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
-                                                                    <color key="color" red="0.05813049898" green="0.055541899059999997" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                                                    <color key="color" red="1" green="1" blue="1" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
                                                                     <connections>
                                                                         <binding destination="rFC-Sz-Dx3" name="enabled" keyPath="selectedIntention.hasColor" id="azb-L0-ab0"/>
+                                                                        <binding destination="rFC-Sz-Dx3" name="value" keyPath="selectedIntention.colorValue" id="JEe-zm-w9x"/>
                                                                     </connections>
                                                                 </colorWell>
                                                                 <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="gc5-Cg-YdN">
@@ -911,8 +912,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="0VN-am-jg8">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="707350689.43434596">
-                                                    <!--2023-06-01 22:18:09 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="708305543.79883003">
+                                                    <!--2023-06-12 23:32:23 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1403,8 +1404,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="2ek-VJ-F3s">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="707350689.45004702">
-                                                    <!--2023-06-01 22:18:09 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="708305543.81456602">
+                                                    <!--2023-06-12 23:32:23 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1459,7 +1460,7 @@
                     </tabView>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-2683" y="-2238"/>
+            <point key="canvasLocation" x="-3383" y="-2294"/>
         </window>
         <customObject id="Z3a-RV-wSy" userLabel="Tab Order Helper" customClass="TabOrderFriendlyTextViewDelegate"/>
         <customObject id="8xN-s7-Y7R" customClass="IntentionPomodorosDataSource"/>
