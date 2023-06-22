@@ -19,6 +19,7 @@ from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
+from ..hasher import IDHasher
 from ..model.intention import Intention
 from ..model.intervals import AnyInterval, Pomodoro, StartPrompt
 from ..model.nexus import Nexus
@@ -27,6 +28,7 @@ from ..storage import TEST_MODE
 from .mac_utils import Forwarder, showFailures
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
+from .text_fields import HeightSizableTextField
 
 
 @dataclass
@@ -229,46 +231,6 @@ from weakref import ref
 T = TypeVar("T")
 U = TypeVar("U")
 S = TypeVar("S")
-
-
-@dataclass
-class IDHasher(Generic[T]):
-    """
-    Hash and compare by the identity of another object.
-    """
-
-    value: ref[T]
-    id: int
-
-    def __hash__(self) -> int:
-        """
-        Return the C{id()} of the object when it was live at the creation of
-        this hasher.
-        """
-        return self.id
-
-    def __eq__(self, other: object) -> bool:
-        """
-        Is this equal to another object?  Note that this compares equal only to
-        another L{IDHasher}, not the underlying value object.
-        """
-        if not isinstance(other, IDHasher):
-            return NotImplemented
-        imLive = self.value.__callback__ is not None
-        theyreLive = other.value.__callback__ is not None
-        return (self.id == other.id) and (imLive == theyreLive)
-
-    @classmethod
-    def forDict(cls, aDict: dict[IDHasher[T], U], value: T) -> IDHasher[T]:
-        """
-        Create an IDHasher
-        """
-
-        def finalize(r: ref[T]) -> None:
-            del aDict[self]
-
-        self = IDHasher(ref(value, finalize), id(value))
-        return self
 
 
 @dataclass
@@ -537,70 +499,6 @@ class PomFilesOwner(NSObject):
         self.debugPalette.setOpaque_(False)
         self.debugPalette.setBackgroundColor_(NSColor.clearColor())
         self.debugPalette.setIsVisible_(True)
-
-
-leftPadding = 15.0
-
-
-class HeightSizableTextField(NSTextField):
-    """
-    Thanks https://stackoverflow.com/a/10463761/13564
-    """
-
-    def intrinsicContentSize(self) -> NSSize:
-        """
-        Calculate the intrinsic content size based on height.
-        """
-        if not self.cell().wraps():
-            return super().intrinsicContentSize()
-
-        frame = self.frame()
-        width = 350.0  # frame.size.width
-        origHeight = frame.size.height
-        frame.size.height = 99999.0
-        cellHeight = self.cell().cellSizeForBounds_(frame).height
-        height = cellHeight + (leftPadding * 2)
-        return NSMakeSize(width, height)
-
-    def textDidChange_(self, notification: NSNotification) -> None:
-        """
-        The text changed, recalculate please
-        """
-        super().textDidChange_(notification)
-        self.invalidateIntrinsicContentSize()
-
-    @classmethod
-    def cellClass(cls) -> type[PaddedTextFieldCell]:
-        """
-        Customize the cell class so that it includes some padding
-
-        @note: C{cellClass} is nominally deprecated (as is C{cell}), but there
-            doesn't seem to be any reasonable way to do this sort of basic
-            customization that I{isn't} deprecated.  It seems like Apple mainly
-            wants to deprecate the use of this customization mechanism in
-            NSTableView usage?
-        """
-        return PaddedTextFieldCell
-
-
-class PaddedTextFieldCell(NSTextFieldCell):
-    """
-    NSTextFieldCell subclass that adds some padding so it looks a bit more
-    legible in the context of a popup menu label, with horizontal and vertical
-    padding so that it is offset from the menu items.
-    """
-
-    def drawingRectForBounds_(self, rect: NSRect) -> NSRect:
-        """
-        Compute an inset drawing rect for the text.
-        """
-        rectInset = NSMakeRect(
-            rect.origin.x + leftPadding,
-            rect.origin.y + leftPadding,
-            rect.size.width - (leftPadding * 2),
-            rect.size.height - (leftPadding * 2),
-        )
-        return super().drawingRectForBounds_(rectInset)
 
 
 @mainpoint()
