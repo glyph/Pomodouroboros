@@ -5,7 +5,15 @@ General-purpose PyObjC utilities that might belong in a different package.
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Iterator, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    Protocol,
+    TypeVar,
+    overload,
+)
 
 import objc
 from AppKit import (
@@ -24,6 +32,7 @@ from AppKit import (
     NSWorkspaceApplicationKey,
     NSWorkspaceDidActivateApplicationNotification,
 )
+from dateutil.tz import tzlocal
 from Foundation import (
     NSCalendar,
     NSCalendarUnitDay,
@@ -37,68 +46,141 @@ from Foundation import (
     NSLog,
     NSObject,
 )
-from dateutil.tz import tzlocal
 from quickmacapp import Actionable
 from twisted.python.failure import Failure
 
 
+T = TypeVar("T")
+S = TypeVar("S")
+
+ForGetting = TypeVar("ForGetting", covariant=True)
+ForSetting = TypeVar("ForSetting", contravariant=True)
+
+
+class Descriptor(Protocol[ForGetting, ForSetting]):
+    def __get__(
+        self, instance: object, owner: type | None = None
+    ) -> ForGetting:
+        ...
+
+    def __set__(self, instance: object, value: ForSetting) -> None:
+        ...
+
+
+PyType = TypeVar("PyType")
+ObjCType = TypeVar("ObjCType")
+
+
+def passthru(value: T) -> T:
+    return value
+
+
 @dataclass
-class Remover:
-    center: NSNotificationCenter
+class Forwarder:
+    """
+    A builder for descriptors that forward attributes from a (KVO, ObjC) facade
+    object to an underlying original (regular Python) object.
+    """
+
+    original: str
+    "The name of the attribute to forward things to."
+
+    @overload
+    def forwarded(self, name: str) -> Descriptor[ObjCType, ObjCType]:
+        """
+        Create an attribute that will forward to C{name}.
+
+        @param name: The name of the attribute on C{instance.<original>} to
+            forward this attribute to.
+
+        @returns: A descriptor that reads and writes the Objective C type.
+        """
+
+    @overload
+    def forwarded(
+        self,
+        name: str,
+        pyToC: Callable[[PyType], ObjCType],
+        cToPy: Callable[[ObjCType], PyType],
+    ) -> Descriptor[ObjCType, ObjCType]:
+        ...
+
+    def forwarded(
+        self,
+        name: str,
+        pyToC: Callable[[PyType], ObjCType] | None = None,
+        cToPy: Callable[[ObjCType], PyType] | None = None,
+    ) -> Descriptor[ObjCType, ObjCType]:
+        realPyToC: Callable[[PyType], ObjCType] = (
+            pyToC if pyToC is not None else passthru  # type:ignore[assignment]
+        )
+        realCToPy: Callable[[ObjCType], PyType] = (
+            cToPy if cToPy is not None else passthru  # type:ignore[assignment]
+        )
+        return self._forwardedImpl(name, realPyToC, realCToPy)
+
+    def _forwardedImpl(
+        self,
+        name: str,
+        pyToC: Callable[[PyType], ObjCType],
+        cToPy: Callable[[ObjCType], PyType],
+    ) -> Descriptor[ObjCType, ObjCType]:
+        prop = objc.object_property()
+
+        @prop.getter
+        def getter(oself: object) -> ObjCType:
+            wrapped = getattr(oself, self.original)
+            return pyToC(getattr(wrapped, name))
+
+        @getter.setter
+        def setter(oself: object, value: ObjCType) -> None:
+            wrapped = getattr(oself, self.original)
+            setattr(wrapped, name, cToPy(value))
+
+        result: Descriptor[ObjCType, ObjCType] = prop
+        return result
+
+
+@dataclass
+class _ObserverRemover:
+
+    center: NSNotificationCenter | None
     name: str
     observer: NSObject
     sender: NSObject | None
 
     def removeObserver(self) -> None:
+        center = self.center
+        if center is None:
+            return
+        self.center = None
         # lifecycle management: paired with observer.retain() in callOnNotification
         self.observer.release()
         if self.sender is not None:
             # Unused, but lifecycle management would demand sender be retained
             # by any observer-adding code as well.
             self.sender.release()
-        self.center.removeObserver_name_object_(
+        center.removeObserver_name_object_(
             self.observer,
             self.name,
         )
 
 
-T = TypeVar("T")
-S = TypeVar("S")
-
-
-@dataclass
-class Forwarder:
+class ObserverRemover(Protocol):
     """
-    Forward a set of attributes to an original other attribute.
-
-    Use at class scope.
+    Handle to an observer that is added to a given L{NSNotificationCenter} (by
+    L{callOnNotification}).
     """
 
-    original: str
-
-    def forwarded(self, name: str) -> Any:
+    def removeObserver(self) -> None:
         """
-        Create an attribute that will forward to C{name}.
-
-        Returns L{Any} as a type so it can be assigned to an attribute at class
-        scope annotated with the appropriate type.
+        Remove the observer added by L{callOnNotification}.
         """
-        prop = objc.object_property()
-
-        @prop.getter
-        def getter(oself: S) -> Any:
-            return getattr(getattr(oself, self.original), name)
-
-        @getter.setter
-        def setter(oself: S, value: T) -> None:
-            setattr(getattr(oself, self.original), name, value)
-
-        return prop
 
 
 def callOnNotification(
     nsNotificationName: str, f: Callable[[], None]
-) -> Remover:
+) -> ObserverRemover:
     """
     When the given notification occurs, call the given callable with no
     arguments.
@@ -114,7 +196,12 @@ def callOnNotification(
         nsNotificationName,
         sender,
     )
-    return Remover(defaultCenter, nsNotificationName, observer, sender)
+    return _ObserverRemover(
+        defaultCenter,
+        nsNotificationName,
+        observer,
+        sender,
+    )
 
 
 fromDate = NSCalendar.currentCalendar().components_fromDate_
