@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from functools import wraps
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Callable, Generic, Sequence, TypeVar
-from zoneinfo import ZoneInfo
 
 import objc
 from AppKit import (
@@ -43,15 +42,13 @@ from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus
 from ..storage import TEST_MODE
 from .mac_utils import Forwarder, showFailures
+from .mac_dates import LOCAL_TZ
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
 from .text_fields import makeMenuLabel, HeightSizableTextField
 
 # Imported only for side-effect of becoming known to ObjC runtime
 from .tab_order import TabOrderFriendlyTextViewDelegate as _
-
-
-TZ = ZoneInfo(NSTimeZone.localTimeZone().name())
 
 
 @dataclass
@@ -377,8 +374,8 @@ class IntentionPomodorosDataSource(NSObject):
         # oip: OneIntentionPom = OneIntentionPom.alloc().init()
         # return oip
         realPom = self.backingData[row]
-        dt = datetime.fromtimestamp(realPom.startTime, TZ)
-        et = datetime.fromtimestamp(realPom.endTime, TZ)
+        dt = datetime.fromtimestamp(realPom.startTime, LOCAL_TZ)
+        et = datetime.fromtimestamp(realPom.endTime, LOCAL_TZ)
         e = realPom.evaluation
         return {
             "date": str(dt.date()),
