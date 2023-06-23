@@ -29,7 +29,8 @@ from ..pommodel import (
     Pomodoro,
 )
 from ..storage import DayLoader, TEST_MODE
-from .mac_utils import callOnNotification, datetimeFromNSDate, localDate
+from .mac_utils import callOnNotification
+from .mac_dates import datetimeFromNSDate, localDate
 from .notifs import (
     askForIntent,
     notify,
