@@ -1,33 +1,18 @@
 from __future__ import annotations
 
-from abc import abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from functools import wraps
-from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Callable, Generic, Sequence, TypeVar
+from datetime import datetime
+from typing import Callable, Generic, Sequence, TYPE_CHECKING, TypeVar
 
 import objc
 from AppKit import (
     NSApplication,
-    NSApplicationActivationPolicyRegular,
     NSColor,
-    NSMakeRect,
-    NSMakeSize,
-    NSMenu,
-    NSMenuItem,
     NSNib,
-    NSNotification,
-    NSRect,
-    NSSize,
     NSTableView,
-    NSTextField,
-    NSTextFieldCell,
-    NSTextView,
     NSWindow,
 )
 from Foundation import NSIndexSet, NSObject
-from Foundation import NSTimeZone
 
 from objc import IBAction, IBOutlet, super
 from pomodouroboros.macos.mac_utils import Attr, SometimesBackground
@@ -209,7 +194,6 @@ class IntentionRow(NSObject):
         return f"{modificationDate.isoformat(timespec='minutes', sep=' ')}"
 
 
-from weakref import ref
 
 T = TypeVar("T")
 U = TypeVar("U")

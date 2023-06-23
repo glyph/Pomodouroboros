@@ -1,33 +1,11 @@
 from __future__ import annotations
 
-from abc import abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from functools import wraps
-from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Callable, Generic, Sequence, TypeVar
 
-import objc
-from AppKit import (NSApplication, NSApplicationActivationPolicyRegular,
-                    NSColor, NSMakeRect, NSMakeSize, NSMenu, NSMenuItem, NSNib,
-                    NSNotification, NSRect, NSSize, NSTableView, NSTextField,
-                    NSTextFieldCell, NSTextView, NSWindow)
-from Foundation import NSIndexSet, NSObject
-from objc import IBAction, IBOutlet, super
-from pomodouroboros.macos.mac_utils import Attr, SometimesBackground
-from quickmacapp import Status, mainpoint
-from twisted.internet.interfaces import IReactorTime
-from twisted.internet.task import LoopingCall
+from AppKit import (NSColor, NSMakeRect,
+                    NSMakeSize, NSMenu, NSMenuItem, NSNotification, NSRect, NSSize,
+                    NSTextField, NSTextFieldCell)
+from objc import super
 
-from ..hasher import IDHasher
-from ..model.intention import Intention
-from ..model.intervals import AnyInterval, Pomodoro, StartPrompt
-from ..model.nexus import Nexus
-from ..model.storage import loadDefaultNexus
-from ..storage import TEST_MODE
-from .mac_utils import Forwarder, showFailures
-from .old_mac_gui import main as oldMain
-from .progress_hud import ProgressController
 
 leftPadding = 15.0
 

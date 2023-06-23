@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from typing import (
     Any,
     Callable,
-    Generic,
     Iterator,
     Protocol,
     TypeVar,
@@ -32,15 +31,6 @@ from AppKit import (
     NSWorkspaceDidActivateApplicationNotification,
 )
 from Foundation import (
-    NSCalendar,
-    NSCalendarUnitDay,
-    NSCalendarUnitHour,
-    NSCalendarUnitMinute,
-    NSCalendarUnitMonth,
-    NSCalendarUnitNanosecond,
-    NSCalendarUnitSecond,
-    NSCalendarUnitYear,
-    NSDate,
     NSLog,
     NSObject,
 )

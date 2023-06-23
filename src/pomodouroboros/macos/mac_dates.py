@@ -11,8 +11,6 @@ from Foundation import (
     NSCalendarUnitSecond,
     NSCalendarUnitYear,
     NSDate,
-    NSLog,
-    NSObject,
     NSTimeZone,
 )
 
