@@ -42,6 +42,7 @@ def nexusFromJSON(
 
     for savedIntention in saved["intentions"]:
         intention = Intention(
+            id=int(savedIntention["id"]),
             title=savedIntention["title"],
             created=savedIntention["created"],
             modified=savedIntention["modified"],
@@ -94,6 +95,7 @@ def nexusFromJSON(
         streaks[-1][-1] if saved["intervalIsActive"] is not None else None
     )
     nexus = Nexus(
+        _lastIntentionID=int(saved["lastIntentionID"]),
         _initialTime=saved["initialTime"],
         _intentions=intentions,
         _activeInterval=activeInterval,
@@ -177,6 +179,7 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
 
     return {
         "initialTime": nexus._initialTime,
+        "lastIntentionID": str(nexus._lastIntentionID),
         "intentions": [
             {
                 "created": intention.created,
@@ -263,7 +266,7 @@ def loadDefaultNexus(
         )
         loaded.advanceToTime(currentTime)
         return loaded
-    return Nexus(currentTime, userInterfaceFactory)
+    return Nexus(currentTime, userInterfaceFactory, 0)
 
 
 def saveDefaultNexus(nexus: Nexus) -> None:

@@ -25,13 +25,12 @@ class Estimate:
 
 
 
-counter = iter(range(999999999999))
 @dataclass
 class Intention:
     """
     An intention of something to do.
     """
-
+    id: int
     created: float
     modified: float
     title: str
@@ -39,7 +38,6 @@ class Intention:
     estimates: list[Estimate] = field(default_factory=list)
     pomodoros: list[Pomodoro] = field(default_factory=list)
     abandoned: bool = False
-    id: int = field(default_factory=lambda: next(counter))
     # id: ULID = field(default_factory=new_ulid, compare=False)
 
     def _compref(self) -> dict[str, object]:

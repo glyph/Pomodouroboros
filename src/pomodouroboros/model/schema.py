@@ -92,6 +92,7 @@ SavedStreak = list[SavedInterval]
 SavedNexus = TypedDict(
     "SavedNexus",
     {
+        "lastIntentionID": str,
         "initialTime": float,
         "intentions": list[SavedIntention],
         "intervalIsActive": bool,

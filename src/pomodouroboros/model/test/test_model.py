@@ -118,7 +118,7 @@ class NexusTests(TestCase):
         self.maxDiff = 9999
         self.clock = Clock()
         self.testUI = TestUserInterface(self.clock)
-        self.nexus = Nexus(self.clock.seconds(), self.testUI.setIt)
+        self.nexus = Nexus(self.clock.seconds(), self.testUI.setIt, 0)
 
     def advanceTime(self, n: float) -> None:
         """

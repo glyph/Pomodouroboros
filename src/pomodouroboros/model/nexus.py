@@ -64,6 +64,8 @@ class Nexus:
 
     _initialTime: float
     _interfaceFactory: UserInterfaceFactory
+    _lastIntentionID: int
+
     _intentions: list[Intention] = field(default_factory=list)
     _activeInterval: AnyInterval | None = None
     """
@@ -225,8 +227,11 @@ class Nexus:
         """
         Add an intention with the given description and time estimate.
         """
+        self._lastIntentionID += 1
+        newID = self._lastIntentionID
         self._intentions.append(
             newIntention := Intention(
+                newID,
                 self._lastUpdateTime, self._lastUpdateTime, title, description
             )
         )
