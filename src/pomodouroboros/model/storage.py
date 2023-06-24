@@ -3,14 +3,32 @@
 from __future__ import annotations
 
 from functools import singledispatch
-from os import makedirs
+from json import dump, load
+from os import makedirs, replace
+from os.path import basename, dirname, exists, expanduser, join
 from typing import TypeAlias, cast
 
 from .boundaries import IntervalType, UserInterfaceFactory
 from .intention import Estimate, Intention
-from .intervals import AnyInterval, Break, Duration, GracePeriod, Pomodoro, Session, StartPrompt
+from .intervals import (
+    AnyInterval,
+    Break,
+    Duration,
+    GracePeriod,
+    Pomodoro,
+    Session,
+    StartPrompt,
+)
 from .nexus import Nexus
-from .schema import SavedNexus, SavedIntentionID, SavedInterval, SavedPomodoro, SavedBreak, SavedGracePeriod, SavedStartPrompt
+from .schema import (
+    SavedBreak,
+    SavedGracePeriod,
+    SavedIntentionID,
+    SavedInterval,
+    SavedNexus,
+    SavedPomodoro,
+    SavedStartPrompt,
+)
 
 
 def nexusFromJSON(
@@ -26,7 +44,7 @@ def nexusFromJSON(
         intention = Intention(
             title=savedIntention["title"],
             created=savedIntention["created"],
-            modified = savedIntention["modified"],
+            modified=savedIntention["modified"],
             description=savedIntention["description"],
             estimates=[
                 Estimate(
@@ -199,18 +217,16 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
     }
 
 
-JSON: TypeAlias = "None | str | float | bool | dict[str, JSON] | list[JSON] | SavedNexus"
-
-from os.path import join, dirname, expanduser, exists
-from json import dump, load
-from os import replace
+JSON: TypeAlias = (
+    "None | str | float | bool | dict[str, JSON] | list[JSON] | SavedNexus"
+)
 
 
 def saveToFile(filename: str, jsonObject: JSON) -> None:
     """
     Save the given JSON object to a file.
     """
-    newp = join(dirname(filename), ".temporary-" + filename + ".new")
+    newp = join(dirname(filename), ".temporary-" + basename(filename) + ".new")
     with open(newp, "w") as new:
         dump(jsonObject, new)
     replace(newp, filename)
@@ -221,7 +237,11 @@ def loadFromFile(filename: str) -> JSON:
         result: JSON = load(f)
         return result
 
-defaultNexusFile = expanduser("~/.local/share/pomodouroboros/current-nexus.json")
+
+defaultNexusFile = expanduser(
+    "~/.local/share/pomodouroboros/current-nexus.json"
+)
+
 
 def loadDefaultNexus(
     currentTime: float,
@@ -237,15 +257,14 @@ def loadDefaultNexus(
         loaded = nexusFromJSON(
             cast(
                 SavedNexus,
-                loadFromFile(
-                    defaultNexusFile
-                ),
+                loadFromFile(defaultNexusFile),
             ),
             userInterfaceFactory,
         )
         loaded.advanceToTime(currentTime)
         return loaded
     return Nexus(currentTime, userInterfaceFactory)
+
 
 def saveDefaultNexus(nexus: Nexus) -> None:
     """

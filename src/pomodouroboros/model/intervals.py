@@ -29,7 +29,7 @@ class Duration:
     seconds: float
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Session:
     """
     A session describes a period during which the user wishes to be

@@ -2,7 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Generic, Sequence, TYPE_CHECKING, TypeVar
+from functools import wraps
+from typing import (
+    ClassVar,
+    Callable,
+    Generic,
+    Sequence,
+    TYPE_CHECKING,
+    TypeVar,
+    ParamSpec,
+    Concatenate,
+    Protocol,
+)
 
 import objc
 from AppKit import (
@@ -15,7 +26,7 @@ from AppKit import (
 from Foundation import NSIndexSet, NSObject
 
 from objc import IBAction, IBOutlet, super
-from pomodouroboros.macos.mac_utils import Attr, SometimesBackground
+from pomodouroboros.macos.mac_utils import Attr, Descriptor, SometimesBackground
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -24,7 +35,7 @@ from ..hasher import IDHasher
 from ..model.intention import Intention
 from ..model.intervals import AnyInterval, Pomodoro, StartPrompt
 from ..model.nexus import Nexus
-from ..model.storage import loadDefaultNexus
+from ..model.storage import loadDefaultNexus, saveDefaultNexus
 from ..storage import TEST_MODE
 from .mac_utils import Forwarder, showFailures
 from .mac_dates import LOCAL_TZ
@@ -34,6 +45,29 @@ from .text_fields import makeMenuLabel, HeightSizableTextField
 
 # Imported only for side-effect of becoming known to ObjC runtime
 from .tab_order import TabOrderFriendlyTextViewDelegate as _
+
+
+class HasNexus(Protocol):
+    nexus: Nexus
+
+
+C = TypeVar("C", bound=Callable[..., object])
+P = ParamSpec("P")
+HN = TypeVar("HN", bound=HasNexus)
+
+
+def interactionRoot(
+    c: Callable[Concatenate[HN, P], T]
+) -> Callable[Concatenate[HN, P], T]:
+    @wraps(c)
+    def g(self: HN, *args: P.args, **kwargs: P.kwargs) -> T:
+        # idea: maybe maintain a trail of N backups here, for easy undo/revert
+        # of certain edit actions?
+        result = c(self, *args, **kwargs)
+        saveDefaultNexus(self.nexus)
+        return result
+
+    return g
 
 
 @dataclass
@@ -144,6 +178,7 @@ class IntentionRow(NSObject):
         self, intention: Intention, nexus: Nexus
     ) -> IntentionRow:
         super().init()
+        self.nexus = nexus
         self.intention = intention
         self.shouldHideEstimate = True
         self.canEditSummary = False
@@ -151,8 +186,14 @@ class IntentionRow(NSObject):
 
     # pragma mark Attributes
 
-    _forwarded = Forwarder("intention").forwarded
+    _forwarded = Forwarder(
+        "intention", setterWrapper=interactionRoot
+    ).forwarded
 
+    title: Attr[str, IntentionRow] = _forwarded("title")
+    textDescription: Attr[str, IntentionRow] = _forwarded("description")
+
+    nexus: Nexus = objc.object_property()
     intention: Intention = objc.object_property()
     shouldHideEstimate = objc.object_property()
     canEditSummary = objc.object_property()
@@ -161,8 +202,6 @@ class IntentionRow(NSObject):
     estimate = objc.object_property()
     creationText = objc.object_property()
     modificationText = objc.object_property()
-    title: Attr[str] = _forwarded("title")
-    textDescription: Attr[str] = _forwarded("description")
 
     del _forwarded
 
@@ -173,6 +212,7 @@ class IntentionRow(NSObject):
         return self._colorValue
 
     @colorValue.setter
+    @interactionRoot
     def _setColorValue(self, colorValue: NSColor) -> None:
         print("setting", colorValue)
         self._colorValue = colorValue
@@ -192,7 +232,6 @@ class IntentionRow(NSObject):
     def _getModificationText(self):
         modificationDate = datetime.fromtimestamp(self.intention.modified)
         return f"{modificationDate.isoformat(timespec='minutes', sep=' ')}"
-
 
 
 T = TypeVar("T")
@@ -252,8 +291,8 @@ class IntentionDataSource(NSObject):
 
     # pragma mark Attributes
 
-    intentionRowMap: ModelConverter[Intention, IntentionRow]
-    nexus: Nexus | None = None
+    intentionRowMap: ModelConverter[Intention, IntentionRow] = objc.object_property()
+    nexus: Nexus | None = objc.object_property()
 
     selectedIntention: IntentionRow | None = objc.object_property()
     "everything in the detail view is bound to this"
@@ -301,6 +340,7 @@ class IntentionDataSource(NSObject):
 
     # pragma mark NSTableViewDelegate
 
+    @interactionRoot
     def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
         """
         The selection changed.
@@ -428,6 +468,7 @@ class PomFilesOwner(NSObject):
         return self
 
     @IBAction
+    @interactionRoot
     def newIntentionClicked_(self, sender: NSObject) -> None:
         """
         The 'new intention' button was clicked.
@@ -440,6 +481,7 @@ class PomFilesOwner(NSObject):
         )
 
     @IBAction
+    @interactionRoot
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
         irow = (
             # self.intentionDataSource.tableView_objectValueForTableColumn_row_(
@@ -450,6 +492,7 @@ class PomFilesOwner(NSObject):
         irow.textDescription = "new description"
         irow.title = "new title"
 
+    @interactionRoot
     def awakeFromNib(self) -> None:
         """
         Let's get the GUI started.

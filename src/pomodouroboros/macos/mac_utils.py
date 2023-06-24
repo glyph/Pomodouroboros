@@ -5,11 +5,14 @@ General-purpose PyObjC utilities that might belong in a different package.
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import (
+    Generic,
     Any,
     Callable,
+    Concatenate,
     Iterator,
     Protocol,
     TypeVar,
+    ParamSpec,
     overload,
 )
 
@@ -43,22 +46,23 @@ S = TypeVar("S")
 
 ForGetting = TypeVar("ForGetting", covariant=True)
 ForSetting = TypeVar("ForSetting", contravariant=True)
+SelfType = TypeVar("SelfType", contravariant=True)
 
 
-class Descriptor(Protocol[ForGetting, ForSetting]):
+class Descriptor(Protocol[ForGetting, ForSetting, SelfType]):
     def __get__(
-        self, instance: object, owner: type | None = None
+        self, instance: SelfType, owner: type | None = None
     ) -> ForGetting:
         ...
 
-    def __set__(self, instance: object, value: ForSetting) -> None:
+    def __set__(self, instance: SelfType, value: ForSetting) -> None:
         ...
 
 
 PyType = TypeVar("PyType")
 ObjCType = TypeVar("ObjCType")
-
-Attr = Descriptor[T, T]
+P = ParamSpec("P")
+Attr = Descriptor[T, T, S]
 
 
 def passthru(value: T) -> T:
@@ -66,7 +70,7 @@ def passthru(value: T) -> T:
 
 
 @dataclass
-class Forwarder:
+class Forwarder(Generic[SelfType]):
     """
     A builder for descriptors that forward attributes from a (KVO, ObjC) facade
     object to an underlying original (regular Python) object.
@@ -75,8 +79,13 @@ class Forwarder:
     original: str
     "The name of the attribute to forward things to."
 
+    setterWrapper: Callable[
+        [Callable[[SelfType, PyType], T]],
+        Callable[[SelfType, PyType], T],
+    ] = passthru
+
     @overload
-    def forwarded(self, name: str) -> Descriptor[ObjCType, ObjCType]:
+    def forwarded(self, name: str) -> Descriptor[ObjCType, ObjCType, SelfType]:
         """
         Create an attribute that will forward to C{name}.
 
@@ -92,7 +101,7 @@ class Forwarder:
         name: str,
         pyToC: Callable[[PyType], ObjCType],
         cToPy: Callable[[ObjCType], PyType],
-    ) -> Descriptor[ObjCType, ObjCType]:
+    ) -> Descriptor[ObjCType, ObjCType, SelfType]:
         ...
 
     def forwarded(
@@ -100,7 +109,7 @@ class Forwarder:
         name: str,
         pyToC: Callable[[PyType], ObjCType] | None = None,
         cToPy: Callable[[ObjCType], PyType] | None = None,
-    ) -> Descriptor[ObjCType, ObjCType]:
+    ) -> Descriptor[ObjCType, ObjCType, SelfType]:
         realPyToC: Callable[[PyType], ObjCType] = (
             pyToC if pyToC is not None else passthru  # type:ignore[assignment]
         )
@@ -114,20 +123,25 @@ class Forwarder:
         name: str,
         pyToC: Callable[[PyType], ObjCType],
         cToPy: Callable[[ObjCType], PyType],
-    ) -> Descriptor[ObjCType, ObjCType]:
+    ) -> Descriptor[ObjCType, ObjCType, SelfType]:
         prop = objc.object_property()
 
         @prop.getter
-        def getter(oself: object) -> ObjCType:
+        def getter(oself: SelfType) -> ObjCType:
             wrapped = getattr(oself, self.original)
             return pyToC(getattr(wrapped, name))
 
+        getter.__name__ = f"get {name}"
+
         @getter.setter
-        def setter(oself: object, value: ObjCType) -> None:
+        @self.setterWrapper
+        def setter(oself: SelfType, value: ObjCType) -> None:
             wrapped = getattr(oself, self.original)
             setattr(wrapped, name, cToPy(value))
 
-        result: Descriptor[ObjCType, ObjCType] = prop
+        setter.__name__ = f"set {name}"
+
+        result: Descriptor[ObjCType, ObjCType, SelfType] = prop
         return result
 
 
