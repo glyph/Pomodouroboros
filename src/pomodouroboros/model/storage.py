@@ -129,7 +129,7 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
     def savePomodoro(interval: Pomodoro) -> SavedPomodoro:
         return {
             "startTime": interval.startTime,
-            "intentionID": str(id(interval.intention)),
+            "intentionID": str(interval.intention.id),
             "endTime": interval.endTime,
             "evaluation": {
                 "result": interval.evaluation.result.value,
@@ -188,7 +188,7 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
                     for estimate in intention.estimates
                 ],
                 "abandoned": intention.abandoned,
-                "id": str(id(intention)),
+                "id": str(intention.id),
             }
             for intention in nexus._intentions
         ],
