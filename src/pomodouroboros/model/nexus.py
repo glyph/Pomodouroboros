@@ -144,7 +144,11 @@ class Nexus:
         build the user interface on demand
         """
         if self._userInterface is None:
-            self._userInterface = self._interfaceFactory(self)
+            ui: UIEventListener = self._interfaceFactory(self)
+            self._userInterface = ui
+            active = self._activeInterval
+            if active is not None:
+                ui.intervalStart(active)
         return self._userInterface
 
     @property

@@ -140,6 +140,7 @@ class MacPomObserver(object):
         self.active = True
         self.progressController.show()
         notify("Starting Break", "Take it easy for a while.")
+        self.progressController.setReticleText("")
         NSLog("refreshing before break start")
         self.refreshList()
 
@@ -163,6 +164,7 @@ class MacPomObserver(object):
             askForIntent(doExpressIntention)
         else:
             notify("Pomodoro Starting", startingPomodoro.intention.description)
+            self.progressController.setReticleText(startingPomodoro.intention.description)
         NSLog("refreshing after pomodoro start")
         self.refreshList()
 
@@ -211,6 +213,7 @@ class MacPomObserver(object):
             NSColor.greenColor(), NSColor.blueColor()
         )
         if isinstance(interval, Pomodoro) and interval.intention is not None:
+            self.progressController.setReticleText(interval.intention.description)
             # TODO: maybe put reminder messages in the model?
             for pct, message in self.thresholds:
                 if self.lastThreshold <= pct and percentageElapsed > pct:

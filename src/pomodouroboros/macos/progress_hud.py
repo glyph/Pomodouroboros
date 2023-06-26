@@ -5,6 +5,14 @@ from typing import Callable, List, TYPE_CHECKING
 from math import sqrt, cos, sin
 
 from Foundation import NSRect, NSPoint
+from AppKit import (
+    NSAttributedString,
+    NSFontAttributeName,
+    NSFont,
+    NSForegroundColorAttributeName,
+    NSStrokeColorAttributeName,
+)
+
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -38,6 +46,7 @@ from AppKit import (
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
     NSMakePoint,
+    NSStrokeWidthAttributeName,
 )
 
 # https://github.com/ronaldoussoren/pyobjc/issues/540
@@ -68,6 +77,7 @@ class AbstractProgressView(NSView):
     Base boilerplate for a view that can draw progress.
     """
 
+    _reticleText: str = ""
     _percentage: float = 0.0
     _leftColor = NSColor.greenColor()
     _rightColor = NSColor.redColor()
@@ -95,6 +105,13 @@ class AbstractProgressView(NSView):
     ) -> None:
         self._alphaValue = newAlphaValue
         self.setNeedsDisplay_(True)
+
+    def setReticleText_(self, newText: str) -> None:
+        """
+        Set the text that should be displayed at the center of the user's
+        screen.
+        """
+        self._reticleText = newText
 
     def setPercentage_(self, newPercentage: float) -> None:
         """
@@ -192,6 +209,8 @@ def hudWindowOn(
 
 DEFAULT_BASE_ALPHA = 0.15
 
+ProgressViewFactory = Callable[[], AbstractProgressView]
+
 
 @dataclass
 class ProgressController(object):
@@ -202,15 +221,14 @@ class ProgressController(object):
     percentage: float = 0.0
     leftColor: NSColor = NSColor.greenColor()
     rightColor: NSColor = NSColor.redColor()
-    progressViewFactory: Callable[
-        [], AbstractProgressView
-    ] = lambda: PieTimer.alloc().init()
+    progressViewFactory: ProgressViewFactory = lambda: PieTimer.alloc().init()
     windowSizer: Callable[[NSScreen], NSRect] = fullScreenSizer
     progressViews: List[AbstractProgressView] = field(default_factory=list)
     hudWindows: List[HUDWindow] = field(default_factory=list)
     alphaValue: float = 0.1
     shouldBeVisible: bool = False
     _animationInProgress: Deferred[None] | None = None
+    reticleText: str = ""
 
     def animatePercentage(
         self,
@@ -273,6 +291,14 @@ class ProgressController(object):
         for eachView in self.progressViews:
             eachView.setPercentage_(percentage)
 
+    def setReticleText(self, newText: str) -> None:
+        """
+        Set the reticle text.
+        """
+        self.reticleText = newText
+        for eachView in self.progressViews:
+            eachView.setReticleText_(newText)
+
     def setColors(self, left: NSColor, right: NSColor) -> None:
         """
         set the left and right colors
@@ -304,6 +330,7 @@ class ProgressController(object):
                 newProgressView.setLeftColor_(self.leftColor)
                 newProgressView.setRightColor_(self.rightColor)
                 newProgressView.setPercentage_(self.percentage)
+                newProgressView.setReticleText_(self.reticleText)
                 self.hudWindows.append(win)
                 self.progressViews.append(newProgressView)
 
@@ -417,9 +444,10 @@ class PieTimer(AbstractProgressView):
             endDegrees = 90
             arc1 = doArc(startDegrees, endDegrees)
             arc2 = doArc(endDegrees, startDegrees)
-            self._leftColor.colorWithAlphaComponent_(
+            leftWithAlpha = self._leftColor.colorWithAlphaComponent_(
                 self._alphaValue
-            ).setFill()
+            )
+            leftWithAlpha.setFill()
             arc1.fill()
             self._rightColor.colorWithAlphaComponent_(
                 self._alphaValue
@@ -427,9 +455,33 @@ class PieTimer(AbstractProgressView):
             arc2.fill()
             lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
             if lineAlpha > 0:
-                NSColor.whiteColor().colorWithAlphaComponent_(
+                whiteWithAlpha = NSColor.whiteColor().colorWithAlphaComponent_(
                     lineAlpha
-                ).setStroke()
+                )
+                if self._reticleText:
+                    font = NSFont.systemFontOfSize_(
+                        36.0
+                    )  # NSFont.fontWithName_size_("System", 36.0)
+                    aString = (
+                        NSAttributedString.alloc().initWithString_attributes_(
+                            self._reticleText,
+                            {
+                                NSForegroundColorAttributeName: leftWithAlpha,
+                                NSFontAttributeName: font,
+                                NSStrokeColorAttributeName: whiteWithAlpha,
+                                # negative widths are percentages of font point size
+                                NSStrokeWidthAttributeName: -4.0,
+                            },
+                        )
+                    )
+                    textSize = aString.size()
+                    aString.drawAtPoint_(
+                        NSMakePoint(
+                            center.x - (textSize.width / 2),
+                            center.y - (textSize.height / 2),
+                        )
+                    )
+                whiteWithAlpha.setStroke()
                 arc1.setLineWidth_(1 / 4)
                 arc2.setLineWidth_(1 / 4)
                 arc1.stroke()
