@@ -470,7 +470,7 @@ class PieTimer(AbstractProgressView):
                                 NSFontAttributeName: font,
                                 NSStrokeColorAttributeName: whiteWithAlpha,
                                 # negative widths are percentages of font point size
-                                NSStrokeWidthAttributeName: -4.0,
+                                NSStrokeWidthAttributeName: -2.0,
                             },
                         )
                     )
