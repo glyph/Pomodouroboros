@@ -90,9 +90,8 @@ class MacUserInterface:
         self.setExplanation(
             # TODO: this should be in the model somewhere, not ad-hoc in the
             # middle of one frontend
-            f"You're about to lose {startPrompt.pointsLost:g} points, in about "
-            f"{startPrompt.endTime - self.clock.seconds():.0f} seconds, "
-            "if you don’t start a pomodoro."
+            f"Set an intention within {startPrompt.endTime - self.clock.seconds():.0f}"
+            f" seconds, or lose the chance to get {startPrompt.pointsLost:g} points!"
         )
 
     def intentionAdded(self, intention: Intention) -> None:
