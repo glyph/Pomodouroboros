@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Callable, List, TYPE_CHECKING
-from math import sqrt, cos, sin
+from math import sqrt, cos, sin, pi
 
 from Foundation import NSRect, NSPoint
 from AppKit import (
@@ -83,6 +83,7 @@ class AbstractProgressView(NSView):
     _rightColor = NSColor.redColor()
 
     _alphaValue: float = 1 / 4
+    _textAlpha: float = 0.0
 
     if TYPE_CHECKING:
 
@@ -112,6 +113,13 @@ class AbstractProgressView(NSView):
         screen.
         """
         self._reticleText = newText
+
+    def setTextAlpha_(self, newAlpha: float) -> None:
+        """
+        Set the text alpha
+        """
+        self._textAlpha = newAlpha
+        self.setNeedsDisplay_(True)
 
     def setPercentage_(self, newPercentage: float) -> None:
         """
@@ -212,6 +220,17 @@ DEFAULT_BASE_ALPHA = 0.15
 ProgressViewFactory = Callable[[], AbstractProgressView]
 
 
+def textOpacityCurve(startTime: float, duration: float, now: float):
+    """
+    t - float from 0-1
+    """
+    elapsed = (now - startTime)
+    progressPercent = elapsed / duration
+    result = sin((progressPercent * 2 * pi) / 2)
+    # print(f"pct {progressPercent:0.2f} res {result:0.2f}")
+    return result
+
+
 @dataclass
 class ProgressController(object):
     """
@@ -226,9 +245,50 @@ class ProgressController(object):
     progressViews: List[AbstractProgressView] = field(default_factory=list)
     hudWindows: List[HUDWindow] = field(default_factory=list)
     alphaValue: float = 0.1
+    textAlpha: float = 0.0
     shouldBeVisible: bool = False
     _animationInProgress: Deferred[None] | None = None
+    _textReminderInProgress: Deferred[object] | None = None
     reticleText: str = ""
+    pulseCounter: int = 0
+
+    def _textReminder(self, clock: IReactorTime) -> None:
+        """
+        Make the text visible for long enough to read it.
+        """
+
+        if self._textReminderInProgress is not None:
+            return
+        # your eyes need a little time to find the words even if there's only
+        # one or two
+        fixedLeadTime = 0.5
+
+        # https://www.sciencedirect.com/science/article/abs/pii/S0749596X19300786
+        generousWordsPerMinute = 190
+        secondsPerWord = 60 / generousWordsPerMinute
+        simpleWordCount = self.reticleText.count(" ")
+        totalTime = fixedLeadTime + (simpleWordCount * secondsPerWord)
+        print("total time:", totalTime)
+        start = clock.seconds()
+        endTime = start + totalTime
+
+        def updateText():
+            now = clock.seconds()
+            if now > endTime:
+                self.setTextAlpha(0.0)
+                lc.stop()
+            else:
+                toc = textOpacityCurve(start, totalTime, now)
+                self.setTextAlpha(toc)
+
+        lc = LoopingCall(updateText)
+        lc.clock = clock
+
+        def clear(o: object) -> object:
+            self._textReminderInProgress = None
+            return o
+
+        self._textReminderInProgress = lc.start(1 / 30).addBoth(clear)
 
     def animatePercentage(
         self,
@@ -251,6 +311,9 @@ class ProgressController(object):
                     alphaVariance,
                 )
             )
+        self.pulseCounter += 1
+        if self.pulseCounter % 3 == 0:
+            self._textReminder(clock)
         startTime = clock.seconds()
         previousPercentageElapsed = self.percentage
         if percentageElapsed < previousPercentageElapsed:
@@ -290,6 +353,14 @@ class ProgressController(object):
         self.percentage = percentage
         for eachView in self.progressViews:
             eachView.setPercentage_(percentage)
+
+    def setTextAlpha(self, newAlpha: float) -> None:
+        """
+        Change text alpha transparency for all views.
+        """
+        self.textAlpha = newAlpha
+        for eachView in self.progressViews:
+            eachView.setTextAlpha_(newAlpha)
 
     def setReticleText(self, newText: str) -> None:
         """
@@ -458,34 +529,37 @@ class PieTimer(AbstractProgressView):
                 whiteWithAlpha = NSColor.whiteColor().colorWithAlphaComponent_(
                     lineAlpha
                 )
-                if self._reticleText:
-                    font = NSFont.systemFontOfSize_(
-                        36.0
-                    )  # NSFont.fontWithName_size_("System", 36.0)
-                    aString = (
-                        NSAttributedString.alloc().initWithString_attributes_(
-                            self._reticleText,
-                            {
-                                NSForegroundColorAttributeName: leftWithAlpha,
-                                NSFontAttributeName: font,
-                                NSStrokeColorAttributeName: whiteWithAlpha,
-                                # negative widths are percentages of font point size
-                                NSStrokeWidthAttributeName: -2.0,
-                            },
-                        )
-                    )
-                    textSize = aString.size()
-                    aString.drawAtPoint_(
-                        NSMakePoint(
-                            center.x - (textSize.width / 2),
-                            center.y - (textSize.height / 2),
-                        )
-                    )
                 whiteWithAlpha.setStroke()
                 arc1.setLineWidth_(1 / 4)
                 arc2.setLineWidth_(1 / 4)
                 arc1.stroke()
                 arc2.stroke()
+            if self._reticleText and self._textAlpha:
+                font = NSFont.systemFontOfSize_(
+                    36.0
+                )  # NSFont.fontWithName_size_("System", 36.0)
+                textAlpha = self._textAlpha
+                aString = NSAttributedString.alloc().initWithString_attributes_(
+                    self._reticleText,
+                    {
+                        NSForegroundColorAttributeName: self._leftColor.colorWithAlphaComponent_(
+                            textAlpha
+                        ),
+                        NSFontAttributeName: font,
+                        NSStrokeColorAttributeName: NSColor.whiteColor().colorWithAlphaComponent_(
+                            textAlpha
+                        ),
+                        # negative widths are percentages of font point size
+                        NSStrokeWidthAttributeName: -2.0,
+                    },
+                )
+                textSize = aString.size()
+                aString.drawAtPoint_(
+                    NSMakePoint(
+                        center.x - (textSize.width / 2),
+                        center.y - (textSize.height / 2),
+                    )
+                )
 
 
 def _removeWindows(self: ProgressController) -> None:
