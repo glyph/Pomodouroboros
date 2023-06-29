@@ -59,6 +59,11 @@ HN = TypeVar("HN", bound=HasNexus)
 def interactionRoot(
     c: Callable[Concatenate[HN, P], T]
 ) -> Callable[Concatenate[HN, P], T]:
+    """
+    Decorator that should wrap every operation that potentially mutates the
+    model, saving it back to disk afterwards if it completes without raising an
+    exception.
+    """
     @wraps(c)
     def g(self: HN, *args: P.args, **kwargs: P.kwargs) -> T:
         # idea: maybe maintain a trail of N backups here, for easy undo/revert
