@@ -141,9 +141,8 @@ class MacUserInterface:
         Create a MacUserInterface and all its constituent widgets.
         """
         owner = PomFilesOwner.alloc().initWithNexus_(nexus).retain()
-        NSNib.alloc().initWithNibNamed_bundle_(
-            "IntentionEditor.nib", None
-        ).instantiateWithOwner_topLevelObjects_(owner, None)
+        nibInstance = NSNib.alloc().initWithNibNamed_bundle_("IntentionEditor.nib", None)
+        nibInstance.instantiateWithOwner_topLevelObjects_(owner, None)
         pc = ProgressController()
         SometimesBackground(
             owner.intentionsWindow, pc.redisplay
@@ -504,13 +503,21 @@ class PomFilesOwner(NSObject):
         """
         Let's get the GUI started.
         """
-        # TODO: update intention data source with initial data from nexus
-        self.intentionDataSource.awakeWithNexus_(self.nexus)
-        self.streakDataSource.awakeWithNexus_(self.nexus)
+        with showFailures():
+            # TODO: update intention data source with initial data from nexus
+            self.intentionDataSource.awakeWithNexus_(self.nexus)
+            self.streakDataSource.awakeWithNexus_(self.nexus)
 
-        self.debugPalette.setOpaque_(False)
-        self.debugPalette.setBackgroundColor_(NSColor.clearColor())
-        self.debugPalette.setIsVisible_(True)
+            self.debugPalette.setOpaque_(False)
+            self.debugPalette.setBackgroundColor_(NSColor.clearColor())
+            self.debugPalette.setIsVisible_(True)
+
+            if self.intentionDataSource.numberOfRowsInTableView_(self.intentionsTable) > 0:
+                self.intentionsTable.selectRowIndexes_byExtendingSelection_(
+                    NSIndexSet.indexSetWithIndex_(0),
+                    False,
+                )
+
 
 
 @mainpoint()
