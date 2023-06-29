@@ -20,7 +20,7 @@
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="196" y="240" width="940" height="420"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="775"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="3840" height="1575"/>
             <view key="contentView" wantsLayer="YES" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="940" height="420"/>
                 <autoresizingMask key="autoresizingMask"/>
@@ -30,8 +30,8 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="pDE-yo-jA2">
                             <font key="font" metaFont="system"/>
-                            <date key="date" timeIntervalSinceReferenceDate="704853797.04988396">
-                                <!--2023-05-04 00:43:17 +0000-->
+                            <date key="date" timeIntervalSinceReferenceDate="709768320.15127099">
+                                <!--2023-06-29 21:52:00 +0000-->
                             </date>
                             <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>

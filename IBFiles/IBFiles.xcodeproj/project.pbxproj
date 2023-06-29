@@ -7,38 +7,20 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		F033AB9229AB1DE4004271F5 /* progress_hud.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; name = progress_hud.py; path = ../src/pomodouroboros/macos/progress_hud.py; sourceTree = "<group>"; };
-		F033AB9329AB1DE4004271F5 /* __init__.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; name = __init__.py; path = ../src/pomodouroboros/macos/__init__.py; sourceTree = "<group>"; };
-		F033AB9429AB1DE4004271F5 /* mac_gui.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; name = mac_gui.py; path = ../src/pomodouroboros/macos/mac_gui.py; sourceTree = "<group>"; };
-		F033AB9529AB1DE4004271F5 /* notifs.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; name = notifs.py; path = ../src/pomodouroboros/macos/notifs.py; sourceTree = "<group>"; };
-		F033AB9629AB1DE4004271F5 /* mac_utils.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; name = mac_utils.py; path = ../src/pomodouroboros/macos/mac_utils.py; sourceTree = "<group>"; };
-		F033AB9729AB1DE4004271F5 /* old_mac_gui.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; name = old_mac_gui.py; path = ../src/pomodouroboros/macos/old_mac_gui.py; sourceTree = "<group>"; };
 		F08257CF2825F2C80007B95F /* GoalListWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = GoalListWindow.xib; sourceTree = "<group>"; };
 		F0A554F4298499190086B05F /* IntentionEditor.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = IntentionEditor.xib; sourceTree = "<group>"; };
 		F0A554F52984A5580086B05F /* MainMenu.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
+		F0EB9F572A4E3475007E2B3E /* macos */ = {isa = PBXFileReference; lastKnownFileType = folder; name = macos; path = ../src/pomodouroboros/macos; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		F033AB9029AB1DA4004271F5 /* Python */ = {
-			isa = PBXGroup;
-			children = (
-				F033AB9329AB1DE4004271F5 /* __init__.py */,
-				F033AB9429AB1DE4004271F5 /* mac_gui.py */,
-				F033AB9629AB1DE4004271F5 /* mac_utils.py */,
-				F033AB9529AB1DE4004271F5 /* notifs.py */,
-				F033AB9729AB1DE4004271F5 /* old_mac_gui.py */,
-				F033AB9229AB1DE4004271F5 /* progress_hud.py */,
-			);
-			name = Python;
-			sourceTree = "<group>";
-		};
 		F08257C82825F2960007B95F = {
 			isa = PBXGroup;
 			children = (
 				F08257CF2825F2C80007B95F /* GoalListWindow.xib */,
 				F0A554F52984A5580086B05F /* MainMenu.xib */,
 				F0A554F4298499190086B05F /* IntentionEditor.xib */,
-				F033AB9029AB1DA4004271F5 /* Python */,
+				F0EB9F572A4E3475007E2B3E /* macos */,
 			);
 			sourceTree = "<group>";
 		};
