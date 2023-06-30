@@ -8,9 +8,11 @@ from Foundation import NSRect, NSPoint
 from AppKit import (
     NSAttributedString,
     NSFontAttributeName,
+    NSShadowAttributeName,
     NSFont,
     NSForegroundColorAttributeName,
     NSStrokeColorAttributeName,
+    NSShadow,
 )
 
 from twisted.internet.defer import Deferred
@@ -226,9 +228,14 @@ def textOpacityCurve(startTime: float, duration: float, now: float):
     """
     elapsed = (now - startTime)
     progressPercent = elapsed / duration
-    result = sin((progressPercent * 2 * pi) / 2)
+    maxOpacity = 0.8
+    oomph = 7                   # must be an odd integer
+    if progressPercent < 1/oomph:
+        return sin((progressPercent * oomph * pi) / 2) * maxOpacity
+    if progressPercent < (oomph-1)/oomph:
+        return maxOpacity
     # print(f"pct {progressPercent:0.2f} res {result:0.2f}")
-    return result
+    return sin(((progressPercent * oomph) + oomph) * (pi / 2)) * maxOpacity
 
 
 @dataclass
@@ -259,6 +266,10 @@ class ProgressController(object):
 
         if self._textReminderInProgress is not None:
             return
+        # Only update reticle text when we issue a reminder so it doesn't
+        # update in the middle.
+        for eachView in self.progressViews:
+            eachView.setReticleText_(self.reticleText)
         # your eyes need a little time to find the words even if there's only
         # one or two
         fixedLeadTime = 0.5
@@ -367,8 +378,6 @@ class ProgressController(object):
         Set the reticle text.
         """
         self.reticleText = newText
-        for eachView in self.progressViews:
-            eachView.setReticleText_(newText)
 
     def setColors(self, left: NSColor, right: NSColor) -> None:
         """
@@ -513,32 +522,36 @@ class PieTimer(AbstractProgressView):
 
             startDegrees = ((360 * self._percentage) + 90) % 360
             endDegrees = 90
-            arc1 = doArc(startDegrees, endDegrees)
-            arc2 = doArc(endDegrees, startDegrees)
+            leftArc = doArc(endDegrees, startDegrees)
+            rightArc = doArc(startDegrees, endDegrees)
             leftWithAlpha = self._leftColor.colorWithAlphaComponent_(
                 self._alphaValue
             )
             leftWithAlpha.setFill()
-            arc1.fill()
+            leftArc.fill()
             self._rightColor.colorWithAlphaComponent_(
                 self._alphaValue
             ).setFill()
-            arc2.fill()
+            rightArc.fill()
             lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
             if lineAlpha > 0:
                 whiteWithAlpha = NSColor.whiteColor().colorWithAlphaComponent_(
                     lineAlpha
                 )
                 whiteWithAlpha.setStroke()
-                arc1.setLineWidth_(1 / 4)
-                arc2.setLineWidth_(1 / 4)
-                arc1.stroke()
-                arc2.stroke()
+                leftArc.setLineWidth_(1 / 4)
+                rightArc.setLineWidth_(1 / 4)
+                leftArc.stroke()
+                rightArc.stroke()
             if self._reticleText and self._textAlpha:
                 font = NSFont.systemFontOfSize_(
                     36.0
                 )  # NSFont.fontWithName_size_("System", 36.0)
                 textAlpha = self._textAlpha
+                aShadow = NSShadow.alloc().init()
+                aShadow.setShadowOffset_((2.0, -2.0))
+                aShadow.setShadowColor_(NSColor.blackColor())
+                aShadow.setShadowBlurRadius_(4.0)
                 aString = NSAttributedString.alloc().initWithString_attributes_(
                     self._reticleText,
                     {
@@ -546,14 +559,22 @@ class PieTimer(AbstractProgressView):
                             textAlpha
                         ),
                         NSFontAttributeName: font,
-                        NSStrokeColorAttributeName: NSColor.whiteColor().colorWithAlphaComponent_(
-                            textAlpha
-                        ),
+                        # NSStrokeColorAttributeName: NSColor.whiteColor().colorWithAlphaComponent_(
+                        #     textAlpha
+                        # ),
                         # negative widths are percentages of font point size
                         NSStrokeWidthAttributeName: -2.0,
+                        NSShadowAttributeName: aShadow,
                     },
                 )
                 textSize = aString.size()
+                NSColor.blackColor().colorWithAlphaComponent_(textAlpha / 3.0).setFill()
+                legibilityCircle = NSBezierPath.bezierPath()
+                legibilityRadius = sqrt(((textSize.width /2)**2) + ((textSize.height / 2)**2))
+                legibilityCircle.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
+                    center, legibilityRadius + 10.0, 0, 360,
+                )
+                legibilityCircle.fill()
                 aString.drawAtPoint_(
                     NSMakePoint(
                         center.x - (textSize.width / 2),
