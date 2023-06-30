@@ -21,7 +21,7 @@ from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
 from twisted.python.failure import Failure
 
-from .mac_utils import showFailures
+from ..model.util import showFailures
 
 
 log = Logger()
@@ -226,13 +226,13 @@ def textOpacityCurve(startTime: float, duration: float, now: float):
     """
     t - float from 0-1
     """
-    elapsed = (now - startTime)
+    elapsed = now - startTime
     progressPercent = elapsed / duration
     maxOpacity = 0.8
-    oomph = 7                   # must be an odd integer
-    if progressPercent < 1/oomph:
+    oomph = 7  # must be an odd integer
+    if progressPercent < 1 / oomph:
         return sin((progressPercent * oomph * pi) / 2) * maxOpacity
-    if progressPercent < (oomph-1)/oomph:
+    if progressPercent < (oomph - 1) / oomph:
         return maxOpacity
     # print(f"pct {progressPercent:0.2f} res {result:0.2f}")
     return sin(((progressPercent * oomph) + oomph) * (pi / 2)) * maxOpacity
@@ -568,11 +568,18 @@ class PieTimer(AbstractProgressView):
                     },
                 )
                 textSize = aString.size()
-                NSColor.blackColor().colorWithAlphaComponent_(textAlpha / 3.0).setFill()
+                NSColor.blackColor().colorWithAlphaComponent_(
+                    textAlpha / 3.0
+                ).setFill()
                 legibilityCircle = NSBezierPath.bezierPath()
-                legibilityRadius = sqrt(((textSize.width /2)**2) + ((textSize.height / 2)**2))
+                legibilityRadius = sqrt(
+                    ((textSize.width / 2) ** 2) + ((textSize.height / 2) ** 2)
+                )
                 legibilityCircle.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
-                    center, legibilityRadius + 10.0, 0, 360,
+                    center,
+                    legibilityRadius + 10.0,
+                    0,
+                    360,
                 )
                 legibilityCircle.fill()
                 aString.drawAtPoint_(

@@ -4,75 +4,51 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
 from typing import (
-    ClassVar,
-    Callable,
-    Generic,
-    Sequence,
     TYPE_CHECKING,
-    TypeVar,
-    ParamSpec,
+    Callable,
+    ClassVar,
     Concatenate,
+    Generic,
+    ParamSpec,
     Protocol,
+    Sequence,
+    TypeVar,
 )
 
 import objc
-from AppKit import (
-    NSApplication,
-    NSColor,
-    NSNib,
-    NSTableView,
-    NSWindow,
-)
+from AppKit import NSApplication, NSColor, NSNib, NSTableView, NSWindow
+from dateutil.relativedelta import relativedelta
 from Foundation import NSIndexSet, NSObject
-
 from objc import IBAction, IBOutlet, super
-from pomodouroboros.macos.mac_utils import Attr, Descriptor, SometimesBackground
+from pomodouroboros.macos.mac_utils import (
+    Attr,
+    Descriptor,
+    SometimesBackground,
+)
+from pomodouroboros.model.util import showFailures
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
 from ..hasher import IDHasher
 from ..model.intention import Intention
-from ..model.intervals import AnyInterval, Pomodoro, StartPrompt
+from ..model.intervals import (
+    AnyInterval,
+    Break,
+    GracePeriod,
+    Pomodoro,
+    StartPrompt,
+)
 from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus, saveDefaultNexus
+from ..model.util import interactionRoot, intervalSummary
 from ..storage import TEST_MODE
-from .mac_utils import Forwarder, showFailures
 from .mac_dates import LOCAL_TZ
+from .mac_utils import Forwarder
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
-from .text_fields import makeMenuLabel, HeightSizableTextField
-
-# Imported only for side-effect of becoming known to ObjC runtime
 from .tab_order import TabOrderFriendlyTextViewDelegate as _
-
-
-class HasNexus(Protocol):
-    nexus: Nexus
-
-
-C = TypeVar("C", bound=Callable[..., object])
-P = ParamSpec("P")
-HN = TypeVar("HN", bound=HasNexus)
-
-
-def interactionRoot(
-    c: Callable[Concatenate[HN, P], T]
-) -> Callable[Concatenate[HN, P], T]:
-    """
-    Decorator that should wrap every operation that potentially mutates the
-    model, saving it back to disk afterwards if it completes without raising an
-    exception.
-    """
-    @wraps(c)
-    def g(self: HN, *args: P.args, **kwargs: P.kwargs) -> T:
-        # idea: maybe maintain a trail of N backups here, for easy undo/revert
-        # of certain edit actions?
-        result = c(self, *args, **kwargs)
-        saveDefaultNexus(self.nexus)
-        return result
-
-    return g
+from .text_fields import HeightSizableTextField, makeMenuLabel
 
 
 @dataclass
@@ -95,8 +71,10 @@ class MacUserInterface:
         self.setExplanation(
             # TODO: this should be in the model somewhere, not ad-hoc in the
             # middle of one frontend
-            f"Set an intention within {startPrompt.endTime - self.clock.seconds():.0f}"
-            f" seconds, or lose the chance to get {startPrompt.pointsLost:g} points!"
+            f"{startPrompt.pointsBeforeLoss} possible points remain\n\n"
+            f"but in {intervalSummary(int(startPrompt.endTime - self.clock.seconds()))}\n"
+            f"you'll lose {startPrompt.pointsLost:g} possible points."
+            "\n\nStart a Pomodoro now with ⌘⌥⌃P !"
         )
 
     def intentionAdded(self, intention: Intention) -> None:
@@ -112,7 +90,14 @@ class MacUserInterface:
         self.currentInterval = interval
         match interval:
             case StartPrompt():
+                self.pc.setColors(NSColor.redColor(), NSColor.darkGrayColor())
                 self.startPromptUpdate(interval)
+            case Pomodoro():
+                self.pc.setColors(NSColor.greenColor(), NSColor.blueColor())
+            case Break():
+                self.pc.setColors(
+                    NSColor.lightGrayColor(), NSColor.darkGrayColor()
+                )
 
     def intervalProgress(self, percentComplete: float) -> None:
         match self.currentInterval:
@@ -141,7 +126,9 @@ class MacUserInterface:
         Create a MacUserInterface and all its constituent widgets.
         """
         owner = PomFilesOwner.alloc().initWithNexus_(nexus).retain()
-        nibInstance = NSNib.alloc().initWithNibNamed_bundle_("IntentionEditor.nib", None)
+        nibInstance = NSNib.alloc().initWithNibNamed_bundle_(
+            "IntentionEditor.nib", None
+        )
         nibInstance.instantiateWithOwner_topLevelObjects_(owner, None)
         pc = ProgressController()
         SometimesBackground(
@@ -297,7 +284,9 @@ class IntentionDataSource(NSObject):
 
     # pragma mark Attributes
 
-    intentionRowMap: ModelConverter[Intention, IntentionRow] = objc.object_property()
+    intentionRowMap: ModelConverter[
+        Intention, IntentionRow
+    ] = objc.object_property()
     nexus: Nexus | None = objc.object_property()
 
     selectedIntention: IntentionRow | None = objc.object_property()
@@ -488,6 +477,13 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     @interactionRoot
+    def startSelectedIntention_(self) -> None:
+        """
+        Start a pomodoro using the selected intention.
+        """
+
+    @IBAction
+    @interactionRoot
     def pokeIntentionDescription_(self, sender: NSObject) -> None:
         irow = (
             # self.intentionDataSource.tableView_objectValueForTableColumn_row_(
@@ -512,12 +508,16 @@ class PomFilesOwner(NSObject):
             self.debugPalette.setBackgroundColor_(NSColor.clearColor())
             self.debugPalette.setIsVisible_(True)
 
-            if self.intentionDataSource.numberOfRowsInTableView_(self.intentionsTable) > 0:
+            if (
+                self.intentionDataSource.numberOfRowsInTableView_(
+                    self.intentionsTable
+                )
+                > 0
+            ):
                 self.intentionsTable.selectRowIndexes_byExtendingSelection_(
                     NSIndexSet.indexSetWithIndex_(0),
                     False,
                 )
-
 
 
 @mainpoint()

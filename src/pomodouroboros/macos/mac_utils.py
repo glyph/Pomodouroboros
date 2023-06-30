@@ -208,18 +208,6 @@ def callOnNotification(
     )
 
 
-@contextmanager
-def showFailures() -> Iterator[None]:
-    """
-    show failures and stuff
-    """
-    try:
-        yield
-    except:
-        print(Failure().getTraceback())
-        raise
-
-
 @dataclass
 class SometimesBackground:
     """
