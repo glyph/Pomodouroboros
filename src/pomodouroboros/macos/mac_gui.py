@@ -25,12 +25,12 @@ from pomodouroboros.macos.mac_utils import (
     Descriptor,
     SometimesBackground,
 )
-from pomodouroboros.model.util import showFailures
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
 from ..hasher import IDHasher
+from ..model.boundaries import EvaluationResult
 from ..model.intention import Intention
 from ..model.intervals import (
     AnyInterval,
@@ -41,7 +41,7 @@ from ..model.intervals import (
 )
 from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus, saveDefaultNexus
-from ..model.util import interactionRoot, intervalSummary
+from ..model.util import interactionRoot, intervalSummary, showFailures
 from ..storage import TEST_MODE
 from .mac_dates import LOCAL_TZ
 from .mac_utils import Forwarder
@@ -49,6 +49,9 @@ from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
 from .tab_order import TabOrderFriendlyTextViewDelegate as _
 from .text_fields import HeightSizableTextField, makeMenuLabel
+
+lightPurple = NSColor.colorWithSRGBRed_green_blue_alpha_(0.7, 0.0, 0.7, 1.0)
+darkPurple = NSColor.colorWithSRGBRed_green_blue_alpha_(0.5, 0.0, 0.5, 1.0)
 
 
 @dataclass
@@ -92,11 +95,19 @@ class MacUserInterface:
             case StartPrompt():
                 self.pc.setColors(NSColor.redColor(), NSColor.darkGrayColor())
                 self.startPromptUpdate(interval)
-            case Pomodoro():
+            case Pomodoro(intention=x):
                 self.pc.setColors(NSColor.greenColor(), NSColor.blueColor())
+                self.setExplanation(x.title)
             case Break():
+                self.setExplanation("")
                 self.pc.setColors(
                     NSColor.lightGrayColor(), NSColor.darkGrayColor()
+                )
+            case GracePeriod():
+                self.setExplanation("Keep your streak going!")
+                self.pc.setColors(
+                    lightPurple,
+                    darkPurple,
                 )
 
     def intervalProgress(self, percentComplete: float) -> None:
@@ -298,6 +309,9 @@ class IntentionDataSource(NSObject):
     pomsData: IntentionPomodorosDataSource
     pomsData = IBOutlet()
 
+    pomsTable: NSTableView
+    pomsTable = IBOutlet()
+
     # pragma mark Initialization and awakening
 
     def init(self) -> IntentionDataSource:
@@ -314,6 +328,7 @@ class IntentionDataSource(NSObject):
         with a 'nexus'.
         """
         self.nexus = newNexus
+        self.pomsData.nexus = newNexus
 
         @ModelConverter
         def translator(intention: Intention) -> IntentionRow:
@@ -341,7 +356,7 @@ class IntentionDataSource(NSObject):
         The selection changed.
         """
         tableView = notification.object()
-        idx = tableView.selectedRow()
+        idx: int = tableView.selectedRow()
 
         if idx == -1:
             self.selectedIntention = None
@@ -350,6 +365,7 @@ class IntentionDataSource(NSObject):
 
         self.selectedIntention = self.rowObjectAt_(idx)
         self.pomsData.backingData = self.selectedIntention.intention.pomodoros
+        self.pomsTable.reloadData()
         self.hasNoSelection = False
 
     # pragma mark NSTableViewDataSource
@@ -380,6 +396,15 @@ class IntentionDataSource(NSObject):
 class IntentionPomodorosDataSource(NSObject):
     # pragma mark NSTableViewDataSource
     backingData: Sequence[Pomodoro] = []
+    selectedPomodoro: Pomodoro | None = None
+    hasSelection: bool = objc.object_property()
+    nexus: Nexus
+    intentionPomsTable: NSTableView
+    intentionPomsTable = IBOutlet()
+
+    def init(self) -> IntentionPomodorosDataSource:
+        self.hasSelection = False
+        return self
 
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
         return len(self.backingData)
@@ -387,7 +412,7 @@ class IntentionPomodorosDataSource(NSObject):
     def tableView_objectValueForTableColumn_row_(
         self,
         tableView: NSTableView,
-        objectValueForTableColumn: NSObject,
+        tableColumn: object,
         row: int,
     ) -> dict:
         # oip: OneIntentionPom = OneIntentionPom.alloc().init()
@@ -405,6 +430,28 @@ class IntentionPomodorosDataSource(NSObject):
             # but first we need that feature from the model.
             "inSession": "???",
         }
+
+    # pragma mark NSTableViewDelegate
+    @interactionRoot
+    def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
+        tableView = notification.object()
+        idx: int = tableView.selectedRow()
+        if idx == -1:
+            self.selectedPomodoro = None
+            self.hasSelection = False
+            return
+        self.selectedPomodoro = self.backingData[idx]
+        self.hasSelection = True
+
+    @IBAction
+    @interactionRoot
+    def evaluateClicked_(self, sender: NSObject) -> None:
+        """
+        the 'evaluate' button was clicked.
+        """
+        assert self.selectedPomodoro is not None
+        self.nexus.evaluatePomodoro(self.selectedPomodoro, EvaluationResult.focused)
+        self.intentionPomsTable.reloadData()
 
 
 class StreakDataSource(NSObject):
@@ -477,10 +524,13 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     @interactionRoot
-    def startSelectedIntention_(self) -> None:
+    def startSelectedIntention_(self, sender: NSObject) -> None:
         """
         Start a pomodoro using the selected intention.
         """
+        intent = self.intentionDataSource.selectedIntention
+        assert intent is not None, "how did you get here"
+        self.nexus.startPomodoro(intent.intention)
 
     @IBAction
     @interactionRoot
