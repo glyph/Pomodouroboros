@@ -414,18 +414,6 @@
                                                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                     </textFieldCell>
                                                                 </textField>
-                                                                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lP6-p5-Ugl">
-                                                                    <rect key="frame" x="555" y="273" width="118" height="32"/>
-                                                                    <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                                                                    <buttonCell key="cell" type="push" title="Re-Evaluate…" bezelStyle="rounded" alignment="center" enabled="NO" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="mso-kh-nZ6">
-                                                                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                                                        <font key="font" metaFont="system"/>
-                                                                    </buttonCell>
-                                                                    <connections>
-                                                                        <action selector="evaluateClicked:" target="8xN-s7-Y7R" id="C9U-Nx-RjS"/>
-                                                                        <binding destination="8xN-s7-Y7R" name="enabled" keyPath="self.hasSelection" id="bs0-l9-tfo"/>
-                                                                    </connections>
-                                                                </button>
                                                                 <colorWell fixedFrame="YES" wellStyle="expanded" translatesAutoresizingMaskIntoConstraints="NO" id="pgW-Ae-TNu">
                                                                     <rect key="frame" x="605" y="637" width="64" height="28"/>
                                                                     <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
@@ -691,6 +679,54 @@
                                                                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                                         <font key="font" metaFont="system"/>
                                                                     </buttonCell>
+                                                                </button>
+                                                                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Qw6-cx-VyU">
+                                                                    <rect key="frame" x="579" y="273" width="94" height="32"/>
+                                                                    <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
+                                                                    <buttonCell key="cell" type="push" title="Achieved!" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="6yr-jQ-7dB">
+                                                                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                                        <font key="font" metaFont="system"/>
+                                                                    </buttonCell>
+                                                                    <connections>
+                                                                        <action selector="achievedClicked:" target="8xN-s7-Y7R" id="iUK-cX-aVX"/>
+                                                                        <binding destination="8xN-s7-Y7R" name="enabled" keyPath="self.canEvaluateAchieved" id="IKu-w0-biv"/>
+                                                                    </connections>
+                                                                </button>
+                                                                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Niu-f2-W9l">
+                                                                    <rect key="frame" x="495" y="273" width="86" height="32"/>
+                                                                    <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
+                                                                    <buttonCell key="cell" type="push" title="Focused" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="MM7-rW-9Bl">
+                                                                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                                        <font key="font" metaFont="system"/>
+                                                                    </buttonCell>
+                                                                    <connections>
+                                                                        <action selector="focusedClicked:" target="8xN-s7-Y7R" id="f0y-Kn-8Rz"/>
+                                                                        <binding destination="8xN-s7-Y7R" name="enabled" keyPath="self.canEvaluateFocused" id="YgG-aX-z5s"/>
+                                                                    </connections>
+                                                                </button>
+                                                                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="dwj-aX-JxV">
+                                                                    <rect key="frame" x="395" y="273" width="102" height="32"/>
+                                                                    <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
+                                                                    <buttonCell key="cell" type="push" title="Interrupted" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="5hK-H1-yQa">
+                                                                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                                        <font key="font" metaFont="system"/>
+                                                                    </buttonCell>
+                                                                    <connections>
+                                                                        <action selector="interruptedClicked:" target="8xN-s7-Y7R" id="WTX-oC-bPc"/>
+                                                                        <binding destination="8xN-s7-Y7R" name="enabled" keyPath="self.canEvaluateInterrupted" id="tAI-Bu-tVL"/>
+                                                                    </connections>
+                                                                </button>
+                                                                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="drc-6P-anM">
+                                                                    <rect key="frame" x="299" y="273" width="98" height="32"/>
+                                                                    <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
+                                                                    <buttonCell key="cell" type="push" title="Distracted" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="mxE-yN-C4W">
+                                                                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                                        <font key="font" metaFont="system"/>
+                                                                    </buttonCell>
+                                                                    <connections>
+                                                                        <action selector="distractedClicked:" target="8xN-s7-Y7R" id="eoX-wD-drM"/>
+                                                                        <binding destination="8xN-s7-Y7R" name="enabled" keyPath="self.canEvaluateDistracted" id="tGc-iL-9TT"/>
+                                                                    </connections>
                                                                 </button>
                                                             </subviews>
                                                             <connections>

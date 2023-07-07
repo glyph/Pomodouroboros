@@ -365,6 +365,7 @@ class IntentionDataSource(NSObject):
 
         self.selectedIntention = self.rowObjectAt_(idx)
         self.pomsData.backingData = self.selectedIntention.intention.pomodoros
+        self.pomsData.clearSelection()
         self.pomsTable.reloadData()
         self.hasNoSelection = False
 
@@ -397,10 +398,15 @@ class IntentionPomodorosDataSource(NSObject):
     # pragma mark NSTableViewDataSource
     backingData: Sequence[Pomodoro] = []
     selectedPomodoro: Pomodoro | None = None
-    hasSelection: bool = objc.object_property()
     nexus: Nexus
     intentionPomsTable: NSTableView
     intentionPomsTable = IBOutlet()
+
+    # active states for buttons
+    canEvaluateDistracted: bool = objc.object_property()
+    canEvaluateInterrupted: bool = objc.object_property()
+    canEvaluateFocused: bool = objc.object_property()
+    canEvaluateAchieved: bool = objc.object_property()
 
     def init(self) -> IntentionPomodorosDataSource:
         self.hasSelection = False
@@ -425,33 +431,73 @@ class IntentionPomodorosDataSource(NSObject):
             "date": str(dt.date()),
             "startTime": str(dt.time()),
             "endTime": str(et.time()),
-            "evaluation": "" if e is None else str(e.result),
+            "evaluation": ""
+            if e is None
+            else {
+                EvaluationResult.distracted: "🦋",
+                EvaluationResult.interrupted: "🗣",
+                EvaluationResult.focused: "🤔",
+                EvaluationResult.achieved: "✅",
+            }[e.result],
             # TODO: should be a clickable link to the session that this was in,
             # but first we need that feature from the model.
             "inSession": "???",
         }
 
+    def clearSelection(self) -> None:
+        """ """
+        self.selectedPomodoro = None
+        self.hasSelection = False
+        self.canEvaluateDistracted = (
+            self.canEvaluateInterrupted
+        ) = self.canEvaluateFocused = self.canEvaluateAchieved = False
+
     # pragma mark NSTableViewDelegate
     @interactionRoot
     def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
+        print("tsvsdc")
         tableView = notification.object()
         idx: int = tableView.selectedRow()
         if idx == -1:
-            self.selectedPomodoro = None
-            self.hasSelection = False
+            print("selected nothing")
+            self.clearSelection()
             return
+        print("selected something")
         self.selectedPomodoro = self.backingData[idx]
-        self.hasSelection = True
+        self.canEvaluateDistracted = True
+        self.canEvaluateInterrupted = True
+        self.canEvaluateFocused = True
+        # should also update this last one when reloading data?
+        self.canEvaluateAchieved = idx == (len(self.backingData) - 1)
+
+    def doEvaluate_(self, er: EvaluationResult):
+        assert self.selectedPomodoro is not None
+        selected = self.intentionPomsTable.selectedRowIndexes()
+        self.nexus.evaluatePomodoro(self.selectedPomodoro, er)
+        self.intentionPomsTable.reloadData()
+        self.intentionPomsTable.selectRowIndexes_byExtendingSelection_(
+            selected, False
+        )
 
     @IBAction
     @interactionRoot
-    def evaluateClicked_(self, sender: NSObject) -> None:
-        """
-        the 'evaluate' button was clicked.
-        """
-        assert self.selectedPomodoro is not None
-        self.nexus.evaluatePomodoro(self.selectedPomodoro, EvaluationResult.focused)
-        self.intentionPomsTable.reloadData()
+    def distractedClicked_(self, sender: NSObject) -> None:
+        self.doEvaluate_(EvaluationResult.distracted)
+
+    @IBAction
+    @interactionRoot
+    def interruptedClicked_(self, sender: NSObject) -> None:
+        self.doEvaluate_(EvaluationResult.interrupted)
+
+    @IBAction
+    @interactionRoot
+    def focusedClicked_(self, sender: NSObject) -> None:
+        self.doEvaluate_(EvaluationResult.focused)
+
+    @IBAction
+    @interactionRoot
+    def achievedClicked_(self, sender: NSObject) -> None:
+        self.doEvaluate_(EvaluationResult.achieved)
 
 
 class StreakDataSource(NSObject):
