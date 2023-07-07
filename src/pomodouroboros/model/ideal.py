@@ -136,6 +136,7 @@ def idealScore(nexus: Nexus, workPeriodEnd: float) -> IdealScoreInfo:
     workPeriodBegin = nexus._lastUpdateTime
     currentIdeal = idealFuture(nexus, workPeriodBegin, workPeriodEnd)
     idealScoreNow = sorted(
+        # TODO: we're scoring all events from all time here
         currentIdeal.scoreEvents(endTime=workPeriodEnd), key=lambda it: it.time
     )
     if not idealScoreNow:

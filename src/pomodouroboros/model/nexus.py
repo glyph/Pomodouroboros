@@ -126,7 +126,7 @@ class Nexus:
             endTime = self._lastUpdateTime
         for intentionIndex, intention in enumerate(self._intentions):
             for event in intention.intentionScoreEvents(intentionIndex):
-                if event.time <= endTime:
+                if startTime <= event.time and event.time <= endTime:
                     yield event
         for streak in self._streaks:
             for interval in streak:
@@ -135,7 +135,7 @@ class Nexus:
                         debug(
                             "score", event.time > endTime, event, event.points
                         )
-                        if event.time <= endTime:
+                        if startTime <= event.time and event.time <= endTime:
                             yield event
 
     @property
