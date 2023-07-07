@@ -8,12 +8,15 @@ from os import makedirs, replace
 from os.path import basename, dirname, exists, expanduser, join
 from typing import TypeAlias, cast
 
+from pomodouroboros.model.boundaries import EvaluationResult
+
 from .boundaries import IntervalType, UserInterfaceFactory
 from .intention import Estimate, Intention
 from .intervals import (
     AnyInterval,
     Break,
     Duration,
+    Evaluation,
     GracePeriod,
     Pomodoro,
     Session,
@@ -61,11 +64,18 @@ def nexusFromJSON(
     def loadInterval(savedInterval: SavedInterval) -> AnyInterval:
         if savedInterval["intervalType"] == "Pomodoro":
             intention = intentionIDMap[savedInterval["intentionID"]]
+            evaluation = savedInterval["evaluation"]
             pomodoro = Pomodoro(
                 startTime=savedInterval["startTime"],
                 intention=intention,
                 endTime=savedInterval["endTime"],
                 indexInStreak=savedInterval["indexInStreak"],
+                evaluation=Evaluation(
+                    EvaluationResult(evaluation["result"]),
+                    evaluation["timestamp"],
+                )
+                if evaluation is not None
+                else None,
             )
             intention.pomodoros.append(pomodoro)
             return pomodoro
