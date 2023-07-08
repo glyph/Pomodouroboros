@@ -64,6 +64,7 @@ class MacUserInterface:
     clock: IReactorTime
     nexus: Nexus
     explanatoryLabel: HeightSizableTextField
+    intentionDataSource: IntentionDataSource
     currentInterval: AnyInterval | None = None
 
     def startPromptUpdate(self, startPrompt: StartPrompt) -> None:
@@ -95,15 +96,19 @@ class MacUserInterface:
             case StartPrompt():
                 self.pc.setColors(NSColor.redColor(), NSColor.darkGrayColor())
                 self.startPromptUpdate(interval)
+                self.intentionDataSource.startingUnblocked()
             case Pomodoro(intention=x):
                 self.pc.setColors(NSColor.greenColor(), NSColor.blueColor())
                 self.setExplanation(x.title)
+                self.intentionDataSource.startingBlocked()
             case Break():
                 self.setExplanation("")
                 self.pc.setColors(
                     NSColor.lightGrayColor(), NSColor.darkGrayColor()
                 )
+                self.intentionDataSource.startingBlocked()
             case GracePeriod():
+                self.intentionDataSource.startingUnblocked()
                 self.setExplanation("Keep your streak going!")
                 self.pc.setColors(
                     lightPurple,
@@ -117,7 +122,7 @@ class MacUserInterface:
         self.pc.animatePercentage(self.clock, percentComplete)
 
     def intervalEnd(self) -> None:
-        print("interval ended")
+        self.intentionDataSource.startingUnblocked()
 
     def setExplanation(self, explanatoryText) -> None:
         """
@@ -136,7 +141,9 @@ class MacUserInterface:
         """
         Create a MacUserInterface and all its constituent widgets.
         """
-        owner = PomFilesOwner.alloc().initWithNexus_(nexus).retain()
+        owner: PomFilesOwner = (
+            PomFilesOwner.alloc().initWithNexus_(nexus).retain()
+        )
         nibInstance = NSNib.alloc().initWithNibNamed_bundle_(
             "IntentionEditor.nib", None
         )
@@ -157,6 +164,7 @@ class MacUserInterface:
             clock,
             nexus,
             makeMenuLabel(status.item.menu()),
+            owner.intentionDataSource,
         )
 
 
@@ -306,11 +314,22 @@ class IntentionDataSource(NSObject):
     hasNoSelection: bool = objc.object_property()
     "detail view's 'hidden' is bound to this"
 
+    canStartPomodoro: bool = objc.object_property()
+    canAbandonIntention: bool = objc.object_property()
+
+    # kept in sync by MacUserInterface, this indicates whether an interval that
+    # would block the start of a new Pomodoro (Pomodoro, Break) is currently
+    # running
+    blockingIntervalRunning: bool = objc.object_property()
+
     pomsData: IntentionPomodorosDataSource
     pomsData = IBOutlet()
 
     pomsTable: NSTableView
     pomsTable = IBOutlet()
+
+    intentionsTable: NSTableView
+    intentionsTable = IBOutlet()
 
     # pragma mark Initialization and awakening
 
@@ -320,6 +339,8 @@ class IntentionDataSource(NSObject):
         """
         self.hasNoSelection = True
         self.selectedIntention = None
+        self.canStartPomodoro = False
+        self.canAbandonIntention = False
         return self
 
     def awakeWithNexus_(self, newNexus: Nexus) -> None:
@@ -338,6 +359,8 @@ class IntentionDataSource(NSObject):
             )
 
         self.intentionRowMap = translator
+        self.pomsData.recalculateStuff = self.recalculate
+        self.recalculate()
 
     # pragma mark My own methods
 
@@ -355,19 +378,49 @@ class IntentionDataSource(NSObject):
         """
         The selection changed.
         """
-        tableView = notification.object()
-        idx: int = tableView.selectedRow()
+        # self.recalculateStuff()
+        self.recalculate()
+
+    def startingBlocked(self) -> None:
+        self.blockingIntervalRunning = True
+        self.recalculate()
+
+    def startingUnblocked(self) -> None:
+        self.blockingIntervalRunning = False
+        self.recalculate()
+
+    def recalculate(self) -> None:
+        """
+        re-calculate the calculate
+        """
+        if self.intentionsTable is None:
+            print("recalculate before awake?")
+            return
+        idx: int = self.intentionsTable.selectedRow()
 
         if idx == -1:
             self.selectedIntention = None
             self.hasNoSelection = True
+            self.canStartPomodoro = False
+            self.canAbandonIntention = False
             return
 
         self.selectedIntention = self.rowObjectAt_(idx)
-        self.pomsData.backingData = self.selectedIntention.intention.pomodoros
+        selected = self.selectedIntention
+        intention = selected.intention
+
+        self.pomsData.backingData = intention.pomodoros
         self.pomsData.clearSelection()
         self.pomsTable.reloadData()
         self.hasNoSelection = False
+        self.canStartPomodoro = (
+            (not intention.abandoned)
+            and (not intention.completed)
+            and (not self.blockingIntervalRunning)
+        )
+        self.canAbandonIntention = (not intention.abandoned) and (
+            not intention.completed
+        )
 
     # pragma mark NSTableViewDataSource
 
@@ -429,8 +482,8 @@ class IntentionPomodorosDataSource(NSObject):
         e = realPom.evaluation
         return {
             "date": str(dt.date()),
-            "startTime": str(dt.time()),
-            "endTime": str(et.time()),
+            "startTime": str(dt.time().replace(microsecond=0)),
+            "endTime": str(et.time().replace(microsecond=0)),
             "evaluation": ""
             if e is None
             else {
@@ -455,14 +508,11 @@ class IntentionPomodorosDataSource(NSObject):
     # pragma mark NSTableViewDelegate
     @interactionRoot
     def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
-        print("tsvsdc")
         tableView = notification.object()
         idx: int = tableView.selectedRow()
         if idx == -1:
-            print("selected nothing")
             self.clearSelection()
             return
-        print("selected something")
         self.selectedPomodoro = self.backingData[idx]
         self.canEvaluateDistracted = True
         self.canEvaluateInterrupted = True
@@ -475,6 +525,9 @@ class IntentionPomodorosDataSource(NSObject):
         selected = self.intentionPomsTable.selectedRowIndexes()
         self.nexus.evaluatePomodoro(self.selectedPomodoro, er)
         self.intentionPomsTable.reloadData()
+        # TODO: recalculateStuff just jammed on here as non-annotated
+        # attribute, should really fix the relationship to be more structured
+        self.recalculateStuff()
         self.intentionPomsTable.selectRowIndexes_byExtendingSelection_(
             selected, False
         )
