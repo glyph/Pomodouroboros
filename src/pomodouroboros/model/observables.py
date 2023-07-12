@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -129,7 +130,7 @@ class ObservableList(MutableSequence[V]):
         ):
             # overload above ensure type dependence between 'index' and 'slice',
             # but we can't express to mypy the dependent relationship, so we
-            # type:ignore
+            # type\:ignore
 
             self._storage.__setitem__(index, value)  # type:ignore[index,assignment]
 
