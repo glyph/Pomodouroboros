@@ -20,6 +20,7 @@ import objc
 from AppKit import (
     NSApplication,
     NSApplicationActivateIgnoringOtherApps,
+    NSWorkspaceDidHideApplicationNotification,
     NSApplicationActivationPolicyAccessory,
     NSApplicationActivationPolicyRegular,
     NSLog,
@@ -147,7 +148,6 @@ class Forwarder(Generic[SelfType]):
 
 @dataclass
 class _ObserverRemover:
-
     center: NSNotificationCenter | None
     name: str
     observer: NSObject
@@ -245,6 +245,22 @@ class SometimesBackground:
         else:
             self.previouslyActiveApp = whichApp
 
+    def someApplicationHidden_(self, notification: Any) -> None:
+        """
+        An app was hidden.
+        """
+        whichApp = notification.userInfo()[NSWorkspaceApplicationKey]
+        if whichApp == NSRunningApplication.currentApplication():
+            # 'hide others' (and similar functionality) should *not* hide the
+            # progress window; that would obviate the whole point of having
+            # this app live in the background in order to maintain a constant
+            # presence in the user's visual field.  however if we're being told
+            # to hide, don't ignore the user, hide the main window and retreat
+            # into the background as if we were closed.
+            self.mainWindow.close()
+            app = NSApplication.sharedApplication()
+            app.unhide_(self)
+
     def someSpaceActivated_(self, notification) -> None:
         """
         Sometimes, fullscreen application stop getting the HUD overlay.
@@ -287,6 +303,13 @@ class SometimesBackground:
             self,
             "someApplicationActivated:",
             NSWorkspaceDidActivateApplicationNotification,
+            None,
+        )
+
+        wsnc.addObserver_selector_name_object_(
+            self,
+            "someApplicationHidden:",
+            NSWorkspaceDidHideApplicationNotification,
             None,
         )
 
