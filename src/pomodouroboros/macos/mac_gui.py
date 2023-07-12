@@ -592,9 +592,6 @@ class PomFilesOwner(NSObject):
     intentionsTable: NSTableView
     intentionsTable = IBOutlet()
 
-    debugPalette: NSWindow
-    debugPalette = IBOutlet()
-
     if TYPE_CHECKING:
 
         @classmethod
@@ -652,11 +649,6 @@ class PomFilesOwner(NSObject):
             # TODO: update intention data source with initial data from nexus
             self.intentionDataSource.awakeWithNexus_(self.nexus)
             self.streakDataSource.awakeWithNexus_(self.nexus)
-
-            self.debugPalette.setOpaque_(False)
-            self.debugPalette.setBackgroundColor_(NSColor.clearColor())
-            self.debugPalette.setIsVisible_(True)
-
             if (
                 self.intentionDataSource.numberOfRowsInTableView_(
                     self.intentionsTable
