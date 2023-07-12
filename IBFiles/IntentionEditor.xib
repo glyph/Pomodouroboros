@@ -7,7 +7,6 @@
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="PomFilesOwner">
             <connections>
-                <outlet property="debugPalette" destination="VKS-g9-PNV" id="yd8-IP-Ndd"/>
                 <outlet property="intentionDataSource" destination="rFC-Sz-Dx3" id="mys-lY-FJh"/>
                 <outlet property="intentionsTable" destination="LiW-pP-5cA" id="Xs9-3U-eCr"/>
                 <outlet property="intentionsWindow" destination="U7b-Co-sHa" id="q5L-DC-wHO"/>
@@ -26,30 +25,6 @@
             </connections>
         </customObject>
         <customObject id="q7p-bi-ajt" customClass="StreakDataSource"/>
-        <window title="Debug Palette" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" hidesOnDeactivate="YES" releasedWhenClosed="NO" frameAutosaveName="" animationBehavior="default" id="VKS-g9-PNV" userLabel="Debug Palette" customClass="NSPanel">
-            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
-            <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="425" y="199" width="373" height="371"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="775"/>
-            <view key="contentView" id="Pbu-g8-rZJ">
-                <rect key="frame" x="0.0" y="0.0" width="373" height="371"/>
-                <autoresizingMask key="autoresizingMask"/>
-                <subviews>
-                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3W5-8n-dJG">
-                        <rect key="frame" x="13" y="324" width="138" height="32"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <buttonCell key="cell" type="push" title="Poke Description" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="BGt-M1-gxm">
-                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <connections>
-                            <action selector="pokeIntentionDescription:" target="-2" id="hXm-fF-1Md"/>
-                        </connections>
-                    </button>
-                </subviews>
-            </view>
-            <point key="canvasLocation" x="-2606" y="-2456"/>
-        </window>
         <window title="Pomodouroboros Editor" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" frameAutosaveName="" animationBehavior="default" id="U7b-Co-sHa">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
@@ -726,7 +701,7 @@
                                                                     <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                                                     <buttonCell key="cell" type="push" title="🦋 Distracted" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="mxE-yN-C4W">
                                                                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                                                        <font key="font" size="13" name=".SFNS-Regular"/>
+                                                                        <font key="font" metaFont="system"/>
                                                                     </buttonCell>
                                                                     <connections>
                                                                         <action selector="distractedClicked:" target="8xN-s7-Y7R" id="eoX-wD-drM"/>
@@ -959,8 +934,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="0VN-am-jg8">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="710464481.93979299">
-                                                    <!--2023-07-07 23:14:41 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="710882724.96031296">
+                                                    <!--2023-07-12 19:25:24 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1451,8 +1426,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="2ek-VJ-F3s">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="710464481.957528">
-                                                    <!--2023-07-07 23:14:41 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="710882724.97601604">
+                                                    <!--2023-07-12 19:25:24 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
