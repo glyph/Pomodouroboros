@@ -1,5 +1,6 @@
-
+# -*- test-case-name: pomodouroboros.model.test.test_observables -*-
 from __future__ import annotations
+import sys
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -189,9 +190,6 @@ class ObservableProperty:
             instance.__dict__[self.field_name] = value
 
 
-import sys
-
-
 def unstringize_one(cls: type, annotation: object) -> object:
     if not isinstance(annotation, str):
         return annotation
@@ -216,6 +214,10 @@ def is_notifier(annotation: object) -> bool:
 
 Ty = TypeVar("Ty", bound=type)
 
+class MustSpecifyNotifier(Exception):
+    """
+    You must specify a notifier when declaring a class to be L{observable}.
+    """
 
 @dataclass_transform(field_specifiers=(field,))
 def observable(repr: bool = True) -> Callable[[Ty], Ty]:
@@ -227,7 +229,7 @@ def observable(repr: bool = True) -> Callable[[Ty], Ty]:
                 notifierName = k
 
         if notifierName is None:
-            raise RuntimeError("you must annotate one attribute with Notifier[T]")
+            raise MustSpecifyNotifier("you must annotate one attribute with Notifier[T]")
 
         for k, v in cls.__annotations__.items():
             if k != notifierName:
@@ -367,90 +369,3 @@ def build(
         observable if strong else proxy(observable, interpose.finalize)
     )
     return observable, o
-
-
-# --- 8< --- cut here --- 8< ---
-
-print("expecting an error when I forget to add a Notifier[...] to an @observable():")
-try:
-
-    @observable()
-    class Oops:
-        name: str
-        age: int
-
-except Exception as e:
-    print("got it:", e)
-else:
-    raise RuntimeError("didn't get it")
-
-
-@dataclass(repr=False)
-class MyChanger:
-    """ """
-
-    mc: MyClass
-
-    def __repr__(self) -> str:
-        """ """
-        return "~"
-
-    @contextmanager
-    def added(self, key: str, new: object) -> Iterator[None]:
-        """
-        C{value} was added for the given C{key}.
-        """
-        print(f"{self.mc} will add {key!r} {new!r}")
-        yield
-        print(f"{self.mc} did add {key!r} {new!r}")
-
-    @contextmanager
-    def removed(self, key: str, old: object) -> Iterator[None]:
-        """
-        C{key} was removed for the given C{key}.
-        """
-        print(f"{self.mc} will remove {key!r} (was {old!r})")
-        yield
-        print(f"{self.mc} did remove {key!r} (was {old!r})")
-
-    @contextmanager
-    def changed(self, key: str, old: object, new: object) -> Iterator[None]:
-        """
-        C{value} was changed from C{old} to C{new} for the given C{key}.
-        """
-        print(f"{self.mc} will change {key!r} from {old!r} to {new!r}")
-        yield
-        print(f"{self.mc} did change {key!r} from {old!r} to {new!r}")
-
-
-@observable()
-class MyClass:
-    notifier: AnyNotifier
-    name: str
-    age: int
-    emails: ObservableList
-
-    @classmethod
-    def new(
-        cls, notifier: ChangeNotifications[str, object], name: str, age: int
-    ) -> MyClass:
-        """ """
-        p: PathObserver[object, object] = PathObserver(notifier, "self")
-        return cls(p, name, age, emails=ObservableList(p.child("emails"), []))
-
-
-print("# create")
-person, _ = build(
-    lambda notifier: MyClass.new(notifier=notifier, name="John", age=30),
-    lambda mycls: MyChanger(mycls),
-    # strong=True,
-)
-print("(nothing, hopefully)")
-print("# attributes")
-person.name = "Bob"
-person.age = 35
-print("# sequence")
-person.emails.append("one@one.com")
-person.emails.append("two@two.com")
-print("# clear")
-person.emails.clear()
