@@ -5,9 +5,11 @@ from dataclasses import asdict, dataclass, field, replace
 from itertools import islice
 from typing import Iterable, TYPE_CHECKING
 
-
 from .boundaries import EvaluationResult, ScoreEvent
-from .scoring import AttemptedEstimation, EstimationAccuracy, IntentionCompleted, IntentionCreatedEvent
+from .scoring import (AttemptedEstimation, EstimationAccuracy,
+    IntentionCompleted, IntentionCreatedEvent)
+from pomodouroboros.model.observables import (IgnoreChanges, Observer,
+    observable)
 
 
 if TYPE_CHECKING:
@@ -25,7 +27,7 @@ class Estimate:
 
 
 
-@dataclass
+@observable()
 class Intention:
     """
     An intention of something to do.
@@ -38,6 +40,8 @@ class Intention:
     estimates: list[Estimate] = field(default_factory=list)
     pomodoros: list[Pomodoro] = field(default_factory=list)
     abandoned: bool = False
+
+    observer: Observer = field(default_factory=IgnoreChanges)
     # id: ULID = field(default_factory=new_ulid, compare=False)
 
     def _compref(self) -> dict[str, object]:

@@ -83,15 +83,6 @@ class MacUserInterface:
             "\n\nStart a Pomodoro now with ⌘⌥⌃P !"
         )
 
-    def intentionAdded(self, intention: Intention) -> None:
-        ...
-
-    def intentionAbandoned(self, intention: Intention) -> None:
-        ...
-
-    def intentionCompleted(self, intention: Intention) -> None:
-        ...
-
     def intervalStart(self, interval: AnyInterval) -> None:
         self.currentInterval = interval
         match interval:

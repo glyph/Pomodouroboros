@@ -1,8 +1,9 @@
+# -*- test-case-name: pomodouroboros.model.test -*-
 from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Iterable, Iterator, Sequence
+from typing import Iterable, Iterator, MutableSequence, Sequence
 
 from .boundaries import (
     EvaluationResult,
@@ -27,6 +28,7 @@ from .intervals import (
     StartPrompt,
     handleIdleStartPom,
 )
+from pomodouroboros.model.observables import IgnoreChanges, ObservableList
 
 
 @dataclass(frozen=True)
@@ -66,7 +68,9 @@ class Nexus:
     _interfaceFactory: UserInterfaceFactory
     _lastIntentionID: int
 
-    _intentions: list[Intention] = field(default_factory=list)
+    _intentions: MutableSequence[Intention] = field(
+        default_factory=lambda: ObservableList(IgnoreChanges())
+    )
     _activeInterval: AnyInterval | None = None
     """
     The list of active streak intervals currently being worked on.
@@ -77,12 +81,18 @@ class Nexus:
     _upcomingDurations: Iterator[Duration] = iter(())
     _rules: GameRules = field(default_factory=GameRules)
 
-    _streaks: list[list[AnyInterval]] = field(default_factory=lambda: [[]])
+    _streaks: ObservableList[ObservableList[AnyInterval]] = field(
+        default_factory=lambda: ObservableList(
+            IgnoreChanges(), [ObservableList(IgnoreChanges())]
+        )
+    )
     """
     The list of previous streaks, each one being a list of its intervals, that
     are now completed.
     """
-    _sessions: list[Session] = field(default_factory=list)
+    _sessions: ObservableList[Session] = field(
+        default_factory=lambda: ObservableList(IgnoreChanges())
+    )
 
     def __post_init__(self) -> None:
         if self._initialTime > self._lastUpdateTime:
@@ -169,12 +179,13 @@ class Nexus:
         """
         Create the next interval.
         """
+        ui = self.userInterface
         new = self._activeInterval = nextInterval(
             self, newTime, self._activeInterval
         )
         if new is not None:
             self._streaks[-1].append(new)
-            self.userInterface.intervalStart(new)
+            ui.intervalStart(new)
 
     def advanceToTime(self, newTime: float) -> None:
         """
@@ -208,7 +219,7 @@ class Nexus:
                     self._upcomingDurations = iter(())
                     # When a grace period expires, a streak is broken, so we
                     # make a new one.
-                    self._streaks.append([])
+                    self._streaks.append(ObservableList(IgnoreChanges()))
                 self._makeNextInterval(newTime)
 
         # If there's an active streak, we definitionally should not have
@@ -236,14 +247,16 @@ class Nexus:
         self._intentions.append(
             newIntention := Intention(
                 newID,
-                self._lastUpdateTime, self._lastUpdateTime, title, description
+                self._lastUpdateTime,
+                self._lastUpdateTime,
+                title,
+                description,
             )
         )
         if estimate is not None:
             newIntention.estimates.append(
                 Estimate(duration=estimate, madeAt=self._lastUpdateTime)
             )
-        self.userInterface.intentionAdded(newIntention)
         return newIntention
 
     def addSession(self, startTime: float, endTime: float) -> None:
@@ -252,7 +265,8 @@ class Nexus:
         notified of potential drops to our score if we don't set intentions.
         """
         self._sessions.append(Session(startTime, endTime))
-        self._sessions.sort()
+        # MutableSequence doesn't have a .sort() method
+        self._sessions[:] = sorted(self._sessions)
 
     def startPomodoro(self, intention: Intention) -> PomStartResult:
         """
@@ -266,6 +280,7 @@ class Nexus:
         )
 
         def startPom(startTime: float, endTime: float) -> None:
+            ui = self.userInterface
             newPomodoro = Pomodoro(
                 intention=intention,
                 indexInStreak=sum(
@@ -277,7 +292,7 @@ class Nexus:
             intention.pomodoros.append(newPomodoro)
             self._activeInterval = newPomodoro
             self._streaks[-1].append(newPomodoro)
-            self.userInterface.intervalStart(newPomodoro)
+            ui.intervalStart(newPomodoro)
 
         return handleStartFunc(self, startPom)
 
@@ -293,7 +308,6 @@ class Nexus:
             assert (
                 pomodoro.intention.completed
             ), "evaluation was set, should be complete"
-            self.userInterface.intentionCompleted(pomodoro.intention)
             if timestamp < pomodoro.endTime:
                 # We evaluated the pomodoro as *complete* early, which is a
                 # special case.  Evaluating it in other ways allows it to

@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Protocol, TYPE_CHECKING, TypeAlias
+from typing import Callable, Iterable, Protocol, TYPE_CHECKING, TypeAlias
+
+from pomodouroboros.model.observables import Changes, SequenceObserver
 
 
 if TYPE_CHECKING:
-    from .intervals import AnyInterval
+    from .intervals import AnyInterval, Pomodoro
     from .nexus import Nexus
-    from .intention import Intention
+    from .intention import Intention, Estimate
 
 
 class IntervalType(Enum):
@@ -42,10 +44,9 @@ class PomStartResult(Enum):
     """
 
 
-class IntervalListener(Protocol):
+class UIEventListener(Protocol):
     """
-    An L{IntervalListener} implements all the notifications that can be sent to
-    the user about intervals updating.
+    The user interface must implement all intention and interval methods.
     """
 
     def intervalStart(self, interval: AnyInterval) -> None:
@@ -64,33 +65,38 @@ class IntervalListener(Protocol):
         The interval has ended. Hide the progress bar.
         """
 
-class IntentionListener(Protocol):
-    """
-    An L{IntentionListener} implements all the notifications that be sent to
-    the user about intentions being added or removed.
-    """
-
-    def intentionAdded(self, intention: Intention) -> None:
+    def intentionListObserver(self) -> SequenceObserver[Intention]:
         """
-        An intention was added to the set of intentions.
+        Return a change observer for the full list of L{Intention}s.
         """
 
-    def intentionAbandoned(self, intention: Intention) -> None:
+    def intentionObjectObserver(
+        self, intention: Intention
+    ) -> Changes[str, object]:
         """
-        An intention was removed from the set of intentions by the user.
-        """
-
-    def intentionCompleted(self, intention: Intention) -> None:
-        """
-        An intention was marked as completed, so it is no longer available for
-        selection for new pomodoros by the user.
+        Return a change observer for the given L{Intention}.
         """
 
+    def intentionPomodorosObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Pomodoro]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        pomodoros.
+        """
 
-class UIEventListener(IntentionListener, IntervalListener, Protocol):
-    """
-    The user interface must implement all intention and interval methods.
-    """
+    def intentionEstimatesObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Estimate]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        estimates.
+        """
+
+    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+        """
+        Return a change observer for the given C{interval}.
+        """
 
 
 @dataclass
@@ -98,15 +104,6 @@ class NoUserInterface(UIEventListener):
     """
     Do-nothing implementation of a user interface.
     """
-
-    def intentionAdded(self, intention: Intention) -> None:
-        ...
-
-    def intentionAbandoned(self, intention: Intention) -> None:
-        ...
-
-    def intentionCompleted(self, intention: Intention) -> None:
-        ...
 
     def intervalStart(self, interval: AnyInterval) -> None:
         ...
@@ -120,6 +117,7 @@ class NoUserInterface(UIEventListener):
 
 # Not a protocol because https://github.com/python/mypy/issues/14544
 UserInterfaceFactory: TypeAlias = "Callable[[Nexus], UIEventListener]"
+
 
 class EvaluationResult(Enum):
     """

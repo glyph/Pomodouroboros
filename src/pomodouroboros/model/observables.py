@@ -371,11 +371,7 @@ def _unstringify(cls: type, annotation: object) -> object:
         clslocals = dict(vars(cls))
         return eval(annotation, mod.__dict__, clslocals)
     except:
-        traceback.print_exc()
         return None
-
-
-import traceback
 
 
 def _isObserver(annotation: object) -> bool:
