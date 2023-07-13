@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Iterable, Protocol, TYPE_CHECKING, TypeAlias
 
-from pomodouroboros.model.observables import Changes, SequenceObserver
+from pomodouroboros.model.observables import (Changes, IgnoreChanges,
+    SequenceObserver)
 
 
 if TYPE_CHECKING:
@@ -113,6 +114,45 @@ class NoUserInterface(UIEventListener):
 
     def intervalEnd(self) -> None:
         ...
+
+    def intentionListObserver(self) -> SequenceObserver[Intention]:
+        """
+        Return a change observer for the full list of L{Intention}s.
+        """
+        return IgnoreChanges()
+
+    def intentionObjectObserver(
+        self, intention: Intention
+    ) -> Changes[str, object]:
+        """
+        Return a change observer for the given L{Intention}.
+        """
+        return IgnoreChanges()
+
+    def intentionPomodorosObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Pomodoro]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        pomodoros.
+        """
+        return IgnoreChanges()
+
+    def intentionEstimatesObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Estimate]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        estimates.
+        """
+        return IgnoreChanges()
+
+    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+        """
+        Return a change observer for the given C{interval}.
+        """
+        return IgnoreChanges()
+
 
 
 # Not a protocol because https://github.com/python/mypy/issues/14544

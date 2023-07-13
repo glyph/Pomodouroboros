@@ -2,21 +2,18 @@ from dataclasses import dataclass, field
 from typing import Type, TypeVar
 from unittest import TestCase
 
+from pomodouroboros.model.intention import Estimate
+from pomodouroboros.model.observables import (Changes, IgnoreChanges,
+                                              SequenceObserver)
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
-from ..boundaries import UIEventListener, EvaluationResult, PomStartResult
+from ..boundaries import EvaluationResult, PomStartResult, UIEventListener
 from ..debugger import debug
 from ..ideal import idealScore
 from ..intention import Intention
-from ..intervals import (
-    AnyInterval,
-    Break,
-    Evaluation,
-    GracePeriod,
-    Pomodoro,
-    StartPrompt,
-)
+from ..intervals import (AnyInterval, Break, Evaluation, GracePeriod, Pomodoro,
+                         StartPrompt)
 from ..nexus import Nexus
 
 
@@ -68,6 +65,46 @@ class TestUserInterface:
         The interval has ended. Hide the progress bar.
         """
         self.actions[-1].actualEndTime = self.clock.seconds()
+
+    def intentionListObserver(self) -> SequenceObserver[Intention]:
+        """
+        Return a change observer for the full list of L{Intention}s.
+        """
+        return IgnoreChanges()
+
+    def intentionObjectObserver(
+        self, intention: Intention
+    ) -> Changes[str, object]:
+        """
+        Return a change observer for the given L{Intention}.
+        """
+        return IgnoreChanges()
+
+    def intentionPomodorosObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Pomodoro]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        pomodoros.
+        """
+        return IgnoreChanges()
+
+    def intentionEstimatesObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Estimate]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        estimates.
+        """
+        return IgnoreChanges()
+
+    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+        """
+        Return a change observer for the given C{interval}.
+        """
+        return IgnoreChanges()
+
+    # testing methods
 
     def setIt(self, nexus: Nexus) -> UIEventListener:
         self.theNexus = nexus
@@ -540,7 +577,8 @@ class NexusTests(TestCase):
         )
 
         from json import dumps, loads
-        from ..storage import nexusToJSON, nexusFromJSON
+
+        from ..storage import nexusFromJSON, nexusToJSON
 
         roundTrip = nexusFromJSON(
             loads(dumps(nexusToJSON(self.nexus))),

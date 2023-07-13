@@ -3,48 +3,32 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    ClassVar,
-    Concatenate,
-    Generic,
-    ParamSpec,
-    Protocol,
-    Sequence,
-    TypeVar,
-)
+from typing import (TYPE_CHECKING, Callable, ClassVar, Concatenate, Generic,
+                    ParamSpec, Protocol, Sequence, TypeVar)
 
 import objc
 from AppKit import NSApplication, NSColor, NSNib, NSTableView, NSWindow
 from dateutil.relativedelta import relativedelta
 from Foundation import NSIndexSet, NSObject
 from objc import IBAction, IBOutlet, super
-from pomodouroboros.macos.mac_utils import (
-    Attr,
-    Descriptor,
-    SometimesBackground,
-)
+from pomodouroboros.macos.mac_utils import (Attr, Descriptor,
+                                            SometimesBackground)
+from pomodouroboros.model.intention import Estimate
+from pomodouroboros.model.observables import (Changes, IgnoreChanges,
+                                              SequenceObserver)
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
 from ..hasher import IDHasher
-from ..storage import TEST_MODE
-
 from ..model.boundaries import EvaluationResult
 from ..model.intention import Intention
-from ..model.intervals import (
-    AnyInterval,
-    Break,
-    GracePeriod,
-    Pomodoro,
-    StartPrompt,
-)
+from ..model.intervals import (AnyInterval, Break, GracePeriod, Pomodoro,
+                               StartPrompt)
 from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus, saveDefaultNexus
 from ..model.util import interactionRoot, intervalSummary, showFailures
-
+from ..storage import TEST_MODE
 from .mac_dates import LOCAL_TZ
 from .mac_utils import Forwarder
 from .old_mac_gui import main as oldMain
@@ -116,6 +100,44 @@ class MacUserInterface:
 
     def intervalEnd(self) -> None:
         self.intentionDataSource.startingUnblocked()
+
+    def intentionListObserver(self) -> SequenceObserver[Intention]:
+        """
+        Return a change observer for the full list of L{Intention}s.
+        """
+        return IgnoreChanges()
+
+    def intentionObjectObserver(
+        self, intention: Intention
+    ) -> Changes[str, object]:
+        """
+        Return a change observer for the given L{Intention}.
+        """
+        return IgnoreChanges()
+
+    def intentionPomodorosObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Pomodoro]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        pomodoros.
+        """
+        return IgnoreChanges()
+
+    def intentionEstimatesObserver(
+        self, intention: Intention
+    ) -> SequenceObserver[Estimate]:
+        """
+        Return a change observer for the given L{Intention}'s list of
+        estimates.
+        """
+        return IgnoreChanges()
+
+    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+        """
+        Return a change observer for the given C{interval}.
+        """
+        return IgnoreChanges()
 
     def setExplanation(self, explanatoryText) -> None:
         """

@@ -8,8 +8,6 @@ from os import makedirs, replace
 from os.path import basename, dirname, exists, expanduser, join
 from typing import TypeAlias, cast
 
-from pomodouroboros.model.boundaries import EvaluationResult
-
 from .boundaries import IntervalType, UserInterfaceFactory
 from .intention import Estimate, Intention
 from .intervals import (
@@ -32,6 +30,8 @@ from .schema import (
     SavedPomodoro,
     SavedStartPrompt,
 )
+from pomodouroboros.model.boundaries import EvaluationResult
+from pomodouroboros.model.observables import IgnoreChanges, ObservableList
 
 
 def nexusFromJSON(
@@ -97,10 +97,16 @@ def nexusFromJSON(
                 originalPomEnd=savedInterval["originalPomEnd"],
             )
 
-    streaks = [
-        [loadInterval(interval) for interval in savedStreak]
-        for savedStreak in saved["streaks"]
-    ]
+    streaks = ObservableList(
+        IgnoreChanges(),
+        [
+            ObservableList(
+                IgnoreChanges(),
+                [loadInterval(interval) for interval in savedStreak],
+            )
+            for savedStreak in saved["streaks"]
+        ],
+    )
     activeInterval = (
         streaks[-1][-1] if saved["intervalIsActive"] is not None else None
     )
@@ -119,10 +125,10 @@ def nexusFromJSON(
             ]
         ),
         _streaks=streaks,
-        _sessions=[
+        _sessions=ObservableList(IgnoreChanges(), [
             Session(start=each["start"], end=each["end"])
             for each in saved["sessions"]
-        ],
+        ]),
         _interfaceFactory=userInterfaceFactory,
     )
     nexus._lastUpdateTime = saved["lastUpdateTime"]
