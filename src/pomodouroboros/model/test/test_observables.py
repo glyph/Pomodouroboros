@@ -210,7 +210,22 @@ class TestObservables(TC):
     def test_hasDefault(self) -> None:
         self.assertEqual(
             HasDefault(IgnoreChanges(), "hi"),
-            HasDefault(IgnoreChanges(), "hi"),
+            HasDefault(IgnoreChanges(), "hi", three=[6]),
+        )
+
+    def test_hasDefaultObserver(self) -> None:
+        hdo1 = HasDefaultObserver(1)
+        hdo2 = HasDefaultObserver(1)
+        self.assertEqual(hdo1, hdo2)
+        cr = ChangeRecorder(hdo1)
+        hdo1.observer = cr
+        hdo1.value = 2
+        self.assertEqual(
+            cr.changes,
+            [
+                ("will change", "value", 1, 1, 2),
+                ("did change", "value", 2, 1, 2),
+            ],
         )
 
 
@@ -239,7 +254,7 @@ class VerboseColor:
 
 @dataclass(repr=False)
 class ChangeRecorder:
-    example: Example
+    example: object
     changes: list[Any] = field(default_factory=list)
 
     def __repr__(self) -> str:
@@ -310,3 +325,10 @@ class HasDefault:
     observer: Observer
     one: str
     two: int = 5
+    three: list = field(default_factory=lambda: [6])
+
+
+@observable()
+class HasDefaultObserver:
+    value: int
+    observer: Observer = field(default_factory=IgnoreChanges)

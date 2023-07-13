@@ -343,6 +343,7 @@ class ObservableProperty:
 
     def __set__(self, instance: object, value: object) -> None:
         notify: Changes[str, object] = getattr(instance, self.observer_name)
+
         # I need to avoid invoking the observer if the instance isn't fully
         # initialized
         with notify.changed(
@@ -403,9 +404,11 @@ def observable(repr: bool = True) -> Callable[[Ty], Ty]:
         originalAnnotations = cls.__annotations__
 
         cls = dataclass(repr=repr)(cls)  # type:ignore[assignment]
-        for k, v in originalAnnotations.items():
+        for i, (k, v) in enumerate(originalAnnotations.items()):
             if _isObserver(_unstringify(cls, v)):
+                observerIndex = i
                 observerName = k
+                break
 
         if observerName is None:
             raise MustSpecifyObserver(
@@ -415,6 +418,13 @@ def observable(repr: bool = True) -> Callable[[Ty], Ty]:
         for k, v in originalAnnotations.items():
             if k != observerName:
                 setattr(cls, k, ObservableProperty(observerName, k))
+        if observerIndex != 0:
+            # If the observer is not specified as the first argument, then the
+            # dataclass-generated __init__ is going to assign other attributes
+            # first, and therefore we cannot observe them.  So here we provide
+            # a class-level default that will allow the attribute to be
+            # retrieved by ObservableProperty.__set__/.__delete__.
+            setattr(cls, observerName, IgnoreChanges())
         return cls
 
     return make_observable
