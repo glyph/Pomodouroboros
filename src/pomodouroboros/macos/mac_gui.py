@@ -500,7 +500,6 @@ class IntentionPomodorosDataSource(NSObject):
         }
 
     def clearSelection(self) -> None:
-        """ """
         self.selectedPomodoro = None
         self.hasSelection = False
         self.canEvaluateDistracted = (
