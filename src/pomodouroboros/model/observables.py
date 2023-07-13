@@ -131,6 +131,7 @@ class _ObserverMarker(Enum):
 _ItsTheObserver = _ObserverMarker.sentinel
 
 CustomObserver = Annotated[_O, _ItsTheObserver]
+_AnnotatedType = type(CustomObserver)
 Observer = CustomObserver[_ObjectObserverBound]
 
 
@@ -348,9 +349,8 @@ def _unstringify(cls: type, annotation: object) -> object:
     except:
         return None
 
-
 def _isObserver(annotation: object) -> bool:
-    if isinstance(annotation, type(Observer)):
+    if isinstance(annotation, _AnnotatedType):
         # does the standard lib have no nicer way to ask 'is this `Annotated`'?
         for element in annotation.__metadata__:
             if element is _ItsTheObserver:
