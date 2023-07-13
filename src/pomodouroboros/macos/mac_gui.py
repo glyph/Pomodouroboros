@@ -30,6 +30,8 @@ from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
 from ..hasher import IDHasher
+from ..storage import TEST_MODE
+
 from ..model.boundaries import EvaluationResult
 from ..model.intention import Intention
 from ..model.intervals import (
@@ -42,7 +44,7 @@ from ..model.intervals import (
 from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus, saveDefaultNexus
 from ..model.util import interactionRoot, intervalSummary, showFailures
-from ..storage import TEST_MODE
+
 from .mac_dates import LOCAL_TZ
 from .mac_utils import Forwarder
 from .old_mac_gui import main as oldMain
