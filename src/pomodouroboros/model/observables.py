@@ -5,6 +5,7 @@ import sys
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from functools import total_ordering
 from typing import (
     Annotated,
     Callable,
@@ -13,8 +14,8 @@ from typing import (
     IO,
     Iterable,
     Iterator,
-    MutableMapping,
     Mapping,
+    MutableMapping,
     MutableSequence,
     Protocol,
     TypeVar,
@@ -133,12 +134,21 @@ _ItsTheObserver = _ObserverMarker.sentinel
 CustomObserver = Annotated[_O, _ItsTheObserver]
 _AnnotatedType = type(CustomObserver)
 Observer = CustomObserver[_ObjectObserverBound]
+SequenceObserver = Changes[int | slice, V | Iterable[V]]
 
 
-@dataclass
+@dataclass(eq=False, order=False)
 class ObservableDict(MutableMapping[K, V]):
-    _observer: Changes[K, V]
-    _storage: MutableMapping[K, V]
+    observer: Changes[K, V]
+    _storage: MutableMapping[K, V] = field(default_factory=dict)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ObservableDict):
+            return dict(self._storage) == dict(other._storage)
+        elif isinstance(other, dict):
+            return dict(self._storage) == dict(other)
+        else:
+            return NotImplemented
 
     # unchanged proxied read operations
     def __getitem__(self, key: K) -> V:
@@ -153,21 +163,38 @@ class ObservableDict(MutableMapping[K, V]):
     # notifying write operations
     def __setitem__(self, key: K, value: V) -> None:
         with (
-            self._observer.changed(key, self._storage[key], value)
+            self.observer.changed(key, self._storage[key], value)
             if key in self._storage
-            else self._observer.added(key, value)
+            else self.observer.added(key, value)
         ):
             return self._storage.__setitem__(key, value)
 
     def __delitem__(self, key: K) -> None:
-        with self._observer.removed(key, self._storage[key]):
+        with self.observer.removed(key, self._storage[key]):
             return self._storage.__delitem__(key)
 
 
-@dataclass(repr=False)
+@total_ordering
+@dataclass(repr=False, eq=False, order=False)
 class ObservableList(MutableSequence[V]):
-    _observer: Changes[int | slice, V | Iterable[V]]
-    _storage: MutableSequence[V]
+    observer: SequenceObserver[V]
+    _storage: MutableSequence[V] = field(default_factory=list)
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, ObservableList):
+            return list(self._storage) < list(other._storage)
+        elif isinstance(other, list):
+            return list(self._storage) < list(other)
+        else:
+            return NotImplemented
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ObservableList):
+            return list(self._storage) == list(other._storage)
+        elif isinstance(other, list):
+            return list(self._storage) == list(other)
+        else:
+            return NotImplemented
 
     def __repr__(self) -> str:
         return repr(self._storage) + "~(observable)"
@@ -182,13 +209,13 @@ class ObservableList(MutableSequence[V]):
 
     def __setitem__(self, index: int | slice, value: V | Iterable[V]) -> None:
         with (
-            self._observer.changed(index, self._storage[index], value)
+            self.observer.changed(index, self._storage[index], value)
             if (
                 isinstance(index, int)
                 and (0 <= index < len(self._storage))
                 or isinstance(index, slice)
             )
-            else self._observer.added(index, value)
+            else self.observer.added(index, value)
         ):
             # the overloads above ensure the proper type dependence between
             # 'index' and 'slice' (slice index means Iterable[V], int index
@@ -201,14 +228,14 @@ class ObservableList(MutableSequence[V]):
             )
 
     def __delitem__(self, index: int | slice) -> None:
-        with self._observer.removed(index, self._storage[index]):
+        with self.observer.removed(index, self._storage[index]):
             self._storage.__delitem__(index)
 
     def insert(self, index: int, value: V) -> None:
         """
         a value was inserted
         """
-        with self._observer.added(index, value):
+        with self.observer.added(index, value):
             self._storage.insert(index, value)
 
     # proxied read operations
@@ -280,9 +307,7 @@ class MirrorList(Generic[V]):
         self.mirror[key] = new  # type:ignore
 
 
-_MirrorListImplements: type[
-    Changes[int | slice, str | Iterable[str]]
-] = MirrorList[str]
+_MirrorListImplements: type[SequenceObserver[str]] = MirrorList[str]
 
 
 @dataclass
@@ -341,13 +366,16 @@ def _unstringify(cls: type, annotation: object) -> object:
     if not isinstance(annotation, str):
         return annotation
     try:
-        return eval(
-            annotation,
-            sys.modules[cls.__module__].__dict__,
-            dict(vars(cls)),
-        )
+        mod = sys.modules[cls.__module__]
+        clslocals = dict(vars(cls))
+        return eval(annotation, mod.__dict__, clslocals)
     except:
+        traceback.print_exc()
         return None
+
+
+import traceback
+
 
 def _isObserver(annotation: object) -> bool:
     if isinstance(annotation, _AnnotatedType):
@@ -372,8 +400,10 @@ class MustSpecifyObserver(Exception):
 def observable(repr: bool = True) -> Callable[[Ty], Ty]:
     def make_observable(cls: Ty) -> Ty:
         observerName = None
+        originalAnnotations = cls.__annotations__
 
-        for k, v in cls.__annotations__.items():
+        cls = dataclass(repr=repr)(cls)  # type:ignore[assignment]
+        for k, v in originalAnnotations.items():
             if _isObserver(_unstringify(cls, v)):
                 observerName = k
 
@@ -382,10 +412,10 @@ def observable(repr: bool = True) -> Callable[[Ty], Ty]:
                 "you must annotate one attribute with Observer"
             )
 
-        for k, v in cls.__annotations__.items():
+        for k, v in originalAnnotations.items():
             if k != observerName:
                 setattr(cls, k, ObservableProperty(observerName, k))
-        return dataclass(repr=repr)(cls)  # type:ignore[return-value]
+        return cls
 
     return make_observable
 

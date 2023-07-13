@@ -36,6 +36,7 @@ from ..observables import (
     MirrorObject,
     ObservableDict,
     MirrorDict,
+    IgnoreChanges,
 )
 
 
@@ -206,6 +207,12 @@ class TestObservables(TC):
         a.b = 1
         check()
 
+    def test_hasDefault(self) -> None:
+        self.assertEqual(
+            HasDefault(IgnoreChanges(), "hi"),
+            HasDefault(IgnoreChanges(), "hi"),
+        )
+
 
 @observable()
 class TerseColor:
@@ -296,3 +303,10 @@ class Example:
     ) -> Example:
         p: PathObserver[object, object] = PathObserver(observer, "")
         return cls(p, name, age, valueList=ObservableList(p.child("list"), []))
+
+
+@observable()
+class HasDefault:
+    observer: Observer
+    one: str
+    two: int = 5
