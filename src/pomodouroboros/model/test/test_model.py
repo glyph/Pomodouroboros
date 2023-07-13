@@ -53,6 +53,7 @@ class TestUserInterface:
         The active interval has progressed to C{percentComplete} percentage
         complete.
         """
+        debug("interval: progress!", percentComplete)
         self.actions[-1].currentProgress.append(percentComplete)
 
     def intervalStart(self, interval: AnyInterval) -> None:
