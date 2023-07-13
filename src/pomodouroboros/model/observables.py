@@ -77,24 +77,28 @@ def noop() -> Iterator[None]:
 
 @dataclass
 class IgnoreChanges:
-    def added(self, key: object, new: object) -> ContextManager[None]:
+    @classmethod
+    def added(cls, key: object, new: object) -> ContextManager[None]:
         return noop()
 
-    def removed(self, key: object, old: object) -> ContextManager[None]:
+    @classmethod
+    def removed(cls, key: object, old: object) -> ContextManager[None]:
         return noop()
 
+    @classmethod
     def changed(
-        self, key: object, old: object, new: object
+        cls, key: object, old: object, new: object
     ) -> ContextManager[None]:
         return noop()
 
 
 _IgnoreChangesImplements: type[Changes[object, object]] = IgnoreChanges
+_IgnoreChangesImplementsClass: Changes[object, object] = IgnoreChanges
 
 
 @dataclass
 class DebugChanges(Generic[Kcon, Vcon]):
-    original: Changes[Kcon, Vcon] = field(default_factory=IgnoreChanges)
+    original: Changes[Kcon, Vcon] = IgnoreChanges
     stream: IO[str] = field(default_factory=lambda: sys.stderr)
 
     @contextmanager
@@ -433,18 +437,34 @@ class PathObserver(Generic[Kcon, Vcon]):
     translates the key type to a string that represents a path.  You can add
     elements to the path.
 
-    For example, if you have two observables like so::
+    For example, if you have two observables like so, one containing the other,
+    and you want to keep track of which thing was changed::
 
-    @observable()
-    class B:
-        observer: Changes[str, object]
-        bValue: str
+        @observable()
+        class B:
+            bValue: str
+            observer: Observer = IgnoreChanges
 
-    @observable()
-    class A:
-        observer: Changes[str, object]
-        b: B
-        aValue: str
+
+        @observable()
+        class A:
+            b: B
+            aValue: str
+            observer: Observer = IgnoreChanges
+
+    You can then arrange observers like so::
+
+        root = DebugChanges()
+        path = PathObserver(root, "a")
+
+        a = A(B("b"), "a")
+        a.observer = path
+        a.b.observer = path.child("b")
+        a.aValue = "x"
+        a.b.bValue = "y"
+
+    and you will see that the changes are reflected with keys of 'a.aValue' and
+    'a.b.bValue' respectively.
     """
 
     wrapped: Changes[str, Vcon]
