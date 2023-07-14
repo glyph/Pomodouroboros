@@ -618,6 +618,9 @@ class PomFilesOwner(NSObject):
     intentionsTable: NSTableView
     intentionsTable = IBOutlet()
 
+    intentionsTitleField: NSTextField
+    intentionsTitleField = IBOutlet()
+
     if TYPE_CHECKING:
 
         @classmethod
@@ -643,6 +646,7 @@ class PomFilesOwner(NSObject):
             NSIndexSet.indexSetWithIndex_(len(self.nexus.intentions) - 1),
             False,
         )
+        self.intentionsWindow.makeFirstResponder_(self.intentionsTitleField)
 
     @IBAction
     @interactionRoot
