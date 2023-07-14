@@ -209,8 +209,8 @@ class TestObservables(TC):
 
     def test_hasDefault(self) -> None:
         self.assertEqual(
-            HasDefault(IgnoreChanges(), "hi"),
-            HasDefault(IgnoreChanges(), "hi", three=[6]),
+            HasDefault(IgnoreChanges, "hi"),
+            HasDefault(IgnoreChanges, "hi", three=[6]),
         )
 
     def test_hasDefaultObserver(self) -> None:

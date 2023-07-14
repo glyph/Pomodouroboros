@@ -98,10 +98,10 @@ def nexusFromJSON(
             )
 
     streaks = ObservableList(
-        IgnoreChanges(),
+        IgnoreChanges,
         [
             ObservableList(
-                IgnoreChanges(),
+                IgnoreChanges,
                 [loadInterval(interval) for interval in savedStreak],
             )
             for savedStreak in saved["streaks"]
@@ -125,10 +125,13 @@ def nexusFromJSON(
             ]
         ),
         _streaks=streaks,
-        _sessions=ObservableList(IgnoreChanges(), [
-            Session(start=each["start"], end=each["end"])
-            for each in saved["sessions"]
-        ]),
+        _sessions=ObservableList(
+            IgnoreChanges,
+            [
+                Session(start=each["start"], end=each["end"])
+                for each in saved["sessions"]
+            ],
+        ),
         _interfaceFactory=userInterfaceFactory,
     )
     nexus._lastUpdateTime = saved["lastUpdateTime"]

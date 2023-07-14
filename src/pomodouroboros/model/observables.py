@@ -424,7 +424,7 @@ def observable(repr: bool = True) -> Callable[[Ty], Ty]:
             # first, and therefore we cannot observe them.  So here we provide
             # a class-level default that will allow the attribute to be
             # retrieved by ObservableProperty.__set__/.__delete__.
-            setattr(cls, observerName, IgnoreChanges())
+            setattr(cls, observerName, IgnoreChanges)
         return cls
 
     return make_observable

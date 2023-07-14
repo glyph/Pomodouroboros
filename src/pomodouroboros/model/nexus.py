@@ -69,7 +69,7 @@ class Nexus:
     _lastIntentionID: int
 
     _intentions: MutableSequence[Intention] = field(
-        default_factory=lambda: ObservableList(IgnoreChanges())
+        default_factory=lambda: ObservableList(IgnoreChanges)
     )
     _activeInterval: AnyInterval | None = None
     """
@@ -83,7 +83,7 @@ class Nexus:
 
     _streaks: ObservableList[ObservableList[AnyInterval]] = field(
         default_factory=lambda: ObservableList(
-            IgnoreChanges(), [ObservableList(IgnoreChanges())]
+            IgnoreChanges, [ObservableList(IgnoreChanges)]
         )
     )
     """
@@ -91,7 +91,7 @@ class Nexus:
     are now completed.
     """
     _sessions: ObservableList[Session] = field(
-        default_factory=lambda: ObservableList(IgnoreChanges())
+        default_factory=lambda: ObservableList(IgnoreChanges)
     )
 
     def __post_init__(self) -> None:
@@ -219,7 +219,7 @@ class Nexus:
                     self._upcomingDurations = iter(())
                     # When a grace period expires, a streak is broken, so we
                     # make a new one.
-                    self._streaks.append(ObservableList(IgnoreChanges()))
+                    self._streaks.append(ObservableList(IgnoreChanges))
                 self._makeNextInterval(newTime)
 
         # If there's an active streak, we definitionally should not have

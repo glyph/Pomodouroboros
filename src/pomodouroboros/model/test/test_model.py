@@ -70,7 +70,7 @@ class TestUserInterface:
         """
         Return a change observer for the full list of L{Intention}s.
         """
-        return IgnoreChanges()
+        return IgnoreChanges
 
     def intentionObjectObserver(
         self, intention: Intention
@@ -78,7 +78,7 @@ class TestUserInterface:
         """
         Return a change observer for the given L{Intention}.
         """
-        return IgnoreChanges()
+        return IgnoreChanges
 
     def intentionPomodorosObserver(
         self, intention: Intention
@@ -87,7 +87,7 @@ class TestUserInterface:
         Return a change observer for the given L{Intention}'s list of
         pomodoros.
         """
-        return IgnoreChanges()
+        return IgnoreChanges
 
     def intentionEstimatesObserver(
         self, intention: Intention
@@ -96,13 +96,13 @@ class TestUserInterface:
         Return a change observer for the given L{Intention}'s list of
         estimates.
         """
-        return IgnoreChanges()
+        return IgnoreChanges
 
     def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """
-        return IgnoreChanges()
+        return IgnoreChanges
 
     # testing methods
 
