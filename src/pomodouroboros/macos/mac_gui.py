@@ -2,31 +2,43 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from functools import wraps
-from typing import (TYPE_CHECKING, Callable, ClassVar, Concatenate, Generic,
-                    ParamSpec, Protocol, Sequence, TypeVar)
+from typing import TYPE_CHECKING, Callable, Generic, Sequence, TypeVar
 
 import objc
-from AppKit import NSApplication, NSColor, NSNib, NSTableView, NSWindow
-from dateutil.relativedelta import relativedelta
+from AppKit import (
+    NSApplication,
+    NSColor,
+    NSNib,
+    NSTableView,
+    NSTextField,
+    NSWindow,
+)
 from Foundation import NSIndexSet, NSObject
 from objc import IBAction, IBOutlet, super
-from pomodouroboros.macos.mac_utils import (Attr, Descriptor,
-                                            SometimesBackground)
-from pomodouroboros.model.intention import Estimate
-from pomodouroboros.model.observables import (Changes, IgnoreChanges,
-                                              SequenceObserver)
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
+from pomodouroboros.macos.mac_utils import Attr, SometimesBackground
+from pomodouroboros.model.intention import Estimate
+from pomodouroboros.model.observables import (
+    Changes,
+    IgnoreChanges,
+    SequenceObserver,
+)
+
 from ..hasher import IDHasher
 from ..model.boundaries import EvaluationResult
 from ..model.intention import Intention
-from ..model.intervals import (AnyInterval, Break, GracePeriod, Pomodoro,
-                               StartPrompt)
+from ..model.intervals import (
+    AnyInterval,
+    Break,
+    GracePeriod,
+    Pomodoro,
+    StartPrompt,
+)
 from ..model.nexus import Nexus
-from ..model.storage import loadDefaultNexus, saveDefaultNexus
+from ..model.storage import loadDefaultNexus
 from ..model.util import interactionRoot, intervalSummary, showFailures
 from ..storage import TEST_MODE
 from .mac_dates import LOCAL_TZ
