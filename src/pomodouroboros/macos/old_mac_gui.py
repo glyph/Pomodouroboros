@@ -787,12 +787,27 @@ class DayEditorController(NSObject):
                 )
                 self.arrayController.addObject_(rowDict)
                 rowDict.addObserver_forKeyPath_options_context_(
-                    observer, "description", 0xF, 0x020202
+                    observer, "description", AllOptions, None
                 )
         self.tableView.reloadData()
         self.tableView.selectRowIndexes_byExtendingSelection_(
             NSIndexSet.indexSetWithIndex_(previouslySelectedRow), False
         )
+
+
+from Foundation import (
+    NSKeyValueObservingOptionNew,
+    NSKeyValueObservingOptionOld,
+    NSKeyValueObservingOptionInitial,
+    NSKeyValueObservingOptionPrior,
+)
+
+AllOptions = (
+    NSKeyValueObservingOptionNew
+    | NSKeyValueObservingOptionOld
+    | NSKeyValueObservingOptionInitial
+    | NSKeyValueObservingOptionPrior
+)
 
 
 def main(reactor: IReactorTime) -> None:
