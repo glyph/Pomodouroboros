@@ -935,8 +935,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="0VN-am-jg8">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="711058171.49154401">
-                                                    <!--2023-07-14 20:09:31 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="711073699.79247797">
+                                                    <!--2023-07-15 00:28:19 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1427,8 +1427,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="2ek-VJ-F3s">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="711058171.50752497">
-                                                    <!--2023-07-14 20:09:31 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="711073699.80843401">
+                                                    <!--2023-07-15 00:28:19 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1832,15 +1832,6 @@
             </items>
             <point key="canvasLocation" x="-3289" y="-2932"/>
         </menu>
-        <button verticalHuggingPriority="750" id="mdO-L7-35a">
-            <rect key="frame" x="0.0" y="0.0" width="154" height="44"/>
-            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-            <buttonCell key="cell" type="push" title="test words typing" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="krs-h0-8iJ">
-                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                <font key="font" metaFont="system"/>
-            </buttonCell>
-            <point key="canvasLocation" x="-2822" y="-1902"/>
-        </button>
     </objects>
     <resources>
         <image name="NSAddTemplate" width="18" height="17"/>
