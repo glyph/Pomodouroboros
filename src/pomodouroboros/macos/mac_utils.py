@@ -223,15 +223,15 @@ class SometimesBackground:
     previouslyActiveApp: NSRunningApplication = field(init=False)
 
     def someApplicationActivated_(self, notification: Any) -> None:
-        NSLog(f"active {notification} {__file__}")
+        # NSLog(f"active {notification} {__file__}")
         whichApp = notification.userInfo()[NSWorkspaceApplicationKey]
 
         if whichApp == NSRunningApplication.currentApplication():
             if self.currentlyRegular:
-                NSLog("show editor window")
+                # NSLog("show editor window")
                 self.mainWindow.setIsVisible_(True)
             else:
-                NSLog("reactivate workaround")
+                # NSLog("reactivate workaround")
                 self.currentlyRegular = True
                 self.previouslyActiveApp.activateWithOptions_(
                     NSApplicationActivateIgnoringOtherApps
