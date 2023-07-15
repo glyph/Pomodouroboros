@@ -2,18 +2,44 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from itertools import cycle
 from typing import TYPE_CHECKING, Callable, Generic, Sequence, TypeVar
+from random import random
 
 import objc
 from AppKit import (
     NSApplication,
+    NSBackingStoreBuffered,
+    NSBezelStyleTexturedSquare,
+    NSButton,
+    NSClosableWindowMask,
     NSColor,
+    NSCommandKeyMask,
+    NSControlSizeLarge,
+    NSImageLeading,
+    NSLayoutAttributeHeight,
+    NSLayoutAttributeWidth,
+    NSLayoutConstraint,
+    NSLayoutConstraintOrientationHorizontal,
+    NSLayoutConstraintOrientationVertical,
+    NSLineBreakByWordWrapping,
     NSNib,
+    NSPanel,
+    NSSize,
+    NSStackView,
+    NSStackViewDistributionFillProportionally,
     NSTableView,
     NSTextField,
+    NSTitledWindowMask,
+    NSUserInterfaceLayoutOrientationVertical,
     NSWindow,
+    NSWindowCollectionBehaviorParticipatesInCycle,
+    NSWindowStyleMaskFullSizeContentView,
+    NSWindowStyleMaskHUDWindow,
+    NSWindowStyleMaskResizable,
+    NSWindowTitleHidden,
 )
-from Foundation import NSIndexSet, NSObject
+from Foundation import NSIndexSet, NSObject, NSRect
 from objc import IBAction, IBOutlet, super
 from quickmacapp import Status, mainpoint
 from twisted.internet.interfaces import IReactorTime
@@ -602,6 +628,10 @@ class StreakDataSource(NSObject):
     ) -> str:
         return "uh oh"
 
+class CustomButton(NSButton):
+    ...
+    # def intrinsicContentSize(self) -> NSSize:
+    #     return self.fittingSize()
 
 class PomFilesOwner(NSObject):
     nexus: Nexus
@@ -633,6 +663,152 @@ class PomFilesOwner(NSObject):
         """
         self.nexus = nexus
         return self
+
+    def showButton_(self, sender: NSObject) -> None:
+        print("button", sender.title())
+
+    @IBAction
+    def addStackButton_(self, sender: NSObject) -> None:
+        # self.testStackView.addView_inGravity_(
+        #     NSButton.buttonWithTitle_target_action_("test button", None, None),
+        #     NSStackViewGravityBottom,
+        # )
+        with showFailures():
+            rainbow = [
+                NSColor.redColor(),
+                NSColor.orangeColor(),
+                NSColor.yellowColor(),
+                NSColor.greenColor(),
+                NSColor.blueColor(),
+                NSColor.systemIndigoColor(),
+                NSColor.purpleColor(),
+            ]
+            wide = CustomButton.buttonWithTitle_target_action_(
+                "four score and seven years ago\nwe had a big pile\nof super wide buttons",
+                None,
+                None,
+            )
+            # wide.setButtonType_()
+            wide.sizeToFit()
+            wide.cell().setWraps_(True)
+            # wide.setBezelStyle_(NSBezelStyleTexturedSquare)
+            wide.setControlSize_(NSControlSizeLarge)
+            wide.setUsesSingleLineMode_(True)
+            viewsToStack = []
+            for n, c in zip(range(10), cycle(rainbow)):
+                b = NSButton.buttonWithTitle_target_action_(
+                    f"test button {n}", self, "showButton:"
+                )
+                b.setBezelColor_(c)
+                b.setControlSize_(NSControlSizeLarge)
+                # b.setBackgroundColor_(c)
+                # b.setBezelStyle_(NSBezelStyleTexturedSquare)
+                b.setImage_(None)
+                b.setAlternateImage_(None)
+                b.setImagePosition_(NSImageLeading)
+                b.setKeyEquivalent_(str(n))
+                b.setKeyEquivalentModifierMask_(NSCommandKeyMask)
+                b.setContentHuggingPriority_forOrientation_(
+                    1,
+                    NSLayoutConstraintOrientationHorizontal,
+                )
+                b.setContentHuggingPriority_forOrientation_(
+                    1,
+                    NSLayoutConstraintOrientationVertical,
+                )
+                skew = 9
+                b.setFrameRotation_((random() * skew) - (skew/2))
+
+                # b.setTranslatesAutoresizingMaskIntoConstraints_(False)
+                viewsToStack.append(b)
+
+            stackView = NSStackView.stackViewWithViews_(viewsToStack)
+            stackView.setOrientation_(NSUserInterfaceLayoutOrientationVertical)
+            wrapperStackView = NSStackView.stackViewWithViews_([stackView])
+            stackView.setEdgeInsets_((20, 20, 20, 20))
+            stackView.setDistribution_(
+                NSStackViewDistributionFillProportionally
+            )
+            wrapperStackView.setEdgeInsets_((20, 20, 20, 20))
+
+            stackView.setContentHuggingPriority_forOrientation_(
+                1,
+                NSLayoutConstraintOrientationHorizontal,
+            )
+            stackView.setContentHuggingPriority_forOrientation_(
+                1,
+                NSLayoutConstraintOrientationVertical,
+            )
+            wrapperStackView.setContentHuggingPriority_forOrientation_(
+                1,
+                NSLayoutConstraintOrientationHorizontal,
+            )
+            wrapperStackView.setContentHuggingPriority_forOrientation_(
+                1,
+                NSLayoutConstraintOrientationVertical,
+            )
+
+            # sz = wrapperStackView.fittingSize()
+            # print("size?", sz)
+            styleMask = (
+                NSTitledWindowMask
+                | (NSClosableWindowMask & 0)
+                | NSWindowStyleMaskFullSizeContentView
+                | NSWindowStyleMaskHUDWindow
+                | NSWindowStyleMaskResizable
+            )
+            nsw = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+                NSRect((100, 100), (200, 100)),
+                styleMask,
+                NSBackingStoreBuffered,
+                False,
+            )
+            nsw.setTitle_("Start Pomodoro")
+            nsw.setTitleVisibility_(NSWindowTitleHidden)
+            nsw.setTitlebarAppearsTransparent_(True)
+            nsw.setBecomesKeyOnlyIfNeeded_(False)
+            nsw.setCollectionBehavior_(
+                NSWindowCollectionBehaviorParticipatesInCycle
+            )
+            nsw.setContentView_(wrapperStackView)
+            makeConstraints = (
+                NSLayoutConstraint.constraintsWithVisualFormat_options_metrics_views_
+            )
+            for eachView in viewsToStack[1:]:
+                stackView.addConstraints_(
+                    makeConstraints(
+                        "[follower(==leader)]", 0, None, {"leader": viewsToStack[0], "follower": eachView}
+                    )
+                )
+                # stackView.addConstraints_(
+                #     makeConstraints(
+                #         "H:|[customView]|", 0, None, {"customView": eachView}
+                #     )
+                # )
+                # stackView.addConstraints_(
+                #     makeConstraints(
+                #         "V:|[customView]|", 0, None, {"customView": eachView}
+                #     )
+                # )
+            # wrapperStackView.addConstraints_(
+            #     makeConstraints("H:|[content]|@250", 0, None, {"content": stackView})
+            # )
+            # wrapperStackView.addConstraints_(
+            #     makeConstraints("V:|[content]|", 0, None, {"content": stackView})
+            # )
+            stackView.setAlignment_(NSLayoutAttributeWidth)
+            wrapperStackView.setAlignment_(NSLayoutAttributeHeight)
+
+            print("wide sz", wide.fittingSize())
+            print("wide intr", wide.intrinsicContentSize())
+            wide.setFrameRotation_(3)
+            wide.frame().size.height = 100
+            wide.cell().setLineBreakMode_(NSLineBreakByWordWrapping)
+
+            nsw.setReleasedWhenClosed_(False)
+            nsw.setHidesOnDeactivate_(False)
+            nsw.center()
+            nsw.makeKeyAndOrderFront_(nsw)
 
     @IBAction
     @interactionRoot
@@ -676,6 +852,7 @@ class PomFilesOwner(NSObject):
         Let's get the GUI started.
         """
         with showFailures():
+            # self.addStackButton_(self)
             # TODO: update intention data source with initial data from nexus
             self.intentionDataSource.awakeWithNexus_(self.nexus)
             self.streakDataSource.awakeWithNexus_(self.nexus)
