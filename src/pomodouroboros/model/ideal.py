@@ -26,6 +26,7 @@ class ScoreSummary:
     A L{ScoreSummary} is a container for L{ScoreEvent}s that can summarize
     things about them.
     """
+
     events: Sequence[ScoreEvent]
 
     @property
@@ -34,6 +35,7 @@ class ScoreSummary:
         Compute the total score for the contained scores.
         """
         return sum(each.points for each in self.events)
+
 
 @dataclass
 class IdealScoreInfo:
@@ -124,20 +126,23 @@ def idealFuture(
     return hypothetical
 
 
-def idealScore(nexus: Nexus, workPeriodEnd: float) -> IdealScoreInfo:
+def idealScore(
+    nexus: Nexus, workPeriodBegin: float, workPeriodEnd: float
+) -> IdealScoreInfo:
     """
-    Compute the inflection point for the ideal score the user might
-    achieve.  We present two hypothetical futures: one where the user
-    executes perfectly, and the other where they wait long enough to lose
-    some element of that perfect score, and then begins executing
-    perfectly.
+    Compute the inflection point for the ideal score the user might achieve.
+    We present two hypothetical futures: one where the user executes perfectly
+    from C{workPeriodBegin} to C{workPeriodEnd}, and the other where they wait
+    exactly long enough to lose I{one} element of that perfect score, and then
+    begin executing perfectly.
     """
     debug("ideal future 1")
     workPeriodBegin = nexus._lastUpdateTime
     currentIdeal = idealFuture(nexus, workPeriodBegin, workPeriodEnd)
     idealScoreNow = sorted(
         # TODO: we're scoring all events from all time here
-        currentIdeal.scoreEvents(endTime=workPeriodEnd), key=lambda it: it.time
+        currentIdeal.scoreEvents(endTime=workPeriodEnd),
+        key=lambda it: it.time,
     )
     if not idealScoreNow:
         return IdealScoreInfo(
@@ -154,11 +159,13 @@ def idealScore(nexus: Nexus, workPeriodEnd: float) -> IdealScoreInfo:
         idealScoreNow=ScoreSummary(idealScoreNow),
         workPeriodEnd=workPeriodEnd,
         nextPointLoss=pointLossTime,
-        idealScoreNext=ScoreSummary(list(
-            (
-                idealFuture(nexus, pointLossTime + 1.0, workPeriodEnd)
-                if idealScoreNow
-                else currentIdeal
-            ).scoreEvents(endTime=workPeriodEnd)
-        )),
+        idealScoreNext=ScoreSummary(
+            list(
+                (
+                    idealFuture(nexus, pointLossTime + 1.0, workPeriodEnd)
+                    if idealScoreNow
+                    else currentIdeal
+                ).scoreEvents(endTime=workPeriodEnd)
+            )
+        ),
     )

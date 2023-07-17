@@ -363,7 +363,7 @@ def nextInterval(
         debug("no session")
         return None
 
-    scoreInfo = idealScore(nexus, session.end)
+    scoreInfo = idealScore(nexus, session.start, session.end)
     nextDrop = scoreInfo.nextPointLoss
     debug(nextDrop)
     if nextDrop is None:

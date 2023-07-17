@@ -3,8 +3,11 @@ from typing import Type, TypeVar
 from unittest import TestCase
 
 from pomodouroboros.model.intention import Estimate
-from pomodouroboros.model.observables import (Changes, IgnoreChanges,
-                                              SequenceObserver)
+from pomodouroboros.model.observables import (
+    Changes,
+    IgnoreChanges,
+    SequenceObserver,
+)
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
@@ -12,8 +15,14 @@ from ..boundaries import EvaluationResult, PomStartResult, UIEventListener
 from ..debugger import debug
 from ..ideal import idealScore
 from ..intention import Intention
-from ..intervals import (AnyInterval, Break, Evaluation, GracePeriod, Pomodoro,
-                         StartPrompt)
+from ..intervals import (
+    AnyInterval,
+    Break,
+    Evaluation,
+    GracePeriod,
+    Pomodoro,
+    StartPrompt,
+)
 from ..nexus import Nexus
 
 
@@ -150,6 +159,37 @@ class NexusTests(TestCase):
         debug("to", self.clock.seconds())
         self.nexus.advanceToTime(self.clock.seconds())
 
+    def test_noPointsForNothing(self) -> None:
+        """
+        Measuring the score of an empty period of time should produce no
+        points.
+        """
+
+        def checkScore() -> float:
+            return sum(
+                (
+                    each.points
+                    for each in self.nexus.scoreEvents(
+                        startTime=self.clock.seconds(),
+                        endTime=self.clock.seconds() + 1000.0,
+                    )
+                ),
+                start=0.0,
+            )
+        self.assertEqual(checkScore(), 0)
+        self.advanceTime(1)
+        a = self.nexus.addIntention("new 1")
+        self.advanceTime(1)
+        self.assertEqual(checkScore(), 0)
+        b = self.nexus.addIntention("new 2")
+        self.advanceTime(1)
+        self.nexus.startPomodoro(a)
+        pom = a.pomodoros[0]
+        self.advanceTime(pom.endTime - self.clock.seconds())
+        self.nexus.evaluatePomodoro(pom, EvaluationResult.achieved)
+        self.advanceTime(10)
+        self.assertEqual(checkScore(), 0)
+
     def test_idealScoreNotifications(self) -> None:
         """
         When the user has a session started, they will receive notifications
@@ -258,7 +298,7 @@ class NexusTests(TestCase):
         could execute.
         """
         self.advanceTime(1000)
-        ideal = idealScore(self.nexus, 2000.0)
+        ideal = idealScore(self.nexus, 1000, 2000.0)
         self.assertEqual(ideal.nextPointLoss, 1400.0)
         pointsForBreak = 1.0
         pointsForSecondIntentionSet = 2.0
@@ -266,7 +306,7 @@ class NexusTests(TestCase):
             ideal.pointsLost(), pointsForBreak + pointsForSecondIntentionSet
         )
         self.advanceTime(1600)
-        ideal = idealScore(self.nexus, 2000.0)
+        ideal = idealScore(self.nexus, 1000, 2000.0)
         self.assertEqual(ideal.nextPointLoss, None)
         self.assertEqual(ideal.pointsLost(), 0.0)
 
