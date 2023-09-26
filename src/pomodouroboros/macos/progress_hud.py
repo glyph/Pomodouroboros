@@ -548,10 +548,10 @@ class PieTimer(AbstractProgressView):
                     36.0
                 )  # NSFont.fontWithName_size_("System", 36.0)
                 textAlpha = self._textAlpha
-                aShadow = NSShadow.alloc().init()
-                aShadow.setShadowOffset_((2.0, -2.0))
-                aShadow.setShadowColor_(NSColor.blackColor())
-                aShadow.setShadowBlurRadius_(4.0)
+                # aShadow = NSShadow.alloc().init()
+                # aShadow.setShadowOffset_((2.0, -2.0))
+                # aShadow.setShadowColor_(NSColor.blackColor())
+                # aShadow.setShadowBlurRadius_(4.0)
                 aString = NSAttributedString.alloc().initWithString_attributes_(
                     self._reticleText,
                     {
@@ -559,12 +559,27 @@ class PieTimer(AbstractProgressView):
                             textAlpha
                         ),
                         NSFontAttributeName: font,
-                        # NSStrokeColorAttributeName: NSColor.whiteColor().colorWithAlphaComponent_(
+                        # NSStrokeColorAttributeName: NSColor.blackColor().colorWithAlphaComponent_(
                         #     textAlpha
                         # ),
+                        # # negative widths are percentages of font point size
+                        # NSStrokeWidthAttributeName: -2.0,
+                        # NSShadowAttributeName: aShadow,
+                    },
+                )
+                outlineString = NSAttributedString.alloc().initWithString_attributes_(
+                    self._reticleText,
+                    {
+                        NSForegroundColorAttributeName: self._leftColor.colorWithAlphaComponent_(
+                            1.0
+                        ),
+                        NSFontAttributeName: font,
+                        NSStrokeColorAttributeName: NSColor.blackColor().colorWithAlphaComponent_(
+                            textAlpha
+                        ),
                         # negative widths are percentages of font point size
-                        NSStrokeWidthAttributeName: -2.0,
-                        NSShadowAttributeName: aShadow,
+                        NSStrokeWidthAttributeName: 5.0,
+                        # NSShadowAttributeName: aShadow,
                     },
                 )
                 textSize = aString.size()
@@ -582,12 +597,12 @@ class PieTimer(AbstractProgressView):
                     360,
                 )
                 legibilityCircle.fill()
-                aString.drawAtPoint_(
-                    NSMakePoint(
-                        center.x - (textSize.width / 2),
-                        center.y - (textSize.height / 2),
-                    )
+                stringPoint = NSMakePoint(
+                    center.x - (textSize.width / 2),
+                    center.y - (textSize.height / 2),
                 )
+                outlineString.drawAtPoint_(stringPoint)
+                aString.drawAtPoint_(stringPoint)
 
 
 def _removeWindows(self: ProgressController) -> None:
