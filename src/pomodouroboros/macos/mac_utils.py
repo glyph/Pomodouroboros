@@ -238,6 +238,7 @@ class SometimesBackground:
                 )
                 app = NSApplication.sharedApplication()
                 app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+                self.mainWindow.setIsVisible_(True)
                 from twisted.internet import reactor
 
                 reactor.callLater(  # type:ignore[attr-defined]
