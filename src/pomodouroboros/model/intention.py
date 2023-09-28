@@ -6,10 +6,17 @@ from itertools import islice
 from typing import Iterable, TYPE_CHECKING
 
 from .boundaries import EvaluationResult, ScoreEvent
-from .scoring import (AttemptedEstimation, EstimationAccuracy,
-    IntentionCompleted, IntentionCreatedEvent)
-from pomodouroboros.model.observables import (IgnoreChanges, Observer,
-    observable)
+from .scoring import (
+    AttemptedEstimation,
+    EstimationAccuracy,
+    IntentionCompleted,
+    IntentionCreatedEvent,
+)
+from pomodouroboros.model.observables import (
+    IgnoreChanges,
+    Observer,
+    observable,
+)
 
 
 if TYPE_CHECKING:
@@ -26,12 +33,12 @@ class Estimate:
     madeAt: float  # when was this estimate made?
 
 
-
 @observable()
 class Intention:
     """
     An intention of something to do.
     """
+
     id: int
     created: float
     modified: float

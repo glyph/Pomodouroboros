@@ -238,10 +238,11 @@ class SometimesBackground:
                 )
                 app = NSApplication.sharedApplication()
                 app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
-                from time import sleep
+                from twisted.internet import reactor
 
-                sleep(0.1)
-                app.activateIgnoringOtherApps_(True)
+                reactor.callLater(
+                    0.1, lambda: app.activateIgnoringOtherApps_(True)
+                )
         else:
             self.previouslyActiveApp = whichApp
 
