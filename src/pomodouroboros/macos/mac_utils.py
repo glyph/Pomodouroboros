@@ -240,7 +240,7 @@ class SometimesBackground:
                 app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
                 from twisted.internet import reactor
 
-                reactor.callLater(
+                reactor.callLater(  # type:ignore[attr-defined]
                     0.1, lambda: app.activateIgnoringOtherApps_(True)
                 )
         else:

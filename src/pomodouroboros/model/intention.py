@@ -53,10 +53,15 @@ class Intention:
 
     def _compref(self) -> dict[str, object]:
         return asdict(
-            replace(
+            # https://github.com/python/mypy/pull/15962
+            # https://github.com/python/mypy/issues/16155
+            replace(            # type:ignore[misc]
                 self,
                 pomodoros=[
-                    replace(each, intention=None) for each in self.pomodoros
+                    # we're just going to dump it into a dict here anyway, so
+                    # the type ignore isn't a big deal
+                    replace(each, intention=None)  # type:ignore[arg-type]
+                    for each in self.pomodoros
                 ],
                 id=None,
             )

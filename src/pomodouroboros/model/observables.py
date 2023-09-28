@@ -23,7 +23,7 @@ from typing import (
 )
 from weakref import proxy
 
-from typing_extensions import dataclass_transform
+from typing import dataclass_transform
 
 
 K = TypeVar("K")

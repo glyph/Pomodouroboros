@@ -50,10 +50,10 @@ class GameRules:
     )
 
 
-_theNoUserInterface = NoUserInterface()
+_theNoUserInterface: UIEventListener = NoUserInterface()
 
 
-def _noUIFactory() -> NoUserInterface:
+def _noUIFactory(nexus: Nexus) -> UIEventListener:
     return _theNoUserInterface
 
 
@@ -116,8 +116,14 @@ class Nexus:
                 _interfaceFactory=_noUIFactory,
                 _userInterface=_theNoUserInterface,
                 _upcomingDurations=split(),
-                _sessions=[],
-                _streaks=[each[:] for each in self._streaks],
+                _sessions=ObservableList(IgnoreChanges),
+                _streaks=ObservableList(
+                    IgnoreChanges,
+                    [
+                        ObservableList(IgnoreChanges, each[:])
+                        for each in self._streaks
+                    ],
+                ),
             )
         )
         # because it's init=False we have to copy it manually
