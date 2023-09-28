@@ -41,6 +41,7 @@ from AppKit import (
     NSEvent,
     NSFloatingWindowLevel,
     NSFocusRingTypeNone,
+    NSRectFill,
     NSRectFillListWithColorsUsingOperation,
     NSScreen,
     NSView,
@@ -489,6 +490,10 @@ class PieTimer(AbstractProgressView):
         """
         with showFailures():
             super().drawRect_(rect)
+
+            NSColor.clearColor().set()
+            NSRectFill(rect)
+
             bounds = self.bounds()
             w, h = bounds.size.width / 2, bounds.size.height / 2
             center = NSMakePoint(w, h)
