@@ -72,7 +72,6 @@ class Nexus:
         default_factory=lambda: ObservableList(IgnoreChanges)
     )
 
-    _lastUpdateTime: float = field(init=False, default=0.0)
     _userInterface: UIEventListener | None = None
     _upcomingDurations: Iterator[Duration] = iter(())
     _rules: GameRules = field(default_factory=GameRules)
@@ -89,6 +88,8 @@ class Nexus:
     _sessions: ObservableList[Session] = field(
         default_factory=lambda: ObservableList(IgnoreChanges)
     )
+
+    _lastUpdateTime: float = field(default=0.0)
 
     @property
     def _activeInterval(self) -> AnyInterval | None:
@@ -112,6 +113,7 @@ class Nexus:
         return candidateInterval
 
     def __post_init__(self) -> None:
+        debug(f"post-init, IT={self._initialTime} LUT={self._lastUpdateTime}")
         if self._initialTime > self._lastUpdateTime:
             self.advanceToTime(self._initialTime)
 
@@ -126,6 +128,7 @@ class Nexus:
             return iter(previouslyUpcoming)
 
         self._upcomingDurations = split()
+        debug('constructing hypothetical')
         hypothetical = deepcopy(
             replace(
                 self,
@@ -143,6 +146,7 @@ class Nexus:
                 ),
             )
         )
+        debug("constructed")
         # because it's init=False we have to copy it manually
         hypothetical._lastUpdateTime = self._lastUpdateTime
         return hypothetical
