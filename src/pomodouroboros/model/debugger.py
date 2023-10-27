@@ -2,5 +2,5 @@ def debug(*x: object) -> None:
     """
     Emit some messages while debugging.
     """
-    if 0:
+    if 1:
         print(*x)

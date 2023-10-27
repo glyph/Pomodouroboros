@@ -177,13 +177,14 @@ class MacUserInterface:
         """
         return IgnoreChanges
 
-    def setExplanation(self, explanatoryText) -> None:
+    def setExplanation(self, explanatoryText: str) -> None:
         """
         Change the explanatory text of the menu label to explain what is going
         on so the user can see what the deal is.
         """
         self.pc.setReticleText(explanatoryText)
         self.explanatoryLabel.setStringValue_(explanatoryText)
+        self.explanatoryLabel.setNeedsDisplay_(True)
         for repeat in range(3):
             self.explanatoryLabel.setFrameSize_(
                 self.explanatoryLabel.intrinsicContentSize()
@@ -212,13 +213,15 @@ class MacUserInterface:
 
         status = Status("🍅🔰")
         status.menu([("Open Window", openWindow)])
-        return cls(
+        self = cls(
             pc,
             clock,
             nexus,
             makeMenuLabel(status.item.menu()),
             owner.intentionDataSource,
         )
+        self.setExplanation("Starting Up...")
+        return self
 
 
 class SessionDataSource(NSObject):
@@ -628,10 +631,12 @@ class StreakDataSource(NSObject):
     ) -> str:
         return "uh oh"
 
+
 class CustomButton(NSButton):
     ...
     # def intrinsicContentSize(self) -> NSSize:
     #     return self.fittingSize()
+
 
 class PomFilesOwner(NSObject):
     nexus: Nexus
@@ -717,7 +722,7 @@ class PomFilesOwner(NSObject):
                     NSLayoutConstraintOrientationVertical,
                 )
                 skew = 9
-                b.setFrameRotation_((random() * skew) - (skew/2))
+                b.setFrameRotation_((random() * skew) - (skew / 2))
 
                 # b.setTranslatesAutoresizingMaskIntoConstraints_(False)
                 viewsToStack.append(b)
@@ -777,7 +782,10 @@ class PomFilesOwner(NSObject):
             for eachView in viewsToStack[1:]:
                 stackView.addConstraints_(
                     makeConstraints(
-                        "[follower(==leader)]", 0, None, {"leader": viewsToStack[0], "follower": eachView}
+                        "[follower(==leader)]",
+                        0,
+                        None,
+                        {"leader": viewsToStack[0], "follower": eachView},
                     )
                 )
                 # stackView.addConstraints_(

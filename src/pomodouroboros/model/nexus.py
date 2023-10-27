@@ -104,7 +104,7 @@ class Nexus:
             # what does it mean if this has happened?
             return None
 
-        if now > candidateInterval.endTime:
+        if now >= candidateInterval.endTime:
             # We've moved on past the end of the interval, so it is no longer
             # active.
             return None
@@ -198,13 +198,65 @@ class Nexus:
             i for i in self._intentions if not i.completed and not i.abandoned
         ]
 
-    def _makeNextInterval(self, newTime: float) -> None:
+    def _makeNextInterval(self, newTime: float, previouslyActive: AnyInterval | None) -> None:
         """
-        Create the next interval.
+        Construct and activate the next interval in the duration sequence.
         """
         ui = self.userInterface
-        new = nextInterval(self, newTime, self._activeInterval)
+        timestamp = self._lastUpdateTime
+
+        def makeIt() -> AnyInterval | None:
+            # just capturing the logic here for getting the interval itself so
+            # that we can 'return' to early out of it at various points, with
+            # common cleanup at the end.
+            duration = next(self._upcomingDurations, None)
+            debug("new duration", duration)
+            if duration is not None:
+                # We're in an interval. Chain on to the end of it, and start
+                # the next duration.
+                assert previouslyActive is not None, (
+                    "if we are starting a new duration then we ought "
+                    "to be coming up on the back of an existing interval"
+                )
+                newInterval = preludeIntervalMap[duration.intervalType](
+                    previouslyActive.endTime,
+                    previouslyActive.endTime + duration.seconds,
+                )
+                debug("creating interval", newInterval)
+                return newInterval
+
+            # We're not currently in an interval; i.e. we are idling.  If
+            # there's a work session active, then let's add a new special
+            # interval that tells us about the next point at which we will lose
+            # some potential points.
+
+            for session in self._sessions:
+                if session.start <= timestamp < session.end:
+                    debug("session active", session.start, session.end)
+                    break
+            else:
+                debug("no session")
+                return None
+
+            scoreInfo = idealScore(self, session.start, session.end)
+            nextDrop = scoreInfo.nextPointLoss
+            debug(nextDrop)
+            if nextDrop is None:
+                return None
+            if nextDrop <= timestamp:
+                return None
+            debug(f"{timestamp=} {nextDrop=}")
+            return StartPrompt(
+                timestamp,
+                nextDrop,
+                scoreInfo.scoreBeforeLoss(),
+                scoreInfo.scoreAfterLoss(),
+            )
+
+        new = makeIt()
+
         if new is not None:
+            # Appending it to the last (active) streak makes it active.
             self._streaks[-1].append(new)
             ui.intervalStart(new)
 
@@ -216,12 +268,14 @@ class Nexus:
             newTime >= self._lastUpdateTime
         ), f"Time cannot move backwards; past={newTime} < present={self._lastUpdateTime}"
         debug("advancing to", newTime, "from", self._lastUpdateTime)
+        # capture the active interval *before* moving time forward
+        previouslyActiveInterval = self._activeInterval
         previousTime, self._lastUpdateTime = self._lastUpdateTime, newTime
         previousInterval: AnyInterval | None = None
-        if self._activeInterval is None:
+        if previouslyActiveInterval is None:
             # bootstrap our initial interval (specifically, this is where
             # StartPrompt gets kicked off in an otherwise idle session)
-            self._makeNextInterval(newTime)
+            self._makeNextInterval(newTime, previouslyActiveInterval)
         while ((interval := self._activeInterval) is not None) and (
             interval != previousInterval
         ):
@@ -241,7 +295,7 @@ class Nexus:
                     # When a grace period expires, a streak is broken, so we
                     # make a new one.
                     self._streaks.append(ObservableList(IgnoreChanges))
-                self._makeNextInterval(newTime)
+                self._makeNextInterval(newTime, previousInterval)
 
         # If there's an active streak, we definitionally should not have
         # advanced past its end.
@@ -354,46 +408,5 @@ def nextInterval(
     previousInterval: AnyInterval | None,
 ) -> AnyInterval | None:
     """
-    Determine what the next interval should be.
+    Consume a duration from the list of upcoming durations and 
     """
-    duration = next(nexus._upcomingDurations, None)
-    debug("new duration", duration)
-    if duration is not None:
-        # We're in an interval. Chain on to the end of it, and start the next
-        # duration.
-        assert previousInterval is not None, (
-            "if we are starting a new duration then we ought "
-            "to be coming up on the back of an existing interval"
-        )
-        newInterval = preludeIntervalMap[duration.intervalType](
-            previousInterval.endTime,
-            previousInterval.endTime + duration.seconds,
-        )
-        debug("creating interval", newInterval)
-        return newInterval
-
-    # We're not currently in an interval; i.e. we are idling.  If there's a
-    # work session active, then let's add a new special interval that tells us
-    # about the next point at which we will lose some potential points.
-    for session in nexus._sessions:
-        if session.start <= timestamp < session.end:
-            debug("session active", session.start, session.end)
-            break
-    else:
-        debug("no session")
-        return None
-
-    scoreInfo = idealScore(nexus, session.start, session.end)
-    nextDrop = scoreInfo.nextPointLoss
-    debug(nextDrop)
-    if nextDrop is None:
-        return None
-    if nextDrop <= timestamp:
-        return None
-    debug(f"{timestamp=} {nextDrop=}")
-    return StartPrompt(
-        timestamp,
-        nextDrop,
-        scoreInfo.scoreBeforeLoss(),
-        scoreInfo.scoreAfterLoss(),
-    )
