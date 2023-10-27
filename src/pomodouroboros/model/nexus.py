@@ -105,9 +105,14 @@ class Nexus:
             # what does it mean if this has happened?
             return None
 
-        if now >= candidateInterval.endTime:
+        if now > candidateInterval.endTime:
             # We've moved on past the end of the interval, so it is no longer
-            # active.
+            # active.  Note: this corner of the logic is extremely finicky,
+            # because evaluating the currently-executing pomodoro depends on it
+            # *remaining* the _activeInterval while doing advanceToTime at the
+            # current timestamp.  therefore '>=' would be incorrect here in an
+            # important way, even though these values are normally real time
+            # and therefore not meaningfully comparable on exact equality.
             return None
 
         return candidateInterval
