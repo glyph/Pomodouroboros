@@ -107,14 +107,10 @@ def nexusFromJSON(
             for savedStreak in saved["streaks"]
         ],
     )
-    activeInterval = (
-        streaks[-1][-1] if saved["intervalIsActive"] is not None else None
-    )
     nexus = Nexus(
         _lastIntentionID=int(saved["lastIntentionID"]),
         _initialTime=saved["initialTime"],
         _intentions=intentions,
-        _activeInterval=activeInterval,
         # lastUpdateTime below. maybe it should not be init=False
         _upcomingDurations=iter(
             [
@@ -188,14 +184,6 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
             "intervalType": "StartPrompt",
         }
 
-    intervalIsActive = nexus._activeInterval is not None
-    assert (not intervalIsActive) or (
-        nexus._activeInterval is nexus._streaks[-1][-1]
-    ), (
-        "active interval should always be the most recent interval "
-        "on the most recent streak"
-    )
-
     return {
         "initialTime": nexus._initialTime,
         "lastIntentionID": str(nexus._lastIntentionID),
@@ -214,7 +202,6 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
             }
             for intention in nexus._intentions
         ],
-        "intervalIsActive": intervalIsActive,
         "lastUpdateTime": nexus._lastUpdateTime,
         "upcomingDurations": [
             {

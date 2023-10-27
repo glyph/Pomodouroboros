@@ -71,10 +71,6 @@ class Nexus:
     _intentions: MutableSequence[Intention] = field(
         default_factory=lambda: ObservableList(IgnoreChanges)
     )
-    _activeInterval: AnyInterval | None = None
-    """
-    The list of active streak intervals currently being worked on.
-    """
 
     _lastUpdateTime: float = field(init=False, default=0.0)
     _userInterface: UIEventListener | None = None
@@ -87,12 +83,33 @@ class Nexus:
         )
     )
     """
-    The list of previous streaks, each one being a list of its intervals, that
-    are now completed.
+    The list of all of the user's streaks.
     """
+
     _sessions: ObservableList[Session] = field(
         default_factory=lambda: ObservableList(IgnoreChanges)
     )
+
+    @property
+    def _activeInterval(self) -> AnyInterval | None:
+        if not self._streaks:
+            return None
+        currentStreak = self._streaks[-1]
+        if not currentStreak:
+            return None
+        candidateInterval = currentStreak[-1]
+        now = self._lastUpdateTime
+
+        if now < candidateInterval.startTime:
+            # what does it mean if this has happened?
+            return None
+
+        if now > candidateInterval.endTime:
+            # We've moved on past the end of the interval, so it is no longer
+            # active.
+            return None
+
+        return candidateInterval
 
     def __post_init__(self) -> None:
         if self._initialTime > self._lastUpdateTime:
@@ -186,9 +203,7 @@ class Nexus:
         Create the next interval.
         """
         ui = self.userInterface
-        new = self._activeInterval = nextInterval(
-            self, newTime, self._activeInterval
-        )
+        new = nextInterval(self, newTime, self._activeInterval)
         if new is not None:
             self._streaks[-1].append(new)
             ui.intervalStart(new)
@@ -296,7 +311,6 @@ class Nexus:
                 endTime=endTime,
             )
             intention.pomodoros.append(newPomodoro)
-            self._activeInterval = newPomodoro
             self._streaks[-1].append(newPomodoro)
             ui.intervalStart(newPomodoro)
 
