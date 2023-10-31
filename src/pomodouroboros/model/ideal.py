@@ -103,6 +103,7 @@ def idealFuture(
 
     while hypothetical._lastUpdateTime <= workPeriodEnd:
         workingInterval: AnyInterval | None = hypothetical._activeInterval
+        debug("ideal working interval:", workingInterval)
         if isinstance(workingInterval, (type(None), GracePeriod)):
             # We are either idle or in a grace period, so we should
             # immediately start a pomodoro.

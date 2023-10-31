@@ -154,10 +154,12 @@ class NexusTests(TestCase):
         Advance the virtual timestamp of this test to the current time + C{n}
         where C{n} is a number of seconds.
         """
-        debug("advancing", n)
+        debug("test is advancing", n)
         self.clock.advance(n)
-        debug("to", self.clock.seconds())
-        self.nexus.advanceToTime(self.clock.seconds())
+        now = self.clock.seconds()
+        debug("test advancing model to", now)
+        self.nexus.advanceToTime(now)
+        debug("model advanced", self.nexus._lastUpdateTime)
 
     def test_noPointsForNothing(self) -> None:
         """
@@ -482,6 +484,7 @@ class NexusTests(TestCase):
         )
         self.testUI.clear()
 
+        print("\n\npass grace period please\n\n")
         # Advance past the end of the grace period.
         self.advanceTime(10 * 60)
         self.assertEqual(
