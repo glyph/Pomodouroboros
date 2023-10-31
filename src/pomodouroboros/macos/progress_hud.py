@@ -1,35 +1,32 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, List, TYPE_CHECKING
-from math import sqrt, cos, sin, pi
+from math import cos, pi, sin, sqrt
+from typing import TYPE_CHECKING, Callable, List
 
-from Foundation import NSRect, NSPoint
 from AppKit import (
     NSAttributedString,
-    NSFontAttributeName,
-    NSShadowAttributeName,
     NSFont,
+    NSFontAttributeName,
     NSForegroundColorAttributeName,
-    NSStrokeColorAttributeName,
     NSShadow,
+    NSShadowAttributeName,
+    NSStrokeColorAttributeName,
 )
-
+from Foundation import NSPoint, NSRect
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
 from twisted.python.failure import Failure
 
-from ..model.util import showFailures
+from pomodouroboros.model.debugger import debug
 
+from ..model.util import showFailures
 
 log = Logger()
 
 import math
-from ..storage import TEST_MODE
-
-from objc import super
 
 from AppKit import (
     NSApp,
@@ -41,16 +38,19 @@ from AppKit import (
     NSEvent,
     NSFloatingWindowLevel,
     NSFocusRingTypeNone,
+    NSMakePoint,
     NSRectFill,
     NSRectFillListWithColorsUsingOperation,
     NSScreen,
+    NSStrokeWidthAttributeName,
     NSView,
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
-    NSMakePoint,
-    NSStrokeWidthAttributeName,
 )
+from objc import super
+
+from ..storage import TEST_MODE
 
 # https://github.com/ronaldoussoren/pyobjc/issues/540
 NSWindowCollectionBehaviorCanJoinAllApplications = 1 << 18
@@ -281,7 +281,7 @@ class ProgressController(object):
         secondsPerWord = 60 / generousWordsPerMinute
         simpleWordCount = self.reticleText.count(" ")
         totalTime = fixedLeadTime + (simpleWordCount * secondsPerWord)
-        print("total time:", totalTime)
+        debug("displaying", repr(self.reticleText), "for", totalTime)
         start = clock.seconds()
         endTime = start + totalTime
 
