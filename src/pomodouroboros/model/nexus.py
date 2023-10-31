@@ -290,7 +290,11 @@ class Nexus:
                     debug("second interface lookup")
                     self.userInterface.intervalEnd()
                     debug("testing newDuration")
-                    if newDuration is not None:
+                    if newDuration is None:
+                        debug("no new duration, so catching up to real time")
+                        # XXX needs test coverage
+                        self._lastUpdateTime = newTime
+                    else:
                         debug("new duration", newDuration)
                         newInterval = preludeIntervalMap[
                             newDuration.intervalType
