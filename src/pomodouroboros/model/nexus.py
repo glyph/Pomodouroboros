@@ -281,7 +281,6 @@ class Nexus:
                             currentInterval.intervalType, "grace/prompt expiry"
                         )
                         self._upcomingDurations = iter(())
-                        self._streaks.append(ObservableList(IgnoreChanges))
 
                     debug("getting duration", currentInterval.intervalType)
                     newDuration = next(self._upcomingDurations, None)
@@ -293,7 +292,7 @@ class Nexus:
                     if newDuration is None:
                         debug("no new duration, so catching up to real time")
                         # XXX needs test coverage
-                        self._lastUpdateTime = newTime
+                        self._streaks.append(ObservableList(IgnoreChanges))
                     else:
                         debug("new duration", newDuration)
                         newInterval = preludeIntervalMap[
