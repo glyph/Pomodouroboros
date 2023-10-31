@@ -222,7 +222,14 @@ class Nexus:
         """
         ui = self.userInterface
         debug("begin advance from", self._lastUpdateTime, "to", newTime)
-        while self._lastUpdateTime < newTime:
+        earlyEvaluationSpecialCase = (
+            self._streaks
+            and self._streaks[-1]
+            and (currentEndTime := self._streaks[-1][-1].endTime) is not None
+            and currentEndTime == self._lastUpdateTime
+        )
+        while self._lastUpdateTime < newTime or earlyEvaluationSpecialCase:
+            earlyEvaluationSpecialCase = False
             newInterval: AnyInterval | None = None
             currentInterval = self._activeInterval
             if currentInterval is None:

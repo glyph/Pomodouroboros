@@ -288,6 +288,7 @@ class NexusTests(TestCase):
                     actualStartTime=1150.0,
                     actualEndTime=None,
                     currentProgress=[
+                        0.0,
                         120 / (5 * 60.0),
                     ],
                 ),
@@ -329,15 +330,13 @@ class NexusTests(TestCase):
                     Pomodoro(5.0, i, 5 + 5.0 * 60, indexInStreak=0),
                     actualStartTime=5.0,
                     actualEndTime=(5.0 + 5 * 60),
-                    currentProgress=[1.0],
+                    currentProgress=[0.0, 1.0],
                 ),
                 TestInterval(
                     Break(5 + 5.0 * 60, 5 + (5 * 60.0 * 2)),
                     actualStartTime=5 + 5.0 * 60,
                     actualEndTime=None,
-                    currentProgress=[
-                        0.0,
-                    ],
+                    currentProgress=[0.0],
                 ),
             ],
             self.testUI.actions,
@@ -689,7 +688,7 @@ class NexusTests(TestCase):
                     ),
                     actualStartTime=START_TIME,
                     actualEndTime=START_TIME + EARLY_COMPLETION,
-                    currentProgress=[1 / 3, 1.0],
+                    currentProgress=[0.0, 1 / 3, 1.0],
                 ),
                 TestInterval(
                     interval=Break(
@@ -748,7 +747,7 @@ class NexusTests(TestCase):
                     ),
                     actualStartTime=START_TIME,
                     actualEndTime=None,
-                    currentProgress=[1 / 3, (1.0 / 3) + (1 / (5.0 * 60))],
+                    currentProgress=[0.0, 1 / 3, (1.0 / 3) + (1 / (5.0 * 60))],
                 ),
             ],
             self.testUI.actions,
