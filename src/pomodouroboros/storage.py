@@ -10,7 +10,10 @@ from twisted.python.filepath import FilePath
 from .pommodel import Day
 
 
-TEST_MODE = bool(environ.get("TEST_MODE") or environ.get("ARGVZERO", "").endswith("/TestPomodouroboros"))
+TEST_MODE = bool(
+    environ.get("TEST_MODE")
+    or environ.get("ARGVZERO", "").endswith("/TestPomodouroboros")
+)
 
 defaultBaseLocation = FilePath(expanduser("~/.local/share/pomodouroboros"))
 if TEST_MODE:
@@ -23,7 +26,9 @@ class DayLoader:
     cache: Dict[Date, Day] = field(default_factory=dict)
 
     def pathForDate(self, date: Date) -> FilePath:
-        childPath: FilePath = self.baseLocation.child(date.isoformat() + ".pomday")
+        childPath: FilePath = self.baseLocation.child(
+            date.isoformat() + ".pomday"
+        )
         return childPath
 
     def saveDay(self, day: Day) -> None:
