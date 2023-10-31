@@ -273,6 +273,10 @@ class IntentionRow(NSObject):
     textDescription: Attr[str, IntentionRow] = _forwarded("description")
 
     def computeStatus(self) -> None:
+        """
+        Set a status emoji based on the current completion/abandonment status
+        of this intention.
+        """
         result = ""
         if self.intention.completed:
             result = "✅"
