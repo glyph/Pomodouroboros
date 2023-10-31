@@ -50,6 +50,7 @@ def nexusFromJSON(
             created=savedIntention["created"],
             modified=savedIntention["modified"],
             description=savedIntention["description"],
+            abandoned=savedIntention["abandoned"],
             estimates=[
                 Estimate(
                     duration=savedEstimate["duration"],

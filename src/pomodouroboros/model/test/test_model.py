@@ -625,6 +625,7 @@ class NexusTests(TestCase):
 
         from ..storage import nexusFromJSON, nexusToJSON
 
+        self.nexus.intentions[-1].abandoned = True
         roundTrip = nexusFromJSON(
             loads(dumps(nexusToJSON(self.nexus))),
             lambda nexus: self.nexus.userInterface,
