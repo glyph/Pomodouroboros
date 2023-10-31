@@ -66,7 +66,7 @@ class TestUserInterface:
         debug("interval: start!", interval)
         assert not (
             self.actions and self.actions[0].interval is interval
-        ), "sanity check: no double-starting"
+        ), f"sanity check: no double-starting ({interval}): {self.actions}"
         self.actions.append(TestInterval(interval, self.clock.seconds()))
 
     def intervalEnd(self) -> None:
@@ -178,6 +178,7 @@ class NexusTests(TestCase):
                 ),
                 start=0.0,
             )
+
         self.assertEqual(checkScore(), 0)
         self.advanceTime(1)
         a = self.nexus.addIntention("new 1")
@@ -400,9 +401,8 @@ class NexusTests(TestCase):
                     expectedFirstPom,
                     actualStartTime=4000.0,
                     actualEndTime=None,
-                    currentProgress=[
-                        (each / expectedDuration) for each in [1, 2, 3]
-                    ],
+                    currentProgress=[0.0]
+                    + [(each / expectedDuration) for each in [1, 2, 3]],
                 )
             ],
             self.testUI.actions,
@@ -420,6 +420,7 @@ class NexusTests(TestCase):
                     actualStartTime=4000.0,
                     actualEndTime=4304.0,
                     currentProgress=[
+                        0.0,
                         *[(each / expectedDuration) for each in [1, 2, 3]],
                         1.0,
                     ],
@@ -428,7 +429,7 @@ class NexusTests(TestCase):
                     expectedBreak,
                     actualStartTime=4304.0,
                     actualEndTime=None,
-                    currentProgress=[4 / expectedDuration],
+                    currentProgress=[0.0, 4 / expectedDuration],
                 ),
             ],
             self.testUI.actions,
@@ -444,9 +445,8 @@ class NexusTests(TestCase):
                     expectedBreak,
                     actualStartTime=4304.0,
                     actualEndTime=None,
-                    currentProgress=[
-                        (each / expectedDuration) for each in [4, 14]
-                    ],
+                    currentProgress=[0.0]
+                    + [(each / expectedDuration) for each in [4, 14]],
                 ),
             ],
             self.testUI.actions,
@@ -463,6 +463,7 @@ class NexusTests(TestCase):
                     actualStartTime=4304.0,
                     actualEndTime=4300.0 + (5.0 * 60.0) + 1,  # break is over
                     currentProgress=[
+                        0.0,
                         *[(each / expectedDuration) for each in [4, 14]],
                         1.0,
                     ],
@@ -470,7 +471,8 @@ class NexusTests(TestCase):
                 TestInterval(
                     expectedGracePeriod,
                     actualStartTime=4601.0,
-                    currentProgress=[
+                    currentProgress=[0.0]
+                    + [
                         each
                         / (
                             expectedGracePeriod.endTime
@@ -493,6 +495,7 @@ class NexusTests(TestCase):
                     expectedGracePeriod,
                     actualStartTime=4601.0,
                     currentProgress=[
+                        0.0,
                         *(
                             each
                             / (
@@ -542,7 +545,7 @@ class NexusTests(TestCase):
                     actualStartTime=10201.0,
                     actualEndTime=10502.0,
                     # No progress, since we skipped the whole thing.
-                    currentProgress=[1.0],
+                    currentProgress=[0.0, 1.0],
                 ),
                 TestInterval(
                     interval=Break(startTime=10501.0, endTime=10801.0),
@@ -550,7 +553,7 @@ class NexusTests(TestCase):
                     actualEndTime=10803.0,
                     # Jumped in right at the beginning, went way out past the
                     # end
-                    currentProgress=[0.0033333333333333335, 1.0],
+                    currentProgress=[0.0, 0.0033333333333333335, 1.0],
                 ),
                 TestInterval(
                     interval=GracePeriod(
@@ -559,7 +562,7 @@ class NexusTests(TestCase):
                     actualStartTime=10803.0,
                     actualEndTime=None,
                     # Grace period has just started, it has not ended yet
-                    currentProgress=[0.01],
+                    currentProgress=[0.0, 0.01],
                 ),
             ],
             self.testUI.actions,
@@ -579,7 +582,7 @@ class NexusTests(TestCase):
                     ),
                     actualStartTime=10803.0,
                     actualEndTime=None,  # period should probably end before pom starts
-                    currentProgress=[0.01],
+                    currentProgress=[0.0, 0.01],
                 ),
                 TestInterval(
                     interval=Pomodoro(
@@ -592,7 +595,7 @@ class NexusTests(TestCase):
                     ),
                     actualStartTime=10803.0,
                     actualEndTime=None,
-                    currentProgress=[],
+                    currentProgress=[0.0],
                 ),
             ],
             self.testUI.actions,

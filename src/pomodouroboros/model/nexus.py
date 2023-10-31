@@ -190,6 +190,7 @@ class Nexus:
             self._userInterface = ui
             active = self._activeInterval
             if active is not None:
+                debug("UI reification interval start", active)
                 ui.intervalStart(active)
         return self._userInterface
 
@@ -207,7 +208,6 @@ class Nexus:
             i for i in self._intentions if not i.completed and not i.abandoned
         ]
 
-
     def _activeSession(self) -> Session | None:
         for session in self._sessions:
             if session.start <= self._lastUpdateTime < session.end:
@@ -220,6 +220,7 @@ class Nexus:
         """
         Advance to the epoch time given.
         """
+        ui = self.userInterface
         debug("begin advance from", self._lastUpdateTime, "to", newTime)
         while self._lastUpdateTime < newTime:
             newInterval: AnyInterval | None = None
@@ -233,7 +234,9 @@ class Nexus:
                 debug("interval None, update to real time", newTime)
                 activeSession = self._activeSession()
                 if activeSession is not None:
-                    scoreInfo = idealScore(self, activeSession.start, activeSession.end)
+                    scoreInfo = idealScore(
+                        self, activeSession.start, activeSession.end
+                    )
                     nextDrop = scoreInfo.nextPointLoss
                     if nextDrop is not None and nextDrop > newTime:
                         newInterval = StartPrompt(
@@ -245,21 +248,34 @@ class Nexus:
             else:
                 debug("interval active", newTime)
                 if newTime >= currentInterval.endTime:
-                    debug("newTime >= endTime")
+                    debug(
+                        "newTime >= endTime", newTime, currentInterval.endTime
+                    )
                     self._lastUpdateTime = currentInterval.endTime
 
-                    if currentInterval.intervalType == GracePeriod.intervalType:
+                    if currentInterval.intervalType in {
+                        GracePeriod.intervalType,
+                        StartPrompt.intervalType,
+                    }:
                         # New streaks begin when grace periods expire.
-                        debug("grace period expiring")
+                        debug(
+                            currentInterval.intervalType, "grace/prompt expiry"
+                        )
                         self._upcomingDurations = iter(())
                         self._streaks.append(ObservableList(IgnoreChanges))
 
+                    debug("getting duration", currentInterval.intervalType)
                     newDuration = next(self._upcomingDurations, None)
+                    debug("first interface lookup")
                     self.userInterface.intervalProgress(1.0)
+                    debug("second interface lookup")
                     self.userInterface.intervalEnd()
+                    debug("testing newDuration")
                     if newDuration is not None:
                         debug("new duration", newDuration)
-                        newInterval = preludeIntervalMap[newDuration.intervalType](
+                        newInterval = preludeIntervalMap[
+                            newDuration.intervalType
+                        ](
                             currentInterval.endTime,
                             currentInterval.endTime + newDuration.seconds,
                         )
@@ -270,17 +286,25 @@ class Nexus:
                     # move time all the way forward.
                     self._lastUpdateTime = newTime
                     elapsedWithinInterval = newTime - currentInterval.startTime
-                    intervalDuration = currentInterval.endTime - currentInterval.startTime
-                    self.userInterface.intervalProgress(elapsedWithinInterval / intervalDuration)
+                    intervalDuration = (
+                        currentInterval.endTime - currentInterval.startTime
+                    )
+                    self.userInterface.intervalProgress(
+                        elapsedWithinInterval / intervalDuration
+                    )
 
             # if we created a new interval for any reason on this iteration
             # through the loop, then we need to mention that fact to the UI.
             if newInterval is not None:
                 debug("newInterval created", newInterval)
-                self._streaks[-1].append(newInterval)
-                self.userInterface.intervalStart(newInterval)
+                self._createdInterval(newInterval)
                 # should really be active now
                 assert self._activeInterval is newInterval
+
+    def _createdInterval(self, newInterval: AnyInterval) -> None:
+        self._streaks[-1].append(newInterval)
+        self.userInterface.intervalStart(newInterval)
+        self.userInterface.intervalProgress(0.0)
 
     def addIntention(
         self,
@@ -339,8 +363,7 @@ class Nexus:
                 endTime=endTime,
             )
             intention.pomodoros.append(newPomodoro)
-            self._streaks[-1].append(newPomodoro)
-            ui.intervalStart(newPomodoro)
+            self._createdInterval(newPomodoro)
 
         return handleStartFunc(self, startPom)
 
