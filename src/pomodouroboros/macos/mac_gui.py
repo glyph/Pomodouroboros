@@ -114,10 +114,10 @@ class MacUserInterface:
                 self.intentionDataSource.startingUnblocked()
             case Pomodoro(intention=x):
                 self.pc.setColors(NSColor.greenColor(), NSColor.blueColor())
-                self.setExplanation(x.title)
+                self.setExplanation(f"Work on Pomodoro: «{x.title}»")
                 self.intentionDataSource.startingBlocked()
             case Break():
-                self.setExplanation("")
+                self.setExplanation("Take a break.")
                 self.pc.setColors(
                     NSColor.lightGrayColor(), NSColor.darkGrayColor()
                 )
@@ -129,6 +129,7 @@ class MacUserInterface:
                     lightPurple,
                     darkPurple,
                 )
+        self.pc.immediateReticleUpdate(self.clock)
 
     def intervalProgress(self, percentComplete: float) -> None:
         match self.currentInterval:

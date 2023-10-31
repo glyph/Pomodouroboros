@@ -269,8 +269,9 @@ class ProgressController(object):
             return
         # Only update reticle text when we issue a reminder so it doesn't
         # update in the middle.
+        oldReticleText = self.reticleText
         for eachView in self.progressViews:
-            eachView.setReticleText_(self.reticleText)
+            eachView.setReticleText_(oldReticleText)
         # your eyes need a little time to find the words even if there's only
         # one or two
         fixedLeadTime = 0.5
@@ -379,6 +380,11 @@ class ProgressController(object):
         Set the reticle text.
         """
         self.reticleText = newText
+
+    def immediateReticleUpdate(self, clock: IReactorTime) -> None:
+        if self._textReminderInProgress:
+            self._textReminderInProgress.cancel()
+        self._textReminder(clock)
 
     def setColors(self, left: NSColor, right: NSColor) -> None:
         """
