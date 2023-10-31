@@ -14,6 +14,7 @@ from typing import (
 from dateutil.relativedelta import relativedelta
 from twisted.python.failure import Failure
 
+from .debugger import debug
 from .nexus import Nexus
 from .storage import saveDefaultNexus
 
@@ -82,8 +83,11 @@ def interactionRoot(
         # idea: maybe maintain a trail of N backups here, for easy undo/revert
         # of certain edit actions?
         with showFailures():
+            debug("start action:", c)
             result = c(self, *args, **kwargs)
+            debug("save nexus:", result)
             saveDefaultNexus(self.nexus)
+            debug("saved:", result)
             return result
 
     return showFailuresAndSave

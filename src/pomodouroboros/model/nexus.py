@@ -93,15 +93,19 @@ class Nexus:
 
     @property
     def _activeInterval(self) -> AnyInterval | None:
+        debug("determining active interval")
         if not self._streaks:
+            debug("active interval: no streaks")
             return None
         currentStreak = self._streaks[-1]
         if not currentStreak:
+            debug("active interval: no current streak")
             return None
         candidateInterval = currentStreak[-1]
         now = self._lastUpdateTime
 
         if now < candidateInterval.startTime:
+            debug(f"active interval: now ({now}) before start ({candidateInterval.startTime})")
             # what does it mean if this has happened?
             return None
 
@@ -113,14 +117,18 @@ class Nexus:
             # current timestamp.  therefore '>=' would be incorrect here in an
             # important way, even though these values are normally real time
             # and therefore not meaningfully comparable on exact equality.
+            debug("active interval: now after end")
             return None
-
+        debug("active interval: yay:", candidateInterval)
         return candidateInterval
 
     def __post_init__(self) -> None:
         debug(f"post-init, IT={self._initialTime} LUT={self._lastUpdateTime}")
         if self._initialTime > self._lastUpdateTime:
+            debug("post-init advance")
             self.advanceToTime(self._initialTime)
+        else:
+            debug("post-init, no advance")
 
     def cloneWithoutUI(self) -> Nexus:
         """
@@ -186,12 +194,16 @@ class Nexus:
         build the user interface on demand
         """
         if self._userInterface is None:
+            debug("creating user interface for the first time")
             ui: UIEventListener = self._interfaceFactory(self)
+            debug("creating user interface for the first time", ui)
             self._userInterface = ui
             active = self._activeInterval
             if active is not None:
                 debug("UI reification interval start", active)
                 ui.intervalStart(active)
+            else:
+                debug("UI reification but no interval running", self._streaks)
         return self._userInterface
 
     @property

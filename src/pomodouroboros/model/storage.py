@@ -129,8 +129,8 @@ def nexusFromJSON(
             ],
         ),
         _interfaceFactory=userInterfaceFactory,
+        _lastUpdateTime=saved["lastUpdateTime"],
     )
-    nexus._lastUpdateTime = saved["lastUpdateTime"]
     return nexus
 
 
