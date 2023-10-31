@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from itertools import cycle
-from typing import TYPE_CHECKING, Callable, Generic, Sequence, TypeVar
 from random import random
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Generic,
+    Iterator,
+    Sequence,
+    TypeVar,
+)
 
 import objc
 from AppKit import (
@@ -46,6 +54,7 @@ from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
 from pomodouroboros.macos.mac_utils import Attr, SometimesBackground
+from pomodouroboros.model.debugger import debug
 from pomodouroboros.model.intention import Estimate
 from pomodouroboros.model.observables import (
     Changes,
@@ -251,6 +260,7 @@ class IntentionRow(NSObject):
         self.intention = intention
         self.shouldHideEstimate = True
         self.canEditSummary = False
+        self.computeStatus()
         return self
 
     # pragma mark Attributes
@@ -262,6 +272,20 @@ class IntentionRow(NSObject):
     title: Attr[str, IntentionRow] = _forwarded("title")
     textDescription: Attr[str, IntentionRow] = _forwarded("description")
 
+    def computeStatus(self) -> None:
+        result = ""
+        if self.intention.completed:
+            result = "✅"
+        if self.intention.abandoned:
+            result = "🪦"
+        debug(
+            "getting status",
+            self.intention.completed,
+            self.intention.abandoned,
+            result,
+        )
+        self.status = result
+
     nexus: Nexus = objc.object_property()
     intention: Intention = objc.object_property()
     shouldHideEstimate = objc.object_property()
@@ -271,6 +295,7 @@ class IntentionRow(NSObject):
     estimate = objc.object_property()
     creationText = objc.object_property()
     modificationText = objc.object_property()
+    status = objc.object_property()
 
     del _forwarded
 
@@ -283,9 +308,9 @@ class IntentionRow(NSObject):
     @colorValue.setter
     @interactionRoot
     def _setColorValue(self, colorValue: NSColor) -> None:
-        print("setting", colorValue)
+        debug("setting", colorValue)
         self._colorValue = colorValue
-        print("set", colorValue)
+        debug("set", colorValue)
 
     @estimate.getter
     def _getEstimate(self) -> str:
@@ -416,7 +441,6 @@ class IntentionDataSource(NSObject):
             )
 
         self.intentionRowMap = translator
-        self.pomsData.recalculateStuff = self.recalculate
         self.recalculate()
 
     # pragma mark My own methods
@@ -435,7 +459,7 @@ class IntentionDataSource(NSObject):
         """
         The selection changed.
         """
-        # self.recalculateStuff()
+        debug("SELECTION CHANGED:", notification.object().selectedRowIndexes())
         self.recalculate()
 
     def startingBlocked(self) -> None:
@@ -448,10 +472,11 @@ class IntentionDataSource(NSObject):
 
     def recalculate(self) -> None:
         """
-        re-calculate the calculate
+        Recompute various UI-state attributes after the selection changes, like whether we can start a
+        pomodoro, whether we can abandon the selected intention, etc.
         """
         if self.intentionsTable is None:
-            print("recalculate before awake?")
+            debug("recalculate before awake?")
             return
         idx: int = self.intentionsTable.selectedRow()
 
@@ -464,6 +489,7 @@ class IntentionDataSource(NSObject):
 
         self.selectedIntention = self.rowObjectAt_(idx)
         selected = self.selectedIntention
+        selected.computeStatus()
         intention = selected.intention
 
         self.pomsData.backingData = intention.pomodoros
@@ -509,8 +535,15 @@ class IntentionPomodorosDataSource(NSObject):
     backingData: Sequence[Pomodoro] = []
     selectedPomodoro: Pomodoro | None = None
     nexus: Nexus
+
     intentionPomsTable: NSTableView
     intentionPomsTable = IBOutlet()
+
+    intentionsTable: NSTableView
+    intentionsTable = IBOutlet()
+
+    allIntentionsSource: IntentionDataSource
+    allIntentionsSource = IBOutlet()
 
     # active states for buttons
     canEvaluateDistracted: bool = objc.object_property()
@@ -555,6 +588,7 @@ class IntentionPomodorosDataSource(NSObject):
         }
 
     def clearSelection(self) -> None:
+        debug("CLEARING SELECTION/intpom data!")
         self.selectedPomodoro = None
         self.hasSelection = False
         self.canEvaluateDistracted = (
@@ -566,9 +600,11 @@ class IntentionPomodorosDataSource(NSObject):
     def tableViewSelectionDidChange_(self, notification: NSObject) -> None:
         tableView = notification.object()
         idx: int = tableView.selectedRow()
+        debug("selection CLEAR CHECK", idx, tableView.selectedRowIndexes())
         if idx == -1:
             self.clearSelection()
             return
+
         self.selectedPomodoro = self.backingData[idx]
         self.canEvaluateDistracted = True
         self.canEvaluateInterrupted = True
@@ -577,16 +613,12 @@ class IntentionPomodorosDataSource(NSObject):
         self.canEvaluateAchieved = idx == (len(self.backingData) - 1)
 
     def doEvaluate_(self, er: EvaluationResult):
-        assert self.selectedPomodoro is not None
-        selected = self.intentionPomsTable.selectedRowIndexes()
-        self.nexus.evaluatePomodoro(self.selectedPomodoro, er)
-        self.intentionPomsTable.reloadData()
-        # TODO: recalculateStuff just jammed on here as non-annotated
-        # attribute, should really fix the relationship to be more structured
-        self.recalculateStuff()
-        self.intentionPomsTable.selectRowIndexes_byExtendingSelection_(
-            selected, False
-        )
+        assert (
+            self.selectedPomodoro is not None
+        ), "must have a pomodorodo selected and the UI should be enforcing that"
+        with refreshedData(self.intentionsTable, self.intentionPomsTable):
+            self.nexus.evaluatePomodoro(self.selectedPomodoro, er)
+            self.allIntentionsSource.recalculate()
 
     @IBAction
     @interactionRoot
@@ -607,6 +639,19 @@ class IntentionPomodorosDataSource(NSObject):
     @interactionRoot
     def achievedClicked_(self, sender: NSObject) -> None:
         self.doEvaluate_(EvaluationResult.achieved)
+
+
+@contextmanager
+def refreshedData(*tables: NSTableView) -> Iterator[None]:
+    selections = [table.selectedRowIndexes() for table in tables]
+    debug("all selections saved:", selections)
+    yield
+    debug("restoring all selections")
+    for table, selection in zip(tables, selections):
+        table.reloadData()
+        debug("restoring selection", table, selection)
+        table.selectRowIndexes_byExtendingSelection_(selection, False)
+    debug("restored all selections")
 
 
 class StreakDataSource(NSObject):
@@ -671,7 +716,7 @@ class PomFilesOwner(NSObject):
         return self
 
     def showButton_(self, sender: NSObject) -> None:
-        print("button", sender.title())
+        debug("button", sender.title())
 
     @IBAction
     def addStackButton_(self, sender: NSObject) -> None:
@@ -755,7 +800,7 @@ class PomFilesOwner(NSObject):
             )
 
             # sz = wrapperStackView.fittingSize()
-            # print("size?", sz)
+            # debug("size?", sz)
             styleMask = (
                 NSTitledWindowMask
                 | (NSClosableWindowMask & 0)
@@ -808,8 +853,8 @@ class PomFilesOwner(NSObject):
             stackView.setAlignment_(NSLayoutAttributeWidth)
             wrapperStackView.setAlignment_(NSLayoutAttributeHeight)
 
-            print("wide sz", wide.fittingSize())
-            print("wide intr", wide.intrinsicContentSize())
+            debug("wide sz", wide.fittingSize())
+            debug("wide intr", wide.intrinsicContentSize())
             wide.setFrameRotation_(3)
             wide.frame().size.height = 100
             wide.cell().setLineBreakMode_(NSLineBreakByWordWrapping)
@@ -842,6 +887,18 @@ class PomFilesOwner(NSObject):
         intent = self.intentionDataSource.selectedIntention
         assert intent is not None, "how did you get here"
         self.nexus.startPomodoro(intent.intention)
+
+    @IBAction
+    @interactionRoot
+    def abandonSelectedIntention_(self, sender: NSObject) -> None:
+        """
+        Abandon the selected intention
+        """
+        intent = self.intentionDataSource.selectedIntention
+        assert intent is not None, "how did you get here"
+        intent.intention.abandoned = True
+        debug('set intention abandoned', intent.intention)
+        self.intentionDataSource.recalculate()
 
     @IBAction
     @interactionRoot

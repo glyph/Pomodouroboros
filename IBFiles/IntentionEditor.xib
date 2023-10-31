@@ -65,38 +65,72 @@
                                                                 <action selector="newIntentionClicked:" target="-2" id="iLJ-iQ-5sY"/>
                                                             </connections>
                                                         </button>
-                                                        <scrollView autohidesScrollers="YES" horizontalLineScroll="17" horizontalPageScroll="10" verticalLineScroll="17" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="F3b-tD-FzK">
+                                                        <scrollView autohidesScrollers="YES" horizontalLineScroll="21" horizontalPageScroll="10" verticalLineScroll="21" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="F3b-tD-FzK">
                                                             <rect key="frame" x="0.0" y="17" width="136" height="665"/>
                                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                             <clipView key="contentView" id="pBY-0Y-Hcq">
                                                                 <rect key="frame" x="1" y="1" width="134" height="663"/>
                                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                                 <subviews>
-                                                                    <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" multipleSelection="NO" emptySelection="NO" autosaveColumns="NO" rowSizeStyle="automatic" viewBased="YES" id="LiW-pP-5cA">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="134" height="663"/>
+                                                                    <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" tableStyle="plain" columnReordering="NO" multipleSelection="NO" emptySelection="NO" autosaveColumns="NO" rowHeight="18" rowSizeStyle="automatic" viewBased="YES" id="LiW-pP-5cA">
+                                                                        <rect key="frame" x="0.0" y="0.0" width="138" height="663"/>
                                                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                                                        <size key="intercellSpacing" width="17" height="0.0"/>
+                                                                        <size key="intercellSpacing" width="2" height="3"/>
                                                                         <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                         <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                                         <tableColumns>
-                                                                            <tableColumn identifier="title" width="122" minWidth="40" maxWidth="1000" id="WpJ-C0-f9z">
-                                                                                <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="IntentionTitle">
+                                                                            <tableColumn width="18" maxWidth="20" id="mM7-W6-DKX" userLabel="IntentionStatus">
+                                                                                <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="IntentionCompletion">
                                                                                     <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
-                                                                                    <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
+                                                                                    <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                                                 </tableHeaderCell>
-                                                                                <textFieldCell key="dataCell" lineBreakMode="truncatingTail" selectable="YES" editable="YES" title="Text Cell" id="qAx-z5-kZx">
+                                                                                <textFieldCell key="dataCell" lineBreakMode="truncatingTail" selectable="YES" editable="YES" alignment="left" title="Text Cell" id="FH9-rW-PGC">
                                                                                     <font key="font" metaFont="system"/>
                                                                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                                                     <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                                                 </textFieldCell>
-                                                                                <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
+                                                                                <prototypeCellViews>
+                                                                                    <tableCellView id="Jkx-q8-IKc" userLabel="Intention Status Table Cell View">
+                                                                                        <rect key="frame" x="1" y="1" width="18" height="18"/>
+                                                                                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                                                        <subviews>
+                                                                                            <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="EfT-yK-gVC" userLabel="Intention Status Table View Cell">
+                                                                                                <rect key="frame" x="0.0" y="0.0" width="28" height="16"/>
+                                                                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
+                                                                                                <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="❓" id="rOu-Ql-2yu" userLabel="Table View Cell">
+                                                                                                    <font key="font" size="13" name=".AppleColorEmojiUI"/>
+                                                                                                    <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                                                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                                                                                </textFieldCell>
+                                                                                                <connections>
+                                                                                                    <binding destination="Jkx-q8-IKc" name="value" keyPath="objectValue.status" id="gsJ-mb-kiq"/>
+                                                                                                </connections>
+                                                                                            </textField>
+                                                                                        </subviews>
+                                                                                        <connections>
+                                                                                            <outlet property="textField" destination="EfT-yK-gVC" id="LMM-z7-X3B"/>
+                                                                                        </connections>
+                                                                                    </tableCellView>
+                                                                                </prototypeCellViews>
+                                                                            </tableColumn>
+                                                                            <tableColumn identifier="title" width="116" minWidth="40" maxWidth="1000" id="WpJ-C0-f9z">
+                                                                                <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="IntentionTitle">
+                                                                                    <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
+                                                                                    <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
+                                                                                </tableHeaderCell>
+                                                                                <textFieldCell key="dataCell" controlSize="mini" lineBreakMode="truncatingTail" selectable="YES" editable="YES" title="Text Cell" id="qAx-z5-kZx">
+                                                                                    <font key="font" metaFont="miniSystem"/>
+                                                                                    <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                                                    <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                                                                </textFieldCell>
+                                                                                <tableColumnResizingMask key="resizingMask" resizeWithTable="YES"/>
                                                                                 <prototypeCellViews>
                                                                                     <tableCellView id="PNG-xM-Zu8" userLabel="Intention Title Table Cell View">
-                                                                                        <rect key="frame" x="8" y="0.0" width="117" height="0.0"/>
+                                                                                        <rect key="frame" x="21" y="1" width="116" height="0.0"/>
                                                                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                                                         <subviews>
                                                                                             <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="iwF-uL-Jfa" userLabel="Intention Title Table View Cell">
-                                                                                                <rect key="frame" x="0.0" y="0.0" width="117" height="16"/>
+                                                                                                <rect key="frame" x="0.0" y="0.0" width="116" height="16"/>
                                                                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
                                                                                                 <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="Table View Cell" placeholderString="New Intention" id="eIy-rG-lN9">
                                                                                                     <font key="font" usesAppearanceFont="YES"/>
@@ -122,7 +156,7 @@
                                                                     </tableView>
                                                                 </subviews>
                                                             </clipView>
-                                                            <scroller key="horizontalScroller" hidden="YES" wantsLayer="YES" verticalHuggingPriority="750" horizontal="YES" id="3vI-yG-os3">
+                                                            <scroller key="horizontalScroller" wantsLayer="YES" verticalHuggingPriority="750" horizontal="YES" id="3vI-yG-os3">
                                                                 <rect key="frame" x="1" y="648" width="134" height="16"/>
                                                                 <autoresizingMask key="autoresizingMask"/>
                                                             </scroller>
@@ -651,13 +685,14 @@
                                                                     </buttonCell>
                                                                 </button>
                                                                 <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="6SL-Wc-KXA">
-                                                                    <rect key="frame" x="386" y="13" width="156" height="32"/>
+                                                                    <rect key="frame" x="391" y="13" width="146" height="32"/>
                                                                     <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                                                                    <buttonCell key="cell" type="push" title="Abandon Intention…" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Pdk-Sv-l6S">
+                                                                    <buttonCell key="cell" type="push" title="Abandon Intention" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Pdk-Sv-l6S">
                                                                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                                         <font key="font" metaFont="system"/>
                                                                     </buttonCell>
                                                                     <connections>
+                                                                        <action selector="abandonSelectedIntention:" target="-2" id="lkY-fI-6hE"/>
                                                                         <binding destination="rFC-Sz-Dx3" name="enabled" keyPath="self.canAbandonIntention" id="UDz-c6-FjC"/>
                                                                     </connections>
                                                                 </button>
@@ -935,8 +970,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="0VN-am-jg8">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="720400329.99970901">
-                                                    <!--2023-10-30 23:12:10 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="720474243.97348404">
+                                                    <!--2023-10-31 19:44:03 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1427,8 +1462,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="2ek-VJ-F3s">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="720400330.01575005">
-                                                    <!--2023-10-30 23:12:10 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="720474243.98941803">
+                                                    <!--2023-10-31 19:44:03 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1488,7 +1523,9 @@
         <customObject id="Z3a-RV-wSy" userLabel="Tab Order Helper" customClass="TabOrderFriendlyTextViewDelegate"/>
         <customObject id="8xN-s7-Y7R" customClass="IntentionPomodorosDataSource">
             <connections>
+                <outlet property="allIntentionsSource" destination="rFC-Sz-Dx3" id="PWc-om-Vo4"/>
                 <outlet property="intentionPomsTable" destination="7fu-XT-qbp" id="CTG-5N-y2C"/>
+                <outlet property="intentionsTable" destination="LiW-pP-5cA" id="0rr-E9-Tx2"/>
             </connections>
         </customObject>
         <userDefaultsController representsSharedInstance="YES" id="DIz-2o-LJs"/>
