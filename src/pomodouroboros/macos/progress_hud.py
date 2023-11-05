@@ -14,7 +14,7 @@ from AppKit import (
     NSStrokeColorAttributeName,
 )
 from Foundation import NSPoint, NSRect
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import CancelledError, Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
@@ -301,7 +301,11 @@ class ProgressController(object):
             self._textReminderInProgress = None
             return o
 
-        self._textReminderInProgress = lc.start(1 / 30).addBoth(clear)
+        self._textReminderInProgress = (
+            lc.start(1 / 30)
+            .addErrback(lambda f: f.trap(CancelledError))
+            .addBoth(clear)
+        )
 
     def animatePercentage(
         self,
@@ -382,7 +386,7 @@ class ProgressController(object):
         self.reticleText = newText
 
     def immediateReticleUpdate(self, clock: IReactorTime) -> None:
-        if self._textReminderInProgress:
+        if self._textReminderInProgress is not None:
             self._textReminderInProgress.cancel()
         self._textReminder(clock)
 
