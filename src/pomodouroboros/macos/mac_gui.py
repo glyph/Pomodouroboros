@@ -17,6 +17,7 @@ from typing import (
 import objc
 from AppKit import (
     NSApplication,
+    NSAlert,
     NSBackingStoreBuffered,
     NSBezelStyleTexturedSquare,
     NSButton,
@@ -50,6 +51,7 @@ from AppKit import (
 from Foundation import NSIndexSet, NSObject, NSRect
 from objc import IBAction, IBOutlet, super
 from quickmacapp import Status, mainpoint
+from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
@@ -688,6 +690,152 @@ class CustomButton(NSButton):
     #     return self.fittingSize()
 
 
+class ChoiceAction(NSObject):
+    def initWithFunc_(self, func: Callable[[], T]) -> ChoiceAction:
+        self.func = func
+        return self
+
+    @IBAction
+    def choose_(self, sender: NSObject) -> None:
+        self.func()
+
+
+def oneButton(
+    title: str,
+    func: Callable[[], T],
+    color: NSColor,
+    key: str,
+    mask: int = NSCommandKeyMask,
+) -> NSButton:
+    b = NSButton.buttonWithTitle_target_action_(
+        title,
+        ChoiceAction.alloc().initWithFunc_(func).retain(),
+        "choose:",
+    )
+    b.setBezelColor_(color)
+    b.setControlSize_(NSControlSizeLarge)
+    b.setImage_(None)
+    b.setAlternateImage_(None)
+    b.setImagePosition_(NSImageLeading)
+    b.setKeyEquivalent_(key)
+    b.setKeyEquivalentModifierMask_(NSCommandKeyMask)
+    b.setContentHuggingPriority_forOrientation_(
+        1,
+        NSLayoutConstraintOrientationHorizontal,
+    )
+    b.setContentHuggingPriority_forOrientation_(
+        1,
+        NSLayoutConstraintOrientationVertical,
+    )
+    b.setAlignment_(0)
+    return b
+
+
+def answerWith(deferred: Deferred[T], answer: T) -> Callable[[], None]:
+    def answerer():
+        debug('giving result', answer)
+        deferred.callback(answer)
+
+    return answerer
+
+
+async def multipleChoiceButtons(
+    descriptions: list[tuple[NSColor, str, T]],
+) -> T:
+    d: Deferred[T] = Deferred()
+    wide = CustomButton.buttonWithTitle_target_action_(
+        "four score and seven years ago\nwe had a big pile\nof super wide buttons",
+        None,
+        None,
+    )
+    # wide.setButtonType_()
+    wide.sizeToFit()
+    wide.cell().setWraps_(True)
+    wide.setControlSize_(NSControlSizeLarge)
+    wide.setUsesSingleLineMode_(True)
+    viewsToStack = []
+
+    for index, (color, title, answer) in enumerate(descriptions):
+        # skew = 3
+        key = index + 1
+        b = oneButton(f"⌘{key} — {title}", answerWith(d, answer), color, str(key))
+        # b.setTranslatesAutoresizingMaskIntoConstraints_(False)
+        viewsToStack.append(b)
+
+    stackView = NSStackView.stackViewWithViews_(viewsToStack)
+    stackView.setOrientation_(NSUserInterfaceLayoutOrientationVertical)
+    wrapperStackView = NSStackView.stackViewWithViews_([stackView])
+    stackView.setEdgeInsets_((20, 20, 20, 20))
+    stackView.setDistribution_(NSStackViewDistributionFillProportionally)
+    wrapperStackView.setEdgeInsets_((20, 20, 20, 20))
+
+    stackView.setContentHuggingPriority_forOrientation_(
+        1,
+        NSLayoutConstraintOrientationHorizontal,
+    )
+    stackView.setContentHuggingPriority_forOrientation_(
+        1,
+        NSLayoutConstraintOrientationVertical,
+    )
+    wrapperStackView.setContentHuggingPriority_forOrientation_(
+        1,
+        NSLayoutConstraintOrientationHorizontal,
+    )
+    wrapperStackView.setContentHuggingPriority_forOrientation_(
+        1,
+        NSLayoutConstraintOrientationVertical,
+    )
+
+    # sz = wrapperStackView.fittingSize()
+    # debug("size?", sz)
+    styleMask = (
+        NSTitledWindowMask
+        | (NSClosableWindowMask & 0)
+        | NSWindowStyleMaskFullSizeContentView
+        | NSWindowStyleMaskHUDWindow
+        | NSWindowStyleMaskResizable
+    )
+    nsw = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+        NSRect((100, 100), (200, 100)),
+        styleMask,
+        NSBackingStoreBuffered,
+        False,
+    )
+    nsw.setTitle_("Select Choice")
+    nsw.setTitleVisibility_(NSWindowTitleHidden)
+    nsw.setTitlebarAppearsTransparent_(True)
+    nsw.setBecomesKeyOnlyIfNeeded_(False)
+    nsw.setCollectionBehavior_(NSWindowCollectionBehaviorParticipatesInCycle)
+    nsw.setContentView_(wrapperStackView)
+    makeConstraints = (
+        NSLayoutConstraint.constraintsWithVisualFormat_options_metrics_views_
+    )
+    for eachView in viewsToStack[1:]:
+        stackView.addConstraints_(
+            makeConstraints(
+                "[follower(==leader)]",
+                0,
+                None,
+                {"leader": viewsToStack[0], "follower": eachView},
+            )
+        )
+
+    stackView.setAlignment_(NSLayoutAttributeWidth)
+    wrapperStackView.setAlignment_(NSLayoutAttributeHeight)
+
+    wide.frame().size.height = 100
+    wide.cell().setLineBreakMode_(NSLineBreakByWordWrapping)
+
+    nsw.setReleasedWhenClosed_(False)
+    nsw.setHidesOnDeactivate_(False)
+    nsw.center()
+    nsw.makeKeyAndOrderFront_(nsw)
+
+    result = await d
+    nsw.close()
+    return result
+
+
 class PomFilesOwner(NSObject):
     nexus: Nexus
 
@@ -723,150 +871,28 @@ class PomFilesOwner(NSObject):
         debug("button", sender.title())
 
     @IBAction
+    def quickChooseIntention_(self, sender: NSObject) -> None:
+        pass
+
+    @IBAction
     def addStackButton_(self, sender: NSObject) -> None:
-        # self.testStackView.addView_inGravity_(
-        #     NSButton.buttonWithTitle_target_action_("test button", None, None),
-        #     NSStackViewGravityBottom,
-        # )
+        async def getButton() -> None:
+            result = await multipleChoiceButtons([
+                (NSColor.redColor(), "red", 10),
+                (NSColor.orangeColor(), "orange", 11),
+                (NSColor.yellowColor(), "yellow", 12),
+                (NSColor.greenColor(), "green", 13),
+                (NSColor.blueColor(), "blue", 14),
+                (NSColor.systemIndigoColor(), "indigo", 15),
+                (NSColor.purpleColor(), "purple", 16),
+            ])
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_("choice complete")
+            alert.setInformativeText_(f"result was {result}")
+            alert.runModal()
+
         with showFailures():
-            rainbow = [
-                NSColor.redColor(),
-                NSColor.orangeColor(),
-                NSColor.yellowColor(),
-                NSColor.greenColor(),
-                NSColor.blueColor(),
-                NSColor.systemIndigoColor(),
-                NSColor.purpleColor(),
-            ]
-            wide = CustomButton.buttonWithTitle_target_action_(
-                "four score and seven years ago\nwe had a big pile\nof super wide buttons",
-                None,
-                None,
-            )
-            # wide.setButtonType_()
-            wide.sizeToFit()
-            wide.cell().setWraps_(True)
-            # wide.setBezelStyle_(NSBezelStyleTexturedSquare)
-            wide.setControlSize_(NSControlSizeLarge)
-            wide.setUsesSingleLineMode_(True)
-            viewsToStack = []
-            for n, c in zip(range(10), cycle(rainbow)):
-                b = NSButton.buttonWithTitle_target_action_(
-                    f"test button {n}", self, "showButton:"
-                )
-                b.setBezelColor_(c)
-                b.setControlSize_(NSControlSizeLarge)
-                # b.setBackgroundColor_(c)
-                # b.setBezelStyle_(NSBezelStyleTexturedSquare)
-                b.setImage_(None)
-                b.setAlternateImage_(None)
-                b.setImagePosition_(NSImageLeading)
-                b.setKeyEquivalent_(str(n))
-                b.setKeyEquivalentModifierMask_(NSCommandKeyMask)
-                b.setContentHuggingPriority_forOrientation_(
-                    1,
-                    NSLayoutConstraintOrientationHorizontal,
-                )
-                b.setContentHuggingPriority_forOrientation_(
-                    1,
-                    NSLayoutConstraintOrientationVertical,
-                )
-                skew = 9
-                b.setFrameRotation_((random() * skew) - (skew / 2))
-
-                # b.setTranslatesAutoresizingMaskIntoConstraints_(False)
-                viewsToStack.append(b)
-
-            stackView = NSStackView.stackViewWithViews_(viewsToStack)
-            stackView.setOrientation_(NSUserInterfaceLayoutOrientationVertical)
-            wrapperStackView = NSStackView.stackViewWithViews_([stackView])
-            stackView.setEdgeInsets_((20, 20, 20, 20))
-            stackView.setDistribution_(
-                NSStackViewDistributionFillProportionally
-            )
-            wrapperStackView.setEdgeInsets_((20, 20, 20, 20))
-
-            stackView.setContentHuggingPriority_forOrientation_(
-                1,
-                NSLayoutConstraintOrientationHorizontal,
-            )
-            stackView.setContentHuggingPriority_forOrientation_(
-                1,
-                NSLayoutConstraintOrientationVertical,
-            )
-            wrapperStackView.setContentHuggingPriority_forOrientation_(
-                1,
-                NSLayoutConstraintOrientationHorizontal,
-            )
-            wrapperStackView.setContentHuggingPriority_forOrientation_(
-                1,
-                NSLayoutConstraintOrientationVertical,
-            )
-
-            # sz = wrapperStackView.fittingSize()
-            # debug("size?", sz)
-            styleMask = (
-                NSTitledWindowMask
-                | (NSClosableWindowMask & 0)
-                | NSWindowStyleMaskFullSizeContentView
-                | NSWindowStyleMaskHUDWindow
-                | NSWindowStyleMaskResizable
-            )
-            nsw = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
-                NSRect((100, 100), (200, 100)),
-                styleMask,
-                NSBackingStoreBuffered,
-                False,
-            )
-            nsw.setTitle_("Start Pomodoro")
-            nsw.setTitleVisibility_(NSWindowTitleHidden)
-            nsw.setTitlebarAppearsTransparent_(True)
-            nsw.setBecomesKeyOnlyIfNeeded_(False)
-            nsw.setCollectionBehavior_(
-                NSWindowCollectionBehaviorParticipatesInCycle
-            )
-            nsw.setContentView_(wrapperStackView)
-            makeConstraints = (
-                NSLayoutConstraint.constraintsWithVisualFormat_options_metrics_views_
-            )
-            for eachView in viewsToStack[1:]:
-                stackView.addConstraints_(
-                    makeConstraints(
-                        "[follower(==leader)]",
-                        0,
-                        None,
-                        {"leader": viewsToStack[0], "follower": eachView},
-                    )
-                )
-                # stackView.addConstraints_(
-                #     makeConstraints(
-                #         "H:|[customView]|", 0, None, {"customView": eachView}
-                #     )
-                # )
-                # stackView.addConstraints_(
-                #     makeConstraints(
-                #         "V:|[customView]|", 0, None, {"customView": eachView}
-                #     )
-                # )
-            # wrapperStackView.addConstraints_(
-            #     makeConstraints("H:|[content]|@250", 0, None, {"content": stackView})
-            # )
-            # wrapperStackView.addConstraints_(
-            #     makeConstraints("V:|[content]|", 0, None, {"content": stackView})
-            # )
-            stackView.setAlignment_(NSLayoutAttributeWidth)
-            wrapperStackView.setAlignment_(NSLayoutAttributeHeight)
-
-            debug("wide sz", wide.fittingSize())
-            debug("wide intr", wide.intrinsicContentSize())
-            wide.setFrameRotation_(3)
-            wide.frame().size.height = 100
-            wide.cell().setLineBreakMode_(NSLineBreakByWordWrapping)
-
-            nsw.setReleasedWhenClosed_(False)
-            nsw.setHidesOnDeactivate_(False)
-            nsw.center()
-            nsw.makeKeyAndOrderFront_(nsw)
+            Deferred.fromCoroutine(getButton())
 
     @IBAction
     @interactionRoot
@@ -901,7 +927,7 @@ class PomFilesOwner(NSObject):
         intent = self.intentionDataSource.selectedIntention
         assert intent is not None, "how did you get here"
         intent.intention.abandoned = True
-        debug('set intention abandoned', intent.intention)
+        debug("set intention abandoned", intent.intention)
         self.intentionDataSource.recalculate()
 
     @IBAction
