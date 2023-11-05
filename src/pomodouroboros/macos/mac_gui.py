@@ -17,7 +17,6 @@ from typing import (
 import objc
 from AppKit import (
     NSApplication,
-    NSAlert,
     NSBackingStoreBuffered,
     NSBezelStyleTexturedSquare,
     NSButton,
@@ -50,7 +49,7 @@ from AppKit import (
 )
 from Foundation import NSIndexSet, NSObject, NSRect
 from objc import IBAction, IBOutlet, super
-from quickmacapp import Status, mainpoint
+from quickmacapp import Status, answer, mainpoint
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -755,10 +754,10 @@ async def multipleChoiceButtons(
     wide.setUsesSingleLineMode_(True)
     viewsToStack = []
 
-    for index, (color, title, answer) in enumerate(descriptions):
+    for index, (color, title, potentialAnswer) in enumerate(descriptions):
         # skew = 3
         key = index + 1
-        b = oneButton(f"⌘{key} — {title}", answerWith(d, answer), color, str(key))
+        b = oneButton(f"⌘{key} — {title}", answerWith(d, potentialAnswer), color, str(key))
         # b.setTranslatesAutoresizingMaskIntoConstraints_(False)
         viewsToStack.append(b)
 
@@ -886,10 +885,7 @@ class PomFilesOwner(NSObject):
                 (NSColor.systemIndigoColor(), "indigo", 15),
                 (NSColor.purpleColor(), "purple", 16),
             ])
-            alert = NSAlert.alloc().init()
-            alert.setMessageText_("choice complete")
-            alert.setInformativeText_(f"result was {result}")
-            alert.runModal()
+            await answer("choice complete", f"result was {result}")
 
         with showFailures():
             Deferred.fromCoroutine(getButton())
