@@ -6,10 +6,11 @@ pyobjc-framework-Cocoa
 pyobjc-framework-ExceptionHandling
 pyobjc-framework-UserNotifications
 twisted[tls,macos_platform]
-mypy>=0.910
+mypy<1.6.0
 mypy-zope
 python-dateutil
 types-python-dateutil
 ulid-py
 quickmacapp
 encrust
+datetype

@@ -30,6 +30,8 @@ cryptography==41.0.5
     # via
     #   pyopenssl
     #   service-identity
+datetype==2023.11.6
+    # via -r requirements.in
 delocate==0.10.4
     # via encrust
 encrust==2023.3.17.3
@@ -46,7 +48,7 @@ macholib==1.16.3
     # via py2app
 modulegraph==0.19.6
     # via py2app
-mypy==1.6.1
+mypy==1.5.1
     # via
     #   -r requirements.in
     #   mypy-zope
