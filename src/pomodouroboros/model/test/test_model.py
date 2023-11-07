@@ -200,7 +200,7 @@ class NexusTests(TestCase):
         """
         sessionStart = 1000
         realTimeStartDelay = 100.0
-        self.nexus.addSession(sessionStart, 2000)
+        self.nexus.addManualSession(sessionStart, 2000)
         self.advanceTime(sessionStart + realTimeStartDelay)
         self.advanceTime(1.0)
         self.advanceTime(1.0)
@@ -255,7 +255,7 @@ class NexusTests(TestCase):
         that timer and begins a pomodoro.
         """
         intention = self.nexus.addIntention("x")
-        self.nexus.addSession(1000, 2000)
+        self.nexus.addManualSession(1000, 2000)
         self.advanceTime(100)  # no-op; time before session
         self.advanceTime(1000)  # enter session
         self.advanceTime(50)  # time in session before pomodoro

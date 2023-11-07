@@ -29,17 +29,6 @@ class Duration:
     seconds: float
 
 
-@dataclass(frozen=True, order=True)
-class Session:
-    """
-    A session describes a period during which the user wishes to be
-    intentionally actively using the app.  During an active session, users will
-    be notified of the next time their score will decrease.
-    """
-    start: float
-    end: float
-
-
 @dataclass
 class Evaluation:
     """

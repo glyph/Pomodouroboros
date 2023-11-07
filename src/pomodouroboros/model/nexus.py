@@ -5,6 +5,9 @@ from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Iterable, Iterator, MutableSequence, Sequence
 
+from pomodouroboros.model.observables import IgnoreChanges, ObservableList
+from pomodouroboros.model.sessions import Session
+
 from .boundaries import (
     EvaluationResult,
     IntervalType,
@@ -24,11 +27,9 @@ from .intervals import (
     Evaluation,
     GracePeriod,
     Pomodoro,
-    Session,
     StartPrompt,
     handleIdleStartPom,
 )
-from pomodouroboros.model.observables import IgnoreChanges, ObservableList
 
 
 @dataclass(frozen=True)
@@ -354,12 +355,12 @@ class Nexus:
             )
         return newIntention
 
-    def addSession(self, startTime: float, endTime: float) -> None:
+    def addManualSession(self, startTime: float, endTime: float) -> None:
         """
         Add a 'work session'; a discrete interval where we will be scored, and
         notified of potential drops to our score if we don't set intentions.
         """
-        self._sessions.append(Session(startTime, endTime))
+        self._sessions.append(Session(startTime, endTime, False))
         # MutableSequence doesn't have a .sort() method
         self._sessions[:] = sorted(self._sessions)
 

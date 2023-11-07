@@ -9,12 +9,17 @@ altgraph==0.17.4
     #   macholib
     #   modulegraph
     #   py2app
+appdirs==1.4.4
+    # via twisted
 attrs==23.1.0
     # via
     #   automat
+    #   hypothesis
     #   service-identity
     #   twisted
 automat==22.10.0
+    # via twisted
+bcrypt==4.0.1
     # via twisted
 build==1.0.3
     # via pip-tools
@@ -30,13 +35,24 @@ cryptography==41.0.5
     # via
     #   pyopenssl
     #   service-identity
-datetype==2023.11.6
+    #   twisted
+cython-test-exception-raiser==1.0.2
+    # via twisted
+datetype==2023.11.8
     # via -r requirements.in
 delocate==0.10.4
     # via encrust
 encrust==2023.3.17.3
     # via -r requirements.in
+h2==4.1.0
+    # via twisted
+hpack==4.0.0
+    # via h2
+hyperframe==6.0.1
+    # via h2
 hyperlink==21.0.0
+    # via twisted
+hypothesis==6.88.3
     # via twisted
 idna==3.4
     # via
@@ -62,6 +78,8 @@ packaging==23.2
     #   delocate
 pip-tools==7.3.0
     # via -r requirements.in
+priority==1.3.0
+    # via twisted
 py2app==0.28.6
     # via
     #   -r requirements.in
@@ -74,6 +92,8 @@ pyasn1-modules==0.3.0
     # via service-identity
 pycparser==2.21
     # via cffi
+pyhamcrest==2.1.0
+    # via twisted
 pyobjc-core==10.0
     # via
     #   pyobjc-framework-cfnetwork
@@ -103,6 +123,8 @@ pyopenssl==23.3.0
     # via twisted
 pyproject-hooks==1.0.0
     # via build
+pyserial==3.5
+    # via twisted
 python-dateutil==2.8.2
     # via -r requirements.in
 quickmacapp==2023.4.24
@@ -113,7 +135,9 @@ six==1.16.0
     # via
     #   automat
     #   python-dateutil
-twisted[macos_platform,tls]==23.10.0
+sortedcontainers==2.4.0
+    # via hypothesis
+twisted[all-non-platform,conch,http2,macos_platform,serial,test,tls]==23.10.0
     # via
     #   -r requirements.in
     #   encrust

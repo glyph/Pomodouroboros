@@ -239,6 +239,26 @@ class SessionDataSource(NSObject):
     """
     NSTableViewDataSource for the list of active sessions.
     """
+    def awakeWithNexus_(self, newNexus: Nexus) -> None:
+        ...
+    # pragma mark NSTableViewDataSource
+
+    def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
+        return 1
+
+    def tableView_objectValueForTableColumn_row_(
+        self,
+        tableView: NSTableView,
+        objectValueForTableColumn: NSObject,
+        row: int,
+    ) -> dict[str,str]:
+        return {
+            "startTime": "start time here",
+            "endTime": "end time here",
+            "intervals": "interval count",
+            "points": "how many points earned this session",
+            "automatic": "was this session auto-started",
+        }
 
 
 class IntentionRow(NSObject):
@@ -989,7 +1009,7 @@ def newMain(reactor: IReactorTime) -> None:
     # assumptions about launching, makes it seem sluggish, so let's force it to
     # be eager here.
     # XXX test session
-    theNexus.addSession(reactor.seconds() + 1.0, reactor.seconds() + 1000.0)
+    theNexus.addManualSession(reactor.seconds() + 1.0, reactor.seconds() + 1000.0)
 
     def doAdvance() -> None:
         theNexus.advanceToTime(reactor.seconds())
