@@ -1,5 +1,6 @@
 # -*- test-case-name: pomodouroboros.model.test.test_sessions -*-
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import IntEnum, auto
 from zoneinfo import ZoneInfo
 
@@ -7,13 +8,13 @@ from datetype import DateTime, Time
 
 
 class Weekday(IntEnum):
-    monday = auto()
-    tuesday = auto()
-    wednesday = auto()
-    thursday = auto()
-    friday = auto()
-    saturday = auto()
-    sunday = auto()
+    monday = 0
+    tuesday = 1
+    wednesday = 2
+    thursday = 3
+    friday = 4
+    saturday = 5
+    sunday = 6
 
 
 @dataclass(frozen=True, order=True)
@@ -37,9 +38,22 @@ class DailySessionRule:
 
     def nextAutomaticSession(
         self, fromTimestamp: DateTime[ZoneInfo]
-    ) -> Session:
-        if self.dailyStart < fromTimestamp.timetz():
-            startTime = DateTime.combine(fromTimestamp.date(), self.dailyStart).timestamp()
-            endTime = DateTime.combine(fromTimestamp.date(), self.dailyEnd).timestamp()
+    ) -> Session | None:
+        if not self.days:
+            return None
+        tsStart = fromTimestamp.timetz()
+        isEarlier = tsStart < self.dailyStart
+        thisDay = Weekday(fromTimestamp.date().weekday()) in self.days
+        if thisDay and isEarlier:
+            startTime = DateTime.combine(
+                fromTimestamp.date(), self.dailyStart
+            ).timestamp()
+            endTime = DateTime.combine(
+                fromTimestamp.date(), self.dailyEnd
+            ).timestamp()
             return Session(startTime, endTime, True)
-        return self.nextAutomaticSession()
+        return self.nextAutomaticSession(
+            (fromTimestamp + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0
+            )
+        )
