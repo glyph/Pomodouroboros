@@ -80,7 +80,6 @@ class BreakCompleted:
 
     @property
     def points(self) -> float:
-
         return 1.0
 
 

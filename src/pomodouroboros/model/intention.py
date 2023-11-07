@@ -55,7 +55,7 @@ class Intention:
         return asdict(
             # https://github.com/python/mypy/pull/15962
             # https://github.com/python/mypy/issues/16155
-            replace(            # type:ignore[misc]
+            replace(  # type:ignore[misc]
                 self,
                 pomodoros=[
                     # we're just going to dump it into a dict here anyway, so

@@ -79,7 +79,9 @@ SavedStartPrompt = TypedDict(
         "intervalType": Literal["StartPrompt"],
     },
 )
-SavedSession = TypedDict("SavedSession", {"start": float, "end": float, "automatic": bool})
+SavedSession = TypedDict(
+    "SavedSession", {"start": float, "end": float, "automatic": bool}
+)
 
 SavedInterval = Union[
     SavedPomodoro, SavedBreak, SavedGracePeriod, SavedStartPrompt
@@ -101,5 +103,3 @@ SavedNexus = TypedDict(
         "sessions": list[SavedSession],
     },
 )
-
-

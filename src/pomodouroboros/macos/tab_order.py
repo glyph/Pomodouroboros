@@ -3,6 +3,7 @@ from __future__ import annotations
 from Foundation import NSObject
 from AppKit import NSTextView
 
+
 class TabOrderFriendlyTextViewDelegate(NSObject):
     """
     Act as a NSTextViewDelegate to allow for tab/backtab (i.e. shift-tab) to
@@ -22,5 +23,3 @@ class TabOrderFriendlyTextViewDelegate(NSObject):
                 return True
             case _:
                 return False
-
-

@@ -616,13 +616,11 @@ class Day(object):
             if interval.intention is not None:
                 isNotSuccess = interval.intention.wasSuccessful is None
             isNotEligible = interval not in stillEligible
-            if (
-                isIntent
-                and isNotSuccess
-                and isNotEligible
-            ):
+            if isIntent and isNotSuccess and isNotEligible:
                 assert interval.intention is not None
-                interval.intention.wasSuccessful = IntentionSuccess.NeverEvaluated
+                interval.intention.wasSuccessful = (
+                    IntentionSuccess.NeverEvaluated
+                )
                 observer.tooLongToEvaluate(interval)
         if not self.pendingIntervals:
             # dayOver is emitted once, below.

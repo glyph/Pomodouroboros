@@ -25,6 +25,7 @@ class Duration:
     A duration describes the amount of time that a 'real' interval (i.e. either
     break or pomodoro) that will be generated in a continuing streak.
     """
+
     intervalType: IntervalType
     seconds: float
 
@@ -145,7 +146,7 @@ class StartPrompt:
         Convenience attribute to compute the number of points that will be
         lost.
         """
-        return self.pointsBeforeLoss-self.pointsAfterLoss
+        return self.pointsBeforeLoss - self.pointsAfterLoss
 
     def scoreEvents(self) -> Iterable[ScoreEvent]:
         return ()
@@ -176,9 +177,7 @@ pomodoro going back to their genesis.
 def handleIdleStartPom(
     nexus: Nexus, startPom: Callable[[float, float], None]
 ) -> PomStartResult:
-    nexus._upcomingDurations = iter(
-        nexus._rules.streakIntervalDurations
-    )
+    nexus._upcomingDurations = iter(nexus._rules.streakIntervalDurations)
     nextDuration = next(nexus._upcomingDurations, None)
     assert (
         nextDuration is not None

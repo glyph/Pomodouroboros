@@ -239,8 +239,10 @@ class SessionDataSource(NSObject):
     """
     NSTableViewDataSource for the list of active sessions.
     """
+
     def awakeWithNexus_(self, newNexus: Nexus) -> None:
         ...
+
     # pragma mark NSTableViewDataSource
 
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
@@ -251,7 +253,7 @@ class SessionDataSource(NSObject):
         tableView: NSTableView,
         objectValueForTableColumn: NSObject,
         row: int,
-    ) -> dict[str,str]:
+    ) -> dict[str, str]:
         return {
             "startTime": "start time here",
             "endTime": "end time here",
@@ -752,7 +754,7 @@ def oneButton(
 
 def answerWith(deferred: Deferred[T], answer: T) -> Callable[[], None]:
     def answerer():
-        debug('giving result', answer)
+        debug("giving result", answer)
         deferred.callback(answer)
 
     return answerer
@@ -777,7 +779,12 @@ async def multipleChoiceButtons(
     for index, (color, title, potentialAnswer) in enumerate(descriptions):
         # skew = 3
         key = index + 1
-        b = oneButton(f"⌘{key} — {title}", answerWith(d, potentialAnswer), color, str(key))
+        b = oneButton(
+            f"⌘{key} — {title}",
+            answerWith(d, potentialAnswer),
+            color,
+            str(key),
+        )
         # b.setTranslatesAutoresizingMaskIntoConstraints_(False)
         viewsToStack.append(b)
 
@@ -896,15 +903,17 @@ class PomFilesOwner(NSObject):
     @IBAction
     def addStackButton_(self, sender: NSObject) -> None:
         async def getButton() -> None:
-            result = await multipleChoiceButtons([
-                (NSColor.redColor(), "red", 10),
-                (NSColor.orangeColor(), "orange", 11),
-                (NSColor.yellowColor(), "yellow", 12),
-                (NSColor.greenColor(), "green", 13),
-                (NSColor.blueColor(), "blue", 14),
-                (NSColor.systemIndigoColor(), "indigo", 15),
-                (NSColor.purpleColor(), "purple", 16),
-            ])
+            result = await multipleChoiceButtons(
+                [
+                    (NSColor.redColor(), "red", 10),
+                    (NSColor.orangeColor(), "orange", 11),
+                    (NSColor.yellowColor(), "yellow", 12),
+                    (NSColor.greenColor(), "green", 13),
+                    (NSColor.blueColor(), "blue", 14),
+                    (NSColor.systemIndigoColor(), "indigo", 15),
+                    (NSColor.purpleColor(), "purple", 16),
+                ]
+            )
             await answer("choice complete", f"result was {result}")
 
         with showFailures():
@@ -1009,7 +1018,9 @@ def newMain(reactor: IReactorTime) -> None:
     # assumptions about launching, makes it seem sluggish, so let's force it to
     # be eager here.
     # XXX test session
-    theNexus.addManualSession(reactor.seconds() + 1.0, reactor.seconds() + 1000.0)
+    theNexus.addManualSession(
+        reactor.seconds() + 1.0, reactor.seconds() + 1000.0
+    )
 
     def doAdvance() -> None:
         theNexus.advanceToTime(reactor.seconds())

@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 
-from AppKit import (NSColor, NSMakeRect,
-                    NSMakeSize, NSMenu, NSMenuItem, NSNotification, NSRect, NSSize,
-                    NSTextField, NSTextFieldCell)
+from AppKit import (
+    NSColor,
+    NSMakeRect,
+    NSMakeSize,
+    NSMenu,
+    NSMenuItem,
+    NSNotification,
+    NSRect,
+    NSSize,
+    NSTextField,
+    NSTextFieldCell,
+)
 from objc import super
 
 
@@ -88,4 +97,3 @@ def makeMenuLabel(menu: NSMenu, index: int = 0) -> HeightSizableTextField:
     explanatoryLabel.setSelectable_(False)
     explanatoryLabel.setTextColor_(NSColor.secondaryLabelColor())
     return explanatoryLabel
-

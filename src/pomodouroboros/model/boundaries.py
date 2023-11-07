@@ -4,8 +4,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Iterable, Protocol, TYPE_CHECKING, TypeAlias
 
-from pomodouroboros.model.observables import (Changes, IgnoreChanges,
-    SequenceObserver)
+from pomodouroboros.model.observables import (
+    Changes,
+    IgnoreChanges,
+    SequenceObserver,
+)
 
 
 if TYPE_CHECKING:
@@ -26,7 +29,6 @@ class IntervalType(Enum):
 
 
 class PomStartResult(Enum):
-
     Started = "Started"
     """
     The pomodoro was started, and with it, a new streak was started.
@@ -152,7 +154,6 @@ class NoUserInterface(UIEventListener):
         Return a change observer for the given C{interval}.
         """
         return IgnoreChanges
-
 
 
 # Not a protocol because https://github.com/python/mypy/issues/14544

@@ -7,6 +7,7 @@ from weakref import ref
 T = TypeVar("T")
 U = TypeVar("U")
 
+
 @dataclass
 class IDHasher(Generic[T]):
     """
@@ -45,5 +46,3 @@ class IDHasher(Generic[T]):
 
         self = IDHasher(ref(value, finalize), id(value))
         return self
-
-

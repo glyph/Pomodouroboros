@@ -1,5 +1,3 @@
-
-
 def main():
     """
     run stuff

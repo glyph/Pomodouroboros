@@ -397,7 +397,6 @@ class DayManager(object):
         editController: DayEditorController,
         dayLoader: DayLoader,
     ) -> DayManager:
-
         progressController = ProgressController()
 
         def listRefresher() -> None:

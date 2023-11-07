@@ -106,7 +106,9 @@ class Nexus:
         now = self._lastUpdateTime
 
         if now < candidateInterval.startTime:
-            debug(f"active interval: now ({now}) before start ({candidateInterval.startTime})")
+            debug(
+                f"active interval: now ({now}) before start ({candidateInterval.startTime})"
+            )
             # what does it mean if this has happened?
             return None
 
