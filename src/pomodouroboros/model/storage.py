@@ -8,6 +8,10 @@ from os import makedirs, replace
 from os.path import basename, dirname, exists, expanduser, join
 from typing import TypeAlias, cast
 
+from pomodouroboros.model.boundaries import EvaluationResult
+from pomodouroboros.model.observables import IgnoreChanges, ObservableList
+from pomodouroboros.model.sessions import Session
+
 from .boundaries import IntervalType, UserInterfaceFactory
 from .intention import Estimate, Intention
 from .intervals import (
@@ -17,7 +21,6 @@ from .intervals import (
     Evaluation,
     GracePeriod,
     Pomodoro,
-    Session,
     StartPrompt,
 )
 from .nexus import Nexus
@@ -30,8 +33,6 @@ from .schema import (
     SavedPomodoro,
     SavedStartPrompt,
 )
-from pomodouroboros.model.boundaries import EvaluationResult
-from pomodouroboros.model.observables import IgnoreChanges, ObservableList
 
 
 def nexusFromJSON(
@@ -125,7 +126,11 @@ def nexusFromJSON(
         _sessions=ObservableList(
             IgnoreChanges,
             [
-                Session(start=each["start"], end=each["end"])
+                Session(
+                    start=each["start"],
+                    end=each["end"],
+                    automatic=bool(each.get("automatic")),
+                )
                 for each in saved["sessions"]
             ],
         ),
@@ -221,7 +226,11 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
             for streakIntervals in nexus._streaks
         ],
         "sessions": [
-            {"start": session.start, "end": session.end}
+            {
+                "start": session.start,
+                "end": session.end,
+                "automatic": session.automatic,
+            }
             for session in nexus._sessions
         ],
     }

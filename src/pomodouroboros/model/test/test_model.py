@@ -484,8 +484,6 @@ class NexusTests(TestCase):
             self.testUI.actions,
         )
         self.testUI.clear()
-
-        print("\n\npass grace period please\n\n")
         # Advance past the end of the grace period.
         self.advanceTime(10 * 60)
         self.assertEqual(
