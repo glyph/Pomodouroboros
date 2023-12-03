@@ -1,7 +1,7 @@
 # -*- test-case-name: pomodouroboros.model.test.test_sessions -*-
 from dataclasses import dataclass
 from datetime import timedelta
-from enum import IntEnum, auto
+from enum import IntEnum
 from zoneinfo import ZoneInfo
 
 from datetype import DateTime, Time

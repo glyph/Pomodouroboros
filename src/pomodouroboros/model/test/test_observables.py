@@ -1,27 +1,14 @@
 from __future__ import annotations
 
-import sys
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from io import StringIO
 from typing import (
-    Annotated,
     Any,
-    Callable,
-    ContextManager,
-    Generic,
-    Iterable,
     Iterator,
-    MutableMapping,
-    MutableSequence,
-    Protocol,
-    TypeVar,
-    overload,
 )
-from weakref import proxy
 
 from twisted.trial.unittest import SynchronousTestCase as TC
-from typing_extensions import dataclass_transform
 
 from ..observables import (
     Changes,

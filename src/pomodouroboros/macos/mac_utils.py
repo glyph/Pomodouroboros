@@ -2,14 +2,11 @@
 General-purpose PyObjC utilities that might belong in a different package.
 """
 
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import (
     Generic,
     Any,
     Callable,
-    Concatenate,
-    Iterator,
     Protocol,
     TypeVar,
     ParamSpec,
@@ -39,7 +36,6 @@ from Foundation import (
     NSObject,
 )
 from quickmacapp import Actionable
-from twisted.python.failure import Failure
 
 
 T = TypeVar("T")

@@ -9,8 +9,6 @@ from AppKit import (
     NSFont,
     NSFontAttributeName,
     NSForegroundColorAttributeName,
-    NSShadow,
-    NSShadowAttributeName,
     NSStrokeColorAttributeName,
 )
 from Foundation import NSPoint, NSRect
