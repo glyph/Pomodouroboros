@@ -80,6 +80,9 @@ class MacUserInterface:
             "\n\nStart a Pomodoro now with ⌘⌥⌃P !"
         )
 
+    def describeCurrentState(self, description: str) -> None:
+        ...
+
     def intervalStart(self, interval: AnyInterval) -> None:
         self.currentInterval = interval
         match interval:

@@ -51,6 +51,9 @@ class TestUserInterface:
     clock: IReactorTime
     actions: list[TestInterval] = field(default_factory=list)
 
+    def describeCurrentState(self, description: str) -> None:
+        ...
+
     def intervalProgress(self, percentComplete: float) -> None:
         """
         The active interval has progressed to C{percentComplete} percentage

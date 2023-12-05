@@ -52,6 +52,11 @@ class UIEventListener(Protocol):
     The user interface must implement all intention and interval methods.
     """
 
+    def describeCurrentState(self, description: str) -> None:
+        """
+        Describe the current state to the user with the given description string.
+        """
+
     def intervalStart(self, interval: AnyInterval) -> None:
         """
         Set the interval type to "pomodoro".
@@ -107,6 +112,9 @@ class NoUserInterface(UIEventListener):
     """
     Do-nothing implementation of a user interface.
     """
+
+    def describeCurrentState(self, description: str) -> None:
+        ...
 
     def intervalStart(self, interval: AnyInterval) -> None:
         ...
