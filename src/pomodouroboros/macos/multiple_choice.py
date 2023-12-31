@@ -31,7 +31,7 @@ from Foundation import NSObject, NSRect
 from objc import IBAction
 from twisted.internet.defer import Deferred
 
-from pomodouroboros.model.debugger import debug
+from ..model.debugger import debug
 
 
 T = TypeVar("T")

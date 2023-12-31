@@ -5,9 +5,6 @@ from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Iterable, Iterator, MutableSequence, Sequence
 
-from pomodouroboros.model.observables import IgnoreChanges, ObservableList
-from pomodouroboros.model.sessions import Session
-
 from .boundaries import (
     EvaluationResult,
     IntervalType,
@@ -30,6 +27,8 @@ from .intervals import (
     StartPrompt,
     handleIdleStartPom,
 )
+from .observables import IgnoreChanges, ObservableList
+from .sessions import Session
 
 
 @dataclass(frozen=True)

@@ -2,19 +2,13 @@ from dataclasses import dataclass, field
 from typing import Type, TypeVar
 from unittest import TestCase
 
-from pomodouroboros.model.intention import Estimate
-from pomodouroboros.model.observables import (
-    Changes,
-    IgnoreChanges,
-    SequenceObserver,
-)
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
 from ..boundaries import EvaluationResult, PomStartResult, UIEventListener
 from ..debugger import debug
 from ..ideal import idealScore
-from ..intention import Intention
+from ..intention import Estimate, Intention
 from ..intervals import (
     AnyInterval,
     Break,
@@ -24,6 +18,7 @@ from ..intervals import (
     StartPrompt,
 )
 from ..nexus import Nexus
+from ..observables import Changes, IgnoreChanges, SequenceObserver
 
 
 @dataclass

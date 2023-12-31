@@ -18,17 +18,8 @@ from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
-from pomodouroboros.macos.intentions_gui import IntentionDataSource
-from pomodouroboros.macos.mac_utils import SometimesBackground
-from pomodouroboros.model.debugger import debug
-from pomodouroboros.model.intention import Estimate
-from pomodouroboros.model.observables import (
-    Changes,
-    IgnoreChanges,
-    SequenceObserver,
-)
-
-from ..model.intention import Intention
+from ..model.debugger import debug
+from ..model.intention import Estimate, Intention
 from ..model.intervals import (
     AnyInterval,
     Break,
@@ -37,9 +28,13 @@ from ..model.intervals import (
     StartPrompt,
 )
 from ..model.nexus import Nexus
+from ..model.observables import Changes, IgnoreChanges, SequenceObserver
 from ..model.storage import loadDefaultNexus
 from ..model.util import interactionRoot, intervalSummary, showFailures
 from ..storage import TEST_MODE
+
+from .intentions_gui import IntentionDataSource
+from .mac_utils import SometimesBackground
 from .multiple_choice import multipleChoiceButtons
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController

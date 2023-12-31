@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import os
-from cProfile import Profile
 from contextlib import contextmanager
+from cProfile import Profile
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import (
@@ -19,25 +19,6 @@ from typing import (
     Tuple,
 )
 
-from ..pommodel import (
-    Break,
-    Day,
-    Intention,
-    IntentionResponse,
-    IntentionSuccess,
-    Interval,
-    Pomodoro,
-)
-from ..storage import DayLoader, TEST_MODE
-from .mac_utils import callOnNotification
-from .mac_dates import datetimeFromNSDate, localDate
-from .notifs import (
-    askForIntent,
-    notify,
-    setupNotifications,
-    withdrawIntentPrompt,
-)
-from .progress_hud import ProgressController
 from AppKit import (
     NSApp,
     NSApplication,
@@ -55,19 +36,36 @@ from AppKit import (
     NSTextFieldCell,
     NSWindow,
 )
-from Foundation import NSIndexSet, NSLog, NSMutableDictionary, NSObject, NSDate
-from PyObjCTools.AppHelper import callLater
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
+from Foundation import NSDate, NSIndexSet, NSLog, NSMutableDictionary, NSObject
 from objc import IBAction, IBOutlet, super
-from pomodouroboros.macos.mac_utils import (
-    SometimesBackground,
-    callOnNotification,
-)
+from PyObjCTools.AppHelper import callLater
 from quickmacapp import Status, ask, choose, quit
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IDelayedCall, IReactorTime
 from twisted.python.failure import Failure
+
+from ..pommodel import (
+    Break,
+    Day,
+    Intention,
+    IntentionResponse,
+    IntentionSuccess,
+    Interval,
+    Pomodoro,
+)
+from ..storage import TEST_MODE, DayLoader
+
+from .mac_dates import datetimeFromNSDate, localDate
+from .mac_utils import SometimesBackground, callOnNotification
+from .notifs import (
+    askForIntent,
+    notify,
+    setupNotifications,
+    withdrawIntentPrompt,
+)
+from .progress_hud import ProgressController
 
 
 async def getSuccess(intention: Intention) -> IntentionSuccess | None:
@@ -795,9 +793,9 @@ class DayEditorController(NSObject):
 
 
 from Foundation import (
+    NSKeyValueObservingOptionInitial,
     NSKeyValueObservingOptionNew,
     NSKeyValueObservingOptionOld,
-    NSKeyValueObservingOptionInitial,
     NSKeyValueObservingOptionPrior,
 )
 

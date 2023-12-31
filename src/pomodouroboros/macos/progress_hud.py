@@ -18,8 +18,7 @@ from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
 from twisted.python.failure import Failure
 
-from pomodouroboros.model.debugger import debug
-
+from ..model.debugger import debug
 from ..model.util import showFailures
 
 log = Logger()

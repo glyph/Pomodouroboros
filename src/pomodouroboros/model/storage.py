@@ -8,11 +8,7 @@ from os import makedirs, replace
 from os.path import basename, dirname, exists, expanduser, join
 from typing import TypeAlias, cast
 
-from pomodouroboros.model.boundaries import EvaluationResult
-from pomodouroboros.model.observables import IgnoreChanges, ObservableList
-from pomodouroboros.model.sessions import Session
-
-from .boundaries import IntervalType, UserInterfaceFactory
+from .boundaries import EvaluationResult, IntervalType, UserInterfaceFactory
 from .intention import Estimate, Intention
 from .intervals import (
     AnyInterval,
@@ -24,6 +20,7 @@ from .intervals import (
     StartPrompt,
 )
 from .nexus import Nexus
+from .observables import IgnoreChanges, ObservableList
 from .schema import (
     SavedBreak,
     SavedGracePeriod,
@@ -33,6 +30,7 @@ from .schema import (
     SavedPomodoro,
     SavedStartPrompt,
 )
+from .sessions import Session
 
 
 def nexusFromJSON(

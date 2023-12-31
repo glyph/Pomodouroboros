@@ -3,7 +3,7 @@ from __future__ import annotations
 from Foundation import NSObject
 from AppKit import NSTableView
 
-from pomodouroboros.model.nexus import Nexus
+from ..model.nexus import Nexus
 
 
 class SessionDataSource(NSObject):

@@ -12,7 +12,7 @@ from .scoring import (
     IntentionCompleted,
     IntentionCreatedEvent,
 )
-from pomodouroboros.model.observables import (
+from .observables import (
     IgnoreChanges,
     Observer,
     observable,

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from datetype import aware
 
-from pomodouroboros.model.sessions import DailySessionRule, Session, Weekday
+from ..sessions import DailySessionRule, Session, Weekday
 
 PT = ZoneInfo("America/Los_Angeles")
 
