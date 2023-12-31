@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, TypeVar
 
 from AppKit import (
     NSApplication,
@@ -43,11 +40,11 @@ from ..model.nexus import Nexus
 from ..model.storage import loadDefaultNexus
 from ..model.util import interactionRoot, intervalSummary, showFailures
 from ..storage import TEST_MODE
+from .multiple_choice import multipleChoiceButtons
 from .old_mac_gui import main as oldMain
 from .progress_hud import ProgressController
 from .sessions_gui import SessionDataSource
 from .text_fields import HeightSizableTextField, makeMenuLabel
-from .multiple_choice import multipleChoiceButtons
 
 lightPurple = NSColor.colorWithSRGBRed_green_blue_alpha_(0.7, 0.0, 0.7, 1.0)
 darkPurple = NSColor.colorWithSRGBRed_green_blue_alpha_(0.5, 0.0, 0.5, 1.0)
