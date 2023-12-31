@@ -9,10 +9,10 @@ from AppKit import NSTableView
 from Foundation import NSColor, NSObject
 from objc import IBAction, IBOutlet
 
-from ..model.intervals import Pomodoro
 from ..model.boundaries import EvaluationResult
 from ..model.debugger import debug
 from ..model.intention import Intention
+from ..model.intervals import Pomodoro
 from ..model.nexus import Nexus
 from ..model.util import interactionRoot, showFailures
 from .mac_dates import LOCAL_TZ

@@ -33,7 +33,6 @@ from twisted.internet.defer import Deferred
 
 from ..model.debugger import debug
 
-
 T = TypeVar("T")
 
 

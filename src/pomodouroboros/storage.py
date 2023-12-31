@@ -9,7 +9,6 @@ from twisted.python.filepath import FilePath
 
 from .pommodel import Day
 
-
 TEST_MODE = bool(
     environ.get("TEST_MODE")
     or environ.get("ARGVZERO", "").endswith("/TestPomodouroboros")

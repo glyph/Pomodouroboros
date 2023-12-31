@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from Foundation import NSObject
 from AppKit import NSTableView
+from Foundation import NSObject
 
 from ..model.nexus import Nexus
 

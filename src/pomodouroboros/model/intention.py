@@ -3,21 +3,16 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
 from itertools import islice
-from typing import Iterable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable
 
 from .boundaries import EvaluationResult, ScoreEvent
+from .observables import IgnoreChanges, Observer, observable
 from .scoring import (
     AttemptedEstimation,
     EstimationAccuracy,
     IntentionCompleted,
     IntentionCreatedEvent,
 )
-from .observables import (
-    IgnoreChanges,
-    Observer,
-    observable,
-)
-
 
 if TYPE_CHECKING:
     from .intervals import Pomodoro

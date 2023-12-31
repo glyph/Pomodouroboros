@@ -1,6 +1,5 @@
 from typing import Literal, TypedDict, Union
 
-
 SavedIntervalType = Literal["Pomodoro", "GracePeriod", "Break", "StartPrompt"]
 SavedEstimate = TypedDict(
     "SavedEstimate",

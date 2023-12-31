@@ -14,7 +14,6 @@ from Foundation import (
     NSTimeZone,
 )
 
-
 LOCAL_TZ = ZoneInfo(NSTimeZone.localTimeZone().name())
 
 fromDate = NSCalendar.currentCalendar().components_fromDate_

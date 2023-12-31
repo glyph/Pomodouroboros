@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from Foundation import NSObject
 from AppKit import NSTextView
+from Foundation import NSObject
 
 
 class TabOrderFriendlyTextViewDelegate(NSObject):

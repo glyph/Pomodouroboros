@@ -2,22 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import count
-from typing import Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from .boundaries import EvaluationResult, PomStartResult, ScoreEvent
 from .debugger import debug
-
 
 if TYPE_CHECKING:
     from .nexus import Nexus
     from .intention import Intention
 
-from .intervals import (
-    AnyInterval,
-    Break,
-    GracePeriod,
-    Pomodoro,
-)
+from .intervals import AnyInterval, Break, GracePeriod, Pomodoro
 
 
 @dataclass

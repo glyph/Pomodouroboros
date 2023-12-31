@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from AppKit import (
     NSColor,
     NSMakeRect,
@@ -14,7 +13,6 @@ from AppKit import (
     NSTextFieldCell,
 )
 from objc import super
-
 
 leftPadding = 15.0
 

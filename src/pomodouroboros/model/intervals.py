@@ -1,12 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable, ClassVar, Iterable, TYPE_CHECKING
 
-from .scoring import (
-    BreakCompleted,
-    EvaluationScore,
-    IntentionSet,
-)
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Callable, ClassVar, Iterable
+
 from .boundaries import (
     EvaluationResult,
     IntervalType,
@@ -14,6 +10,7 @@ from .boundaries import (
     ScoreEvent,
 )
 from .intention import Intention
+from .scoring import BreakCompleted, EvaluationScore, IntentionSet
 
 if TYPE_CHECKING:
     from .nexus import Nexus

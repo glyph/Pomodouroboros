@@ -33,5 +33,3 @@ STREAK = """
          pomodoros, and currenty have a score multiplier of {scoreMultiplier};
          keep it up!
          """
-
-

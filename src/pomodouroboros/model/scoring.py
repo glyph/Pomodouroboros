@@ -1,12 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from .boundaries import ScoreEvent
 
 if TYPE_CHECKING:
-    from .intervals import Break
     from .intention import Estimate, Intention
+    from .intervals import Break
 
 
 _is_score_event: type[ScoreEvent]

@@ -3,27 +3,24 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from io import StringIO
-from typing import (
-    Any,
-    Iterator,
-)
+from typing import Any, Iterator
 
 from twisted.trial.unittest import SynchronousTestCase as TC
 
 from ..observables import (
     Changes,
+    DebugChanges,
+    IgnoreChanges,
+    MirrorDict,
+    MirrorList,
+    MirrorObject,
     MustSpecifyObserver,
+    ObservableDict,
     ObservableList,
     Observer,
     PathObserver,
     build,
     observable,
-    DebugChanges,
-    MirrorList,
-    MirrorObject,
-    ObservableDict,
-    MirrorDict,
-    IgnoreChanges,
 )
 
 

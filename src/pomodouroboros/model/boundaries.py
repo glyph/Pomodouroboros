@@ -2,19 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Protocol, TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, Callable, Protocol, TypeAlias
 
-from ..model.observables import (
-    Changes,
-    IgnoreChanges,
-    SequenceObserver,
-)
-
+from ..model.observables import Changes, IgnoreChanges, SequenceObserver
 
 if TYPE_CHECKING:
+    from .intention import Estimate, Intention
     from .intervals import AnyInterval, Pomodoro
     from .nexus import Nexus
-    from .intention import Intention, Estimate
 
 
 class IntervalType(Enum):

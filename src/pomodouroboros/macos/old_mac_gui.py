@@ -56,7 +56,6 @@ from ..pommodel import (
     Pomodoro,
 )
 from ..storage import TEST_MODE, DayLoader
-
 from .mac_dates import datetimeFromNSDate, localDate
 from .mac_utils import SometimesBackground, callOnNotification
 from .notifs import (

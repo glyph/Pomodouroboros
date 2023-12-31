@@ -32,7 +32,6 @@ from ..model.observables import Changes, IgnoreChanges, SequenceObserver
 from ..model.storage import loadDefaultNexus
 from ..model.util import interactionRoot, intervalSummary, showFailures
 from ..storage import TEST_MODE
-
 from .intentions_gui import IntentionDataSource
 from .mac_utils import SometimesBackground
 from .multiple_choice import multipleChoiceButtons

@@ -7,11 +7,11 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import total_ordering
 from typing import (
+    IO,
     Annotated,
     Callable,
     ContextManager,
     Generic,
-    IO,
     Iterable,
     Iterator,
     Mapping,
@@ -19,12 +19,10 @@ from typing import (
     MutableSequence,
     Protocol,
     TypeVar,
+    dataclass_transform,
     overload,
 )
 from weakref import proxy
-
-from typing import dataclass_transform
-
 
 K = TypeVar("K")
 V = TypeVar("V")

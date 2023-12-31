@@ -4,12 +4,12 @@ General-purpose PyObjC utilities that might belong in a different package.
 
 from dataclasses import dataclass, field
 from typing import (
-    Generic,
     Any,
     Callable,
+    Generic,
+    ParamSpec,
     Protocol,
     TypeVar,
-    ParamSpec,
     overload,
 )
 
@@ -17,7 +17,6 @@ import objc
 from AppKit import (
     NSApplication,
     NSApplicationActivateIgnoringOtherApps,
-    NSWorkspaceDidHideApplicationNotification,
     NSApplicationActivationPolicyAccessory,
     NSApplicationActivationPolicyRegular,
     NSLog,
@@ -30,13 +29,10 @@ from AppKit import (
     NSWorkspaceActiveSpaceDidChangeNotification,
     NSWorkspaceApplicationKey,
     NSWorkspaceDidActivateApplicationNotification,
+    NSWorkspaceDidHideApplicationNotification,
 )
-from Foundation import (
-    NSLog,
-    NSObject,
-)
+from Foundation import NSLog, NSObject
 from quickmacapp import Actionable
-
 
 T = TypeVar("T")
 S = TypeVar("S")

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Callable, Dict, Optional
 
 from Foundation import NSError, NSObject
-
 from UserNotifications import (
     UNAuthorizationOptionNone,
     UNMutableNotificationContent,

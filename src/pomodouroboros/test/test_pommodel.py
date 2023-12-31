@@ -1,7 +1,7 @@
+from datetime import date, time, timezone
 from unittest import TestCase
 
 from ..pommodel import Day
-from datetime import date, time, timezone
 
 
 class DayTests(TestCase):
