@@ -100,6 +100,7 @@ pyobjc-core==10.0
     #   pyobjc-framework-cocoa
     #   pyobjc-framework-exceptionhandling
     #   pyobjc-framework-usernotifications
+    #   quickmachotkey
     #   twisted
 pyobjc-framework-cfnetwork==10.0
     # via twisted
@@ -128,6 +129,8 @@ pyserial==3.5
 python-dateutil==2.8.2
     # via -r requirements.in
 quickmacapp==2023.4.24
+    # via -r requirements.in
+quickmachotkey==2023.11.17
     # via -r requirements.in
 service-identity==23.1.0
     # via twisted
