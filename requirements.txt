@@ -11,7 +11,7 @@ altgraph==0.17.4
     #   py2app
 appdirs==1.4.4
     # via twisted
-attrs==23.1.0
+attrs==23.2.0
     # via
     #   automat
     #   hypothesis
@@ -19,7 +19,7 @@ attrs==23.1.0
     #   twisted
 automat==22.10.0
     # via twisted
-bcrypt==4.0.1
+bcrypt==4.1.2
     # via twisted
 build==1.0.3
     # via pip-tools
@@ -31,7 +31,7 @@ click==8.1.7
     #   pip-tools
 constantly==23.10.4
     # via twisted
-cryptography==41.0.5
+cryptography==42.0.2
     # via
     #   pyopenssl
     #   service-identity
@@ -40,7 +40,7 @@ cython-test-exception-raiser==1.0.2
     # via twisted
 datetype==2023.11.8
     # via -r requirements.in
-delocate==0.10.4
+delocate==0.10.7
     # via encrust
 encrust==2023.3.17.3
     # via -r requirements.in
@@ -52,9 +52,9 @@ hyperframe==6.0.1
     # via h2
 hyperlink==21.0.0
     # via twisted
-hypothesis==6.88.3
+hypothesis==6.97.4
     # via twisted
-idna==3.4
+idna==3.6
     # via
     #   hyperlink
     #   twisted
@@ -70,7 +70,7 @@ mypy==1.5.1
     #   mypy-zope
 mypy-extensions==1.0.0
     # via mypy
-mypy-zope==1.0.1
+mypy-zope==1.0.3
     # via -r requirements.in
 packaging==23.2
     # via
@@ -80,11 +80,11 @@ pip-tools==7.3.0
     # via -r requirements.in
 priority==1.3.0
     # via twisted
-py2app==0.28.6
+py2app==0.28.7
     # via
     #   -r requirements.in
     #   encrust
-pyasn1==0.5.0
+pyasn1==0.5.1
     # via
     #   pyasn1-modules
     #   service-identity
@@ -94,7 +94,7 @@ pycparser==2.21
     # via cffi
 pyhamcrest==2.1.0
     # via twisted
-pyobjc-core==10.0
+pyobjc-core==10.1
     # via
     #   pyobjc-framework-cfnetwork
     #   pyobjc-framework-cocoa
@@ -102,9 +102,9 @@ pyobjc-core==10.0
     #   pyobjc-framework-usernotifications
     #   quickmachotkey
     #   twisted
-pyobjc-framework-cfnetwork==10.0
+pyobjc-framework-cfnetwork==10.1
     # via twisted
-pyobjc-framework-cocoa==10.0
+pyobjc-framework-cocoa==10.1
     # via
     #   -r requirements.in
     #   pyobjc-framework-cfnetwork
@@ -112,15 +112,15 @@ pyobjc-framework-cocoa==10.0
     #   pyobjc-framework-usernotifications
     #   quickmacapp
     #   twisted
-pyobjc-framework-exceptionhandling==10.0
+pyobjc-framework-exceptionhandling==10.1
     # via
     #   -r requirements.in
     #   quickmacapp
-pyobjc-framework-usernotifications==10.0
+pyobjc-framework-usernotifications==10.1
     # via
     #   -r requirements.in
     #   quickmacapp
-pyopenssl==23.3.0
+pyopenssl==24.0.0
     # via twisted
 pyproject-hooks==1.0.0
     # via build
@@ -132,7 +132,7 @@ quickmacapp==2023.4.24
     # via -r requirements.in
 quickmachotkey==2023.11.17
     # via -r requirements.in
-service-identity==23.1.0
+service-identity==24.1.0
     # via twisted
 six==1.16.0
     # via
@@ -145,16 +145,16 @@ twisted[all-non-platform,conch,http2,macos_platform,serial,test,tls]==23.10.0
     #   -r requirements.in
     #   encrust
     #   quickmacapp
-types-python-dateutil==2.8.19.14
+types-python-dateutil==2.8.19.20240106
     # via -r requirements.in
-typing-extensions==4.8.0
+typing-extensions==4.9.0
     # via
     #   delocate
     #   mypy
     #   twisted
 ulid-py==1.1.0
     # via -r requirements.in
-wheel==0.41.3
+wheel==0.42.0
     # via pip-tools
 wheel-filename==1.4.1
     # via encrust
