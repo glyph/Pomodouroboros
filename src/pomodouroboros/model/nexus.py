@@ -234,7 +234,6 @@ class Nexus:
         """
         Advance to the epoch time given.
         """
-        ui = self.userInterface
         debug("begin advance from", self._lastUpdateTime, "to", newTime)
         earlyEvaluationSpecialCase = (
             self._streaks
