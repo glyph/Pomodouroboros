@@ -21,8 +21,6 @@ from twisted.python.failure import Failure
 from ..model.debugger import debug
 from ..model.util import showFailures
 
-log = Logger()
-
 import math
 
 from AppKit import (
@@ -52,6 +50,8 @@ from ..storage import TEST_MODE
 # https://github.com/ronaldoussoren/pyobjc/issues/540
 NSWindowCollectionBehaviorCanJoinAllApplications = 1 << 18
 NSWindowCollectionBehaviorAuxiliary = 1 << 17
+
+log = Logger()
 
 
 class HUDWindow(NSWindow):
@@ -512,8 +512,8 @@ class PieTimer(AbstractProgressView):
 
             def doArc(start: float, end: float) -> NSBezierPath:
                 thickness = 0.1
-                innerRadius = radius * (1 - thickness)
 
+                # innerRadius = radius * (1 - thickness)
                 # outerStart = edge(center, radius, start)
                 # innerStart = edge(center, innerRadius, start)
                 # outerEnd = edge(center, radius, end)
