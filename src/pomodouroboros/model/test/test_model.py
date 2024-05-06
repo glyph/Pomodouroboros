@@ -182,7 +182,7 @@ class NexusTests(TestCase):
         a = self.nexus.addIntention("new 1")
         self.advanceTime(1)
         self.assertEqual(checkScore(), 0)
-        b = self.nexus.addIntention("new 2")
+        self.nexus.addIntention("new 2")
         self.advanceTime(1)
         self.nexus.startPomodoro(a)
         pom = a.pomodoros[0]
