@@ -376,7 +376,6 @@ class Nexus:
         )
 
         def startPom(startTime: float, endTime: float) -> None:
-            ui = self.userInterface
             newPomodoro = Pomodoro(
                 intention=intention,
                 indexInStreak=sum(
