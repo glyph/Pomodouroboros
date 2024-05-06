@@ -236,10 +236,18 @@ class Nexus:
         """
         debug("begin advance from", self._lastUpdateTime, "to", newTime)
         earlyEvaluationSpecialCase = (
+            # if we have at least one streak
             self._streaks
+            # and our current streak is not empty (i.e. we are continuing it)
             and self._streaks[-1]
+            # and the end time of the current interval in the current streak is
+            # not set
             and (currentEndTime := self._streaks[-1][-1].endTime) is not None
+            # and the current end time happens to correspond *exactly* to the last update time
             and currentEndTime == self._lastUpdateTime
+            # then even if the new time has not moved and we are still on the
+            # last update time exactly, we need to process a loop update
+            # because the timer at the end of the interval has moved.
         )
         while self._lastUpdateTime < newTime or earlyEvaluationSpecialCase:
             earlyEvaluationSpecialCase = False
