@@ -155,8 +155,27 @@ class StartPrompt:
         nexus.userInterface.intervalEnd()
         return handleIdleStartPom(nexus, startPom)
 
+@dataclass
+class Idle:
+    startTime: float
+    endTime: float
+    intervalType: ClassVar[IntervalType] = IntervalType.Idle
 
-AnyInterval = Pomodoro | Break | GracePeriod | StartPrompt
+    def scoreEvents(self) -> Iterable[ScoreEvent]:
+        return ()
+
+    def handleStartPom(
+        self, nexus: Nexus, startPom: Callable[[float, float], None]
+    ) -> PomStartResult:
+        nexus.userInterface.intervalProgress(1.0)
+        nexus.userInterface.intervalEnd()
+        return handleIdleStartPom(nexus, startPom)
+
+AnyStreakInterval = Pomodoro | Break | GracePeriod | StartPrompt
+"""
+Any interval that can occur in a streak.
+"""
+AnyIntervalOrIdle = AnyStreakInterval | Idle
 """
 Any interval at all.
 """

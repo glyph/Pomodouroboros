@@ -11,7 +11,7 @@ from typing import TypeAlias, cast
 from .boundaries import EvaluationResult, IntervalType, UserInterfaceFactory
 from .intention import Estimate, Intention
 from .intervals import (
-    AnyInterval,
+    AnyStreakInterval,
     Break,
     Duration,
     Evaluation,
@@ -61,7 +61,7 @@ def nexusFromJSON(
         intentions.append(intention)
         intentionIDMap[savedIntention["id"]] = intention
 
-    def loadInterval(savedInterval: SavedInterval) -> AnyInterval:
+    def loadInterval(savedInterval: SavedInterval) -> AnyStreakInterval:
         if savedInterval["intervalType"] == "Pomodoro":
             intention = intentionIDMap[savedInterval["intentionID"]]
             evaluation = savedInterval["evaluation"]
@@ -140,7 +140,7 @@ def nexusFromJSON(
 
 def nexusToJSON(nexus: Nexus) -> SavedNexus:
     @singledispatch
-    def saveInterval(interval: AnyInterval) -> SavedInterval:
+    def saveInterval(interval: AnyStreakInterval) -> SavedInterval:
         """
         Save any interval to its paired JSON data structure.
         """

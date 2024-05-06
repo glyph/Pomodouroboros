@@ -1,6 +1,6 @@
 from typing import Literal, TypedDict, Union
 
-SavedIntervalType = Literal["Pomodoro", "GracePeriod", "Break", "StartPrompt"]
+SavedIntervalType = Literal["Pomodoro", "GracePeriod", "Break", "StartPrompt", "Idle"]
 SavedEstimate = TypedDict(
     "SavedEstimate",
     {

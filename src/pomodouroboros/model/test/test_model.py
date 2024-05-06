@@ -10,11 +10,12 @@ from ..debugger import debug
 from ..ideal import idealScore
 from ..intention import Estimate, Intention
 from ..intervals import (
-    AnyInterval,
+    AnyIntervalOrIdle,
     Break,
     Evaluation,
     GracePeriod,
     Pomodoro,
+    Idle,
     StartPrompt,
 )
 from ..nexus import Nexus
@@ -27,7 +28,7 @@ class TestInterval:
     A record of methods being called on L{TestUserInterface}
     """
 
-    interval: AnyInterval
+    interval: AnyIntervalOrIdle
     actualStartTime: float | None = None
     actualEndTime: float | None = None
     currentProgress: list[float] = field(default_factory=list)
@@ -45,6 +46,7 @@ class TestUserInterface:
     theNexus: Nexus = field(init=False)
     clock: IReactorTime
     actions: list[TestInterval] = field(default_factory=list)
+    actualInterval: TestInterval | None = None
 
     def describeCurrentState(self, description: str) -> None:
         ...
@@ -55,9 +57,10 @@ class TestUserInterface:
         complete.
         """
         debug("interval: progress!", percentComplete)
-        self.actions[-1].currentProgress.append(percentComplete)
+        assert self.actualInterval is not None
+        self.actualInterval.currentProgress.append(percentComplete)
 
-    def intervalStart(self, interval: AnyInterval) -> None:
+    def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         """
         An interval has started, record it.
         """
@@ -65,13 +68,17 @@ class TestUserInterface:
         assert not (
             self.actions and self.actions[0].interval is interval
         ), f"sanity check: no double-starting ({interval}): {self.actions}"
-        self.actions.append(TestInterval(interval, self.clock.seconds()))
+        it = self.actualInterval = TestInterval(interval, self.clock.seconds())
+        if isinstance(interval, Idle):
+            return
+        self.actions.append(it)
 
     def intervalEnd(self) -> None:
         """
         The interval has ended. Hide the progress bar.
         """
-        self.actions[-1].actualEndTime = self.clock.seconds()
+        assert self.actualInterval is not None
+        self.actualInterval.actualEndTime = self.clock.seconds()
 
     def intentionListObserver(self) -> SequenceObserver[Intention]:
         """
@@ -105,7 +112,7 @@ class TestUserInterface:
         """
         return IgnoreChanges
 
-    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+    def intervalObserver(self, interval: AnyIntervalOrIdle) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """
@@ -659,7 +666,7 @@ class NexusTests(TestCase):
 
         self.advanceTime(EARLY_COMPLETION)
         action = self.testUI.actions[0].interval
-        assert isinstance(action, Pomodoro)
+        assert isinstance(action, Pomodoro), f"{action}"
         self.assertEqual(self.nexus.availableIntentions, [intent])
         # TODO:
         # self.assertEqual(self.testUI.completedIntentions, [])

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .nexus import Nexus
     from .intention import Intention
 
-from .intervals import AnyInterval, Break, GracePeriod, Pomodoro
+from .intervals import AnyIntervalOrIdle, Break, GracePeriod, Pomodoro, Idle
 
 
 @dataclass
@@ -96,9 +96,9 @@ def idealFuture(
         return newPlaceholder()
 
     while hypothetical._lastUpdateTime <= workPeriodEnd:
-        workingInterval: AnyInterval | None = hypothetical._activeInterval
+        workingInterval: AnyIntervalOrIdle = hypothetical._activeInterval
         debug("ideal working interval:", workingInterval)
-        if isinstance(workingInterval, (type(None), GracePeriod)):
+        if isinstance(workingInterval, (Idle, GracePeriod)):
             # We are either idle or in a grace period, so we should
             # immediately start a pomodoro.
 

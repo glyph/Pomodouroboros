@@ -21,7 +21,7 @@ from twisted.internet.task import LoopingCall
 from ..model.debugger import debug
 from ..model.intention import Estimate, Intention
 from ..model.intervals import (
-    AnyInterval,
+    AnyIntervalOrIdle,
     Break,
     GracePeriod,
     Pomodoro,
@@ -55,7 +55,7 @@ class MacUserInterface:
     nexus: Nexus
     explanatoryLabel: HeightSizableTextField
     intentionDataSource: IntentionDataSource
-    currentInterval: AnyInterval | None = None
+    currentInterval: AnyIntervalOrIdle
 
     def startPromptUpdate(self, startPrompt: StartPrompt) -> None:
         """
@@ -74,7 +74,7 @@ class MacUserInterface:
     def describeCurrentState(self, description: str) -> None:
         ...
 
-    def intervalStart(self, interval: AnyInterval) -> None:
+    def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         self.currentInterval = interval
         match interval:
             case StartPrompt():
@@ -141,7 +141,7 @@ class MacUserInterface:
         """
         return IgnoreChanges
 
-    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+    def intervalObserver(self, interval: AnyIntervalOrIdle) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """
@@ -189,6 +189,7 @@ class MacUserInterface:
             nexus,
             makeMenuLabel(status.item.menu()),
             owner.intentionDataSource,
+            nexus._activeInterval,            # TODO: that seems wrong
         )
         self.setExplanation("Starting Up...")
         return self
@@ -310,7 +311,7 @@ class PomFilesOwner(NSObject):
         """
         The 'new intention' button was clicked.
         """
-        newIntention = self.nexus.addIntention()
+        self.nexus.addIntention()
         self.intentionsTable.reloadData()
         self.intentionsTable.selectRowIndexes_byExtendingSelection_(
             NSIndexSet.indexSetWithIndex_(len(self.nexus.intentions) - 1),

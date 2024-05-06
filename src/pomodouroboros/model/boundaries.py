@@ -8,7 +8,7 @@ from ..model.observables import Changes, IgnoreChanges, SequenceObserver
 
 if TYPE_CHECKING:
     from .intention import Estimate, Intention
-    from .intervals import AnyInterval, Pomodoro
+    from .intervals import AnyIntervalOrIdle, Pomodoro
     from .nexus import Nexus
 
 
@@ -21,6 +21,7 @@ class IntervalType(Enum):
     GracePeriod = "GracePeriod"
     Break = "Break"
     StartPrompt = "StartPrompt"
+    Idle = "Idle"
 
 
 class PomStartResult(Enum):
@@ -52,7 +53,7 @@ class UIEventListener(Protocol):
         Describe the current state to the user with the given description string.
         """
 
-    def intervalStart(self, interval: AnyInterval) -> None:
+    def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         """
         Set the interval type to "pomodoro".
         """
@@ -96,7 +97,7 @@ class UIEventListener(Protocol):
         estimates.
         """
 
-    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+    def intervalObserver(self, interval: AnyIntervalOrIdle) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """
@@ -111,7 +112,7 @@ class NoUserInterface(UIEventListener):
     def describeCurrentState(self, description: str) -> None:
         ...
 
-    def intervalStart(self, interval: AnyInterval) -> None:
+    def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         ...
 
     def intervalProgress(self, percentComplete: float) -> None:
@@ -152,7 +153,7 @@ class NoUserInterface(UIEventListener):
         """
         return IgnoreChanges
 
-    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+    def intervalObserver(self, interval: AnyIntervalOrIdle) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """

@@ -18,14 +18,15 @@ from .debugger import debug
 from .ideal import idealScore
 from .intention import Estimate, Intention
 from .intervals import (
-    AnyInterval,
+    AnyStreakInterval,
+    AnyIntervalOrIdle,
     Break,
     Duration,
     Evaluation,
     GracePeriod,
+    Idle,
     Pomodoro,
     StartPrompt,
-    handleIdleStartPom,
 )
 from .observables import IgnoreChanges, ObservableList
 from .sessions import Session
@@ -76,7 +77,7 @@ class Nexus:
     _upcomingDurations: Iterator[Duration] = iter(())
     _rules: GameRules = field(default_factory=GameRules)
 
-    _streaks: ObservableList[ObservableList[AnyInterval]] = field(
+    _streaks: ObservableList[ObservableList[AnyStreakInterval]] = field(
         default_factory=lambda: ObservableList(
             IgnoreChanges, [ObservableList(IgnoreChanges)]
         )
@@ -91,16 +92,32 @@ class Nexus:
 
     _lastUpdateTime: float = field(default=0.0)
 
+    def _newIdleInterval(self) -> Idle:
+        from math import inf
+
+        nextSessionTime = next(
+            (
+                session.start
+                for session in self._sessions
+                if session.end > self._lastUpdateTime
+                and session.start > self._lastUpdateTime
+            ),
+            inf,
+        )
+        return Idle(
+            startTime=self._lastUpdateTime, endTime=nextSessionTime
+        )
+
     @property
-    def _activeInterval(self) -> AnyInterval | None:
+    def _activeInterval(self) -> AnyIntervalOrIdle:
         debug("determining active interval")
         if not self._streaks:
             debug("active interval: no streaks")
-            return None
+            return self._newIdleInterval()
         currentStreak = self._streaks[-1]
         if not currentStreak:
             debug("active interval: no current streak")
-            return None
+            return self._newIdleInterval()
         candidateInterval = currentStreak[-1]
         now = self._lastUpdateTime
 
@@ -109,7 +126,7 @@ class Nexus:
                 f"active interval: now ({now}) before start ({candidateInterval.startTime})"
             )
             # what does it mean if this has happened?
-            return None
+            return self._newIdleInterval()
 
         if now > candidateInterval.endTime:
             # We've moved on past the end of the interval, so it is no longer
@@ -120,7 +137,7 @@ class Nexus:
             # important way, even though these values are normally real time
             # and therefore not meaningfully comparable on exact equality.
             debug("active interval: now after end")
-            return None
+            return self._newIdleInterval()
         debug("active interval: yay:", candidateInterval)
         return candidateInterval
 
@@ -257,9 +274,9 @@ class Nexus:
         )
         while self._lastUpdateTime < newTime or earlyEvaluationSpecialCase:
             earlyEvaluationSpecialCase = False
-            newInterval: AnyInterval | None = None
+            newInterval: AnyStreakInterval | None = None
             currentInterval = self._activeInterval
-            if currentInterval is None:
+            if isinstance(currentInterval, Idle):
                 # If there's no current interval then there's nothing to end
                 # and we can skip forward to current time, and let the start
                 # prompt just begin at the current time, not some point in the
@@ -338,7 +355,7 @@ class Nexus:
                 # should really be active now
                 assert self._activeInterval is newInterval
 
-    def _createdInterval(self, newInterval: AnyInterval) -> None:
+    def _createdInterval(self, newInterval: AnyStreakInterval) -> None:
         self._streaks[-1].append(newInterval)
         self.userInterface.intervalStart(newInterval)
         self.userInterface.intervalProgress(0.0)
@@ -383,12 +400,6 @@ class Nexus:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
-        handleStartFunc = (
-            handleIdleStartPom
-            if self._activeInterval is None
-            else self._activeInterval.handleStartPom
-        )
-
         def startPom(startTime: float, endTime: float) -> None:
             newPomodoro = Pomodoro(
                 intention=intention,
@@ -401,7 +412,7 @@ class Nexus:
             intention.pomodoros.append(newPomodoro)
             self._createdInterval(newPomodoro)
 
-        return handleStartFunc(self, startPom)
+        return self._activeInterval.handleStartPom(self, startPom)
 
     def evaluatePomodoro(
         self, pomodoro: Pomodoro, result: EvaluationResult
@@ -436,13 +447,3 @@ preludeIntervalMap: dict[IntervalType, type[GracePeriod | Break]] = {
     Pomodoro.intervalType: GracePeriod,
     Break.intervalType: Break,
 }
-
-
-def nextInterval(
-    nexus: Nexus,
-    timestamp: float,
-    previousInterval: AnyInterval | None,
-) -> AnyInterval | None:
-    """
-    Consume a duration from the list of upcoming durations and
-    """
