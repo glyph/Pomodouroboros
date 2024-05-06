@@ -234,7 +234,12 @@ class Nexus:
         """
         Advance to the epoch time given.
         """
-        ui = self.userInterface
+
+        # ensure lazy user-interface is reified before we start updating so
+        # that notifications of interval starts happen in the correct order
+        # (particularly important so tests can be exact).
+        self.userInterface
+
         debug("begin advance from", self._lastUpdateTime, "to", newTime)
         earlyEvaluationSpecialCase = (
             # if we have at least one streak
