@@ -66,29 +66,56 @@ class Nexus:
     """
 
     _initialTime: float
+    """
+    An initial time specified during construction.  The nexus will advance to
+    this time upon first construction.
+    """
+    # TODO: we could probably simplify and get rid of this; it ought to be
+    # redundant with lastUpdateTime?
+
     _interfaceFactory: UserInterfaceFactory
+    "A factory to create a user interface as the Nexus is being instantiated."
+
     _lastIntentionID: int
+    """
+    The last ID used for an intention, incremented by 1 each time a new one is
+    created.
+    """
 
     _intentions: MutableSequence[Intention] = field(
         default_factory=lambda: ObservableList(IgnoreChanges)
     )
+    "A list of all the intentions that the user has specified."
+    # TODO: intentions should be archived like streaks.
 
     _userInterface: UIEventListener | None = None
+    "The user interface to deliver information to."
+
     _upcomingDurations: Iterator[Duration] = iter(())
+    "The durations that are upcoming in the current streak."
+
     _rules: GameRules = field(default_factory=GameRules)
+    "The rules of what constitutes a streak."
 
     _previousStreaks: list[list[AnyStreakInterval]] = field(default_factory=list)
-    _currentStreak: list[AnyStreakInterval] = field(default_factory=list)
+    "An archive of the previous streaks that the user has completed."
 
-    """
-    The list of all of the user's streaks.
-    """
+    _currentStreak: list[AnyStreakInterval] = field(default_factory=list)
+    "The user's current streak."
 
     _sessions: ObservableList[Session] = field(
         default_factory=lambda: ObservableList(IgnoreChanges)
     )
 
     _lastUpdateTime: float = field(default=0.0)
+
+    def __post_init__(self) -> None:
+        debug(f"post-init, IT={self._initialTime} LUT={self._lastUpdateTime}")
+        if self._initialTime > self._lastUpdateTime:
+            debug("post-init advance")
+            self.advanceToTime(self._initialTime)
+        else:
+            debug("post-init, no advance")
 
     def _newIdleInterval(self) -> Idle:
         from math import inf
@@ -129,14 +156,6 @@ class Nexus:
             return self._newIdleInterval()
         debug("active interval: yay:", candidateInterval)
         return candidateInterval
-
-    def __post_init__(self) -> None:
-        debug(f"post-init, IT={self._initialTime} LUT={self._lastUpdateTime}")
-        if self._initialTime > self._lastUpdateTime:
-            debug("post-init advance")
-            self.advanceToTime(self._initialTime)
-        else:
-            debug("post-init, no advance")
 
     def cloneWithoutUI(self) -> Nexus:
         """
