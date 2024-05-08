@@ -70,12 +70,14 @@ def nexusFromJSON(
                 intention=intention,
                 endTime=savedInterval["endTime"],
                 indexInStreak=savedInterval["indexInStreak"],
-                evaluation=Evaluation(
-                    EvaluationResult(evaluation["result"]),
-                    evaluation["timestamp"],
-                )
-                if evaluation is not None
-                else None,
+                evaluation=(
+                    Evaluation(
+                        EvaluationResult(evaluation["result"]),
+                        evaluation["timestamp"],
+                    )
+                    if evaluation is not None
+                    else None
+                ),
             )
             intention.pomodoros.append(pomodoro)
             return pomodoro
@@ -97,16 +99,14 @@ def nexusFromJSON(
                 originalPomEnd=savedInterval["originalPomEnd"],
             )
 
-    streaks = ObservableList(
-        IgnoreChanges,
-        [
-            ObservableList(
-                IgnoreChanges,
-                [loadInterval(interval) for interval in savedStreak],
-            )
-            for savedStreak in saved["streaks"]
-        ],
-    )
+    previousStreaks = [
+        [loadInterval(interval) for interval in savedStreak]
+        for savedStreak in saved["previousStreaks"]
+    ]
+    currentStreak = [
+        loadInterval(interval) for interval in saved["currentStreak"]
+    ]
+
     nexus = Nexus(
         _lastIntentionID=int(saved["lastIntentionID"]),
         _initialTime=saved["initialTime"],
@@ -120,7 +120,8 @@ def nexusFromJSON(
                 for each in saved["upcomingDurations"]
             ]
         ),
-        _streaks=streaks,
+        _previousStreaks=previousStreaks,
+        _currentStreak=currentStreak,
         _sessions=ObservableList(
             IgnoreChanges,
             [
@@ -152,12 +153,14 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
             "startTime": interval.startTime,
             "intentionID": str(interval.intention.id),
             "endTime": interval.endTime,
-            "evaluation": {
-                "result": interval.evaluation.result.value,
-                "timestamp": interval.evaluation.timestamp,
-            }
-            if interval.evaluation is not None
-            else None,
+            "evaluation": (
+                {
+                    "result": interval.evaluation.result.value,
+                    "timestamp": interval.evaluation.timestamp,
+                }
+                if interval.evaluation is not None
+                else None
+            ),
             "indexInStreak": interval.indexInStreak,
             "intervalType": "Pomodoro",
         }
@@ -216,12 +219,16 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
             # clone the iterator
             for duration in nexus.cloneWithoutUI()._upcomingDurations
         ],
-        "streaks": [
+        "currentStreak": [
+            saveInterval(streakInterval)
+            for streakInterval in nexus._currentStreak
+        ],
+        "previousStreaks": [
             [
                 saveInterval(streakInterval)
                 for streakInterval in streakIntervals
             ]
-            for streakIntervals in nexus._streaks
+            for streakIntervals in nexus._previousStreaks
         ],
         "sessions": [
             {

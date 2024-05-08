@@ -98,7 +98,10 @@ SavedNexus = TypedDict(
         "intentions": list[SavedIntention],
         "lastUpdateTime": float,
         "upcomingDurations": list[SavedDuration],
-        "streaks": list[SavedStreak],
+        "currentStreak": SavedStreak,
+        # TODO: previousStreaks should really be saved in separate files for
+        # scalability
+        "previousStreaks": list[SavedStreak],
         "sessions": list[SavedSession],
     },
 )

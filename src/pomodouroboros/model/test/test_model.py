@@ -643,7 +643,8 @@ class NexusTests(TestCase):
             list(roundTrip.cloneWithoutUI()._upcomingDurations),
         )
         self.assertEqual(self.nexus._rules, roundTrip._rules)
-        self.assertEqual(self.nexus._streaks, roundTrip._streaks)
+        self.assertEqual(self.nexus._previousStreaks, roundTrip._previousStreaks)
+        self.assertEqual(self.nexus._currentStreak, roundTrip._currentStreak)
         self.assertEqual(self.nexus._sessions, roundTrip._sessions)
 
     def test_achievedEarly(self) -> None:

@@ -77,11 +77,9 @@ class Nexus:
     _upcomingDurations: Iterator[Duration] = iter(())
     _rules: GameRules = field(default_factory=GameRules)
 
-    _streaks: ObservableList[ObservableList[AnyStreakInterval]] = field(
-        default_factory=lambda: ObservableList(
-            IgnoreChanges, [ObservableList(IgnoreChanges)]
-        )
-    )
+    _previousStreaks: list[list[AnyStreakInterval]] = field(default_factory=list)
+    _currentStreak: list[AnyStreakInterval] = field(default_factory=list)
+
     """
     The list of all of the user's streaks.
     """
@@ -104,28 +102,19 @@ class Nexus:
             ),
             inf,
         )
-        return Idle(
-            startTime=self._lastUpdateTime, endTime=nextSessionTime
-        )
+        return Idle(startTime=self._lastUpdateTime, endTime=nextSessionTime)
 
     @property
     def _activeInterval(self) -> AnyIntervalOrIdle:
-        debug("determining active interval")
-        if not self._streaks:
-            debug("active interval: no streaks")
+        if not self._currentStreak:
             return self._newIdleInterval()
-        currentStreak = self._streaks[-1]
-        if not currentStreak:
-            debug("active interval: no current streak")
-            return self._newIdleInterval()
-        candidateInterval = currentStreak[-1]
+
+        candidateInterval = self._currentStreak[-1]
         now = self._lastUpdateTime
 
         if now < candidateInterval.startTime:
-            debug(
-                f"active interval: now ({now}) before start ({candidateInterval.startTime})"
-            )
-            # what does it mean if this has happened?
+            # when would this happen? interval at the end of the current streak
+            # somehow has not started?
             return self._newIdleInterval()
 
         if now > candidateInterval.endTime:
@@ -169,13 +158,15 @@ class Nexus:
                 _userInterface=_theNoUserInterface,
                 _upcomingDurations=split(),
                 _sessions=ObservableList(IgnoreChanges),
-                _streaks=ObservableList(
-                    IgnoreChanges,
-                    [
-                        ObservableList(IgnoreChanges, each[:])
-                        for each in self._streaks
-                    ],
-                ),
+                _previousStreaks=[
+                    each[:] for each in self._previousStreaks
+                ],
+                # TODO: the intervals in the current streak are mutable (if we
+                # evaluate the last one early, its end time changes) and thus
+                # potentially need to be cloned here; however, the
+                # idealized-evaluation logic should never do that, so this is
+                # more of an academic point
+                _currentStreak=self._currentStreak[:],
             )
         )
         debug("constructed")
@@ -197,7 +188,7 @@ class Nexus:
             for event in intention.intentionScoreEvents(intentionIndex):
                 if startTime <= event.time and event.time <= endTime:
                     yield event
-        for streak in self._streaks:
+        for streak in self._previousStreaks + [self._currentStreak]:
             for interval in streak:
                 if interval.startTime > startTime:
                     for event in interval.scoreEvents():
@@ -259,13 +250,11 @@ class Nexus:
 
         debug("begin advance from", self._lastUpdateTime, "to", newTime)
         earlyEvaluationSpecialCase = (
-            # if we have at least one streak
-            self._streaks
-            # and our current streak is not empty (i.e. we are continuing it)
-            and self._streaks[-1]
+            # if our current streak is not empty (i.e. we are continuing it)
+            self._currentStreak
             # and the end time of the current interval in the current streak is
             # not set
-            and (currentEndTime := self._streaks[-1][-1].endTime) is not None
+            and (currentEndTime := self._currentStreak[-1].endTime) is not None
             # and the current end time happens to correspond *exactly* to the last update time
             and currentEndTime == self._lastUpdateTime
             # then even if the new time has not moved and we are still on the
@@ -324,7 +313,9 @@ class Nexus:
                     if newDuration is None:
                         debug("no new duration, so catching up to real time")
                         # XXX needs test coverage
-                        self._streaks.append(ObservableList(IgnoreChanges))
+                        previous, self._currentStreak = self._currentStreak, []
+                        assert previous, "rolling off the end of a streak but the streak is empty somehow"
+                        self._previousStreaks.append(previous)
                     else:
                         debug("new duration", newDuration)
                         newInterval = preludeIntervalMap[
@@ -356,7 +347,7 @@ class Nexus:
                 assert self._activeInterval is newInterval
 
     def _createdInterval(self, newInterval: AnyStreakInterval) -> None:
-        self._streaks[-1].append(newInterval)
+        self._currentStreak.append(newInterval)
         self.userInterface.intervalStart(newInterval)
         self.userInterface.intervalProgress(0.0)
 
@@ -400,11 +391,12 @@ class Nexus:
         When you start a pomodoro, the length of time set by the pomodoro is
         determined by your current streak so it's not a parameter.
         """
+
         def startPom(startTime: float, endTime: float) -> None:
             newPomodoro = Pomodoro(
                 intention=intention,
                 indexInStreak=sum(
-                    isinstance(each, Pomodoro) for each in self._streaks[-1]
+                    isinstance(each, Pomodoro) for each in self._currentStreak
                 ),
                 startTime=startTime,
                 endTime=endTime,
