@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
+from datetime import datetime, time
 from typing import Type, TypeVar
 from unittest import TestCase
+from zoneinfo import ZoneInfo
 
+from datetype import aware
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
@@ -14,12 +17,13 @@ from ..intervals import (
     Break,
     Evaluation,
     GracePeriod,
-    Pomodoro,
     Idle,
+    Pomodoro,
     StartPrompt,
 )
 from ..nexus import Nexus
 from ..observables import Changes, IgnoreChanges, SequenceObserver
+from ..sessions import DailySessionRule, Weekday, Session
 
 
 @dataclass
@@ -48,8 +52,7 @@ class TestUserInterface:
     actions: list[TestInterval] = field(default_factory=list)
     actualInterval: TestInterval | None = None
 
-    def describeCurrentState(self, description: str) -> None:
-        ...
+    def describeCurrentState(self, description: str) -> None: ...
 
     def intervalProgress(self, percentComplete: float) -> None:
         """
@@ -112,7 +115,9 @@ class TestUserInterface:
         """
         return IgnoreChanges
 
-    def intervalObserver(self, interval: AnyIntervalOrIdle) -> Changes[str, object]:
+    def intervalObserver(
+        self, interval: AnyIntervalOrIdle
+    ) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """
@@ -346,6 +351,31 @@ class NexusTests(TestCase):
             ],
             self.testUI.actions,
         )
+
+    def test_advanceToNewSession(self) -> None:
+        """
+        A nexus should start a new session automatically when its rules say
+        it's time to do that.
+        """
+        TZ = ZoneInfo("America/Los_Angeles")
+        dailyStart = aware(
+            time(hour=9, minute=30, tzinfo=TZ),
+            ZoneInfo,
+        )
+        dailyEnd = aware(
+            time(hour=4 + 12, minute=45, tzinfo=TZ),
+            ZoneInfo,
+        )
+        self.nexus._sessionRules.append(
+            DailySessionRule(
+                dailyStart,
+                dailyEnd,
+                {Weekday.monday, Weekday.wednesday, Weekday.thursday},
+            )
+        )
+        now = aware(datetime(2024, 5, 8, 11, tzinfo=TZ), ZoneInfo)
+        self.nexus.advanceToTime(now.timestamp())
+        self.assertEqual(self.nexus._sessions[:], [Session(start=1715185800.0, end=1715211900.0, automatic=True)])
 
     def test_story(self) -> None:
         """
@@ -642,8 +672,10 @@ class NexusTests(TestCase):
             list(self.nexus.cloneWithoutUI()._upcomingDurations),
             list(roundTrip.cloneWithoutUI()._upcomingDurations),
         )
-        self.assertEqual(self.nexus._rules, roundTrip._rules)
-        self.assertEqual(self.nexus._previousStreaks, roundTrip._previousStreaks)
+        self.assertEqual(self.nexus._streakRules, roundTrip._streakRules)
+        self.assertEqual(
+            self.nexus._previousStreaks, roundTrip._previousStreaks
+        )
         self.assertEqual(self.nexus._currentStreak, roundTrip._currentStreak)
         self.assertEqual(self.nexus._sessions, roundTrip._sessions)
 

@@ -3,7 +3,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from typing import Iterable, Iterator, MutableSequence, Sequence
+from zoneinfo import ZoneInfo
+
+from datetype import aware
 
 from .boundaries import (
     EvaluationResult,
@@ -18,8 +22,8 @@ from .debugger import debug
 from .ideal import idealScore
 from .intention import Estimate, Intention
 from .intervals import (
-    AnyStreakInterval,
     AnyIntervalOrIdle,
+    AnyStreakInterval,
     Break,
     Duration,
     Evaluation,
@@ -29,11 +33,15 @@ from .intervals import (
     StartPrompt,
 )
 from .observables import IgnoreChanges, ObservableList
-from .sessions import Session
+from .sessions import DailySessionRule, Session
 
 
 @dataclass(frozen=True)
-class GameRules:
+class StreakRules:
+    """
+    The rules for what intervals should be part of a streak.
+    """
+
     streakIntervalDurations: Iterable[Duration] = field(
         default_factory=lambda: [
             each
@@ -94,10 +102,21 @@ class Nexus:
     _upcomingDurations: Iterator[Duration] = iter(())
     "The durations that are upcoming in the current streak."
 
-    _rules: GameRules = field(default_factory=GameRules)
-    "The rules of what constitutes a streak."
+    _streakRules: StreakRules = field(default_factory=StreakRules)
+    """
+    The rules of what constitutes a streak; how long the durations of breaks
+    and pomodoros are.
+    """
 
-    _previousStreaks: list[list[AnyStreakInterval]] = field(default_factory=list)
+    _sessionRules: list[DailySessionRule] = field(default_factory=list)
+    """
+    The rules for when to automatically start a session.
+    """
+    # TODO: there should be other types of rules via DailySessionRule
+
+    _previousStreaks: list[list[AnyStreakInterval]] = field(
+        default_factory=list
+    )
     "An archive of the previous streaks that the user has completed."
 
     _currentStreak: list[AnyStreakInterval] = field(default_factory=list)
@@ -177,9 +196,7 @@ class Nexus:
                 _userInterface=_theNoUserInterface,
                 _upcomingDurations=split(),
                 _sessions=ObservableList(IgnoreChanges),
-                _previousStreaks=[
-                    each[:] for each in self._previousStreaks
-                ],
+                _previousStreaks=[each[:] for each in self._previousStreaks],
                 # TODO: the intervals in the current streak are mutable (if we
                 # evaluate the last one early, its end time changes) and thus
                 # potentially need to be cloned here; however, the
@@ -249,7 +266,35 @@ class Nexus:
             i for i in self._intentions if not i.completed and not i.abandoned
         ]
 
-    def _activeSession(self) -> Session | None:
+    def _activeSession(self, oldTime: float, newTime: float) -> Session | None:
+
+        oldTime = max(oldTime, newTime - (86400 * 7))
+
+        for rule in self._sessionRules:
+            thisOldTime = oldTime
+            while thisOldTime < newTime:
+                tz = rule.dailyStart.tzinfo
+                assert rule.dailyStart < rule.dailyEnd
+                fromWhen = aware(
+                    datetime.fromtimestamp(
+                        thisOldTime,
+                        tz,
+                    ),
+                    ZoneInfo,
+                )
+                created = rule.nextAutomaticSession(fromWhen)
+                if created is not None:
+                    newEnd = created.end
+                    fromWhenT = fromWhen.timestamp()
+                    assert created.start < created.end, f"{created.start}, {created.end}"
+                    assert newEnd > fromWhenT, f"{newEnd} <= {fromWhenT}"
+                    if created.end > newTime:
+                        # Don't create sessions that are already over at the current moment.
+                        self._sessions.append(created)
+                    thisOldTime = created.end
+                else:
+                    break
+
         for session in self._sessions:
             if session.start <= self._lastUpdateTime < session.end:
                 debug("session active", session.start, session.end)
@@ -289,9 +334,10 @@ class Nexus:
                 # and we can skip forward to current time, and let the start
                 # prompt just begin at the current time, not some point in the
                 # past where some reminder *might* have been appropriate.
+                oldTime = self._lastUpdateTime
                 self._lastUpdateTime = newTime
                 debug("interval None, update to real time", newTime)
-                activeSession = self._activeSession()
+                activeSession = self._activeSession(oldTime, newTime)
                 if activeSession is not None:
                     scoreInfo = idealScore(
                         self, activeSession.start, activeSession.end
@@ -333,7 +379,9 @@ class Nexus:
                         debug("no new duration, so catching up to real time")
                         # XXX needs test coverage
                         previous, self._currentStreak = self._currentStreak, []
-                        assert previous, "rolling off the end of a streak but the streak is empty somehow"
+                        assert (
+                            previous
+                        ), "rolling off the end of a streak but the streak is empty somehow"
                         self._previousStreaks.append(previous)
                     else:
                         debug("new duration", newDuration)

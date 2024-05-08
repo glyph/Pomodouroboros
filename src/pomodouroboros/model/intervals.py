@@ -193,7 +193,7 @@ pomodoro going back to their genesis.
 def handleIdleStartPom(
     nexus: Nexus, startPom: Callable[[float, float], None]
 ) -> PomStartResult:
-    nexus._upcomingDurations = iter(nexus._rules.streakIntervalDurations)
+    nexus._upcomingDurations = iter(nexus._streakRules.streakIntervalDurations)
     nextDuration = next(nexus._upcomingDurations, None)
     assert (
         nextDuration is not None
