@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, time
 from typing import Type, TypeVar
 from unittest import TestCase
+from unittest.mock import ANY
 from zoneinfo import ZoneInfo
 
 from datetype import aware
@@ -375,7 +376,52 @@ class NexusTests(TestCase):
         )
         now = aware(datetime(2024, 5, 8, 11, tzinfo=TZ), ZoneInfo)
         self.nexus.advanceToTime(now.timestamp())
-        self.assertEqual(self.nexus._sessions[:], [Session(start=1715185800.0, end=1715211900.0, automatic=True)])
+
+        # TODO: try to observe the creation of this session in the way that the
+        # UI would
+        self.assertEqual(
+            self.nexus._sessions[:],
+            [Session(start=1715185800.0, end=1715211900.0, automatic=True)],
+        )
+
+        # note that I definitely cheated a little bit with these data
+        # structures and copied them out of the observed output of the code, I
+        # didn't hand-calculate that it's 1500 seconds to the next score drop
+        promptStart = 1715191200.0
+        promptStop = 1715192700.0
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=StartPrompt(
+                        startTime=promptStart,
+                        endTime=promptStop,
+                        pointsBeforeLoss=ANY,
+                        pointsAfterLoss=ANY,
+                    ),
+                    actualStartTime=0.0,
+                    actualEndTime=None,
+                    currentProgress=[0.0],
+                )
+            ],
+            self.testUI.actions,
+        )
+        self.nexus.advanceToTime(now.timestamp() + 20)
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=StartPrompt(
+                        startTime=1715191200.0,
+                        endTime=1715192700.0,
+                        pointsBeforeLoss=ANY,
+                        pointsAfterLoss=ANY,
+                    ),
+                    actualStartTime=0.0,
+                    actualEndTime=None,
+                    currentProgress=[0.0, (20 / (promptStop - promptStart))],
+                )
+            ],
+            self.testUI.actions,
+        )
 
     def test_story(self) -> None:
         """
