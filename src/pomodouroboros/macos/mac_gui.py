@@ -363,6 +363,7 @@ class PomFilesOwner(NSObject):
             # TODO: update intention data source with initial data from nexus
             self.intentionDataSource.awakeWithNexus_(self.nexus)
             self.streakDataSource.awakeWithNexus_(self.nexus)
+            self.sessionDataSource.awakeWithNexus_(self.nexus)
             if (
                 self.intentionDataSource.numberOfRowsInTableView_(
                     self.intentionsTable
