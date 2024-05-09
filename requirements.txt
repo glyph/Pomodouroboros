@@ -19,9 +19,9 @@ attrs==23.2.0
     #   twisted
 automat==22.10.0
     # via twisted
-bcrypt==4.1.2
+bcrypt==4.1.3
     # via twisted
-build==1.0.3
+build==1.2.1
     # via pip-tools
 cffi==1.16.0
     # via cryptography
@@ -31,22 +31,22 @@ click==8.1.7
     #   pip-tools
 constantly==23.10.4
     # via twisted
-cryptography==42.0.2
+cryptography==42.0.7
     # via
     #   pyopenssl
     #   service-identity
     #   twisted
 cython-test-exception-raiser==1.0.2
     # via twisted
-datetype==2023.11.8
+datetype==2024.2.28
     # via
     #   -r requirements.in
     #   fritter
-delocate==0.10.7
+delocate==0.11.0
     # via encrust
 encrust==2023.3.17.3
     # via -r requirements.in
-fritter==0.0.8
+fritter==0.0.9
     # via -r requirements.in
 h2==4.1.0
     # via twisted
@@ -56,16 +56,18 @@ hyperframe==6.0.1
     # via h2
 hyperlink==21.0.0
     # via twisted
-hypothesis==6.97.4
+hypothesis==6.100.5
     # via twisted
-idna==3.6
+idna==3.7
     # via
     #   hyperlink
     #   twisted
 incremental==22.10.0
     # via twisted
 macholib==1.16.3
-    # via py2app
+    # via
+    #   delocate
+    #   py2app
 modulegraph==0.19.6
     # via py2app
 mypy==1.5.1
@@ -74,13 +76,13 @@ mypy==1.5.1
     #   mypy-zope
 mypy-extensions==1.0.0
     # via mypy
-mypy-zope==1.0.3
+mypy-zope==1.0.4
     # via -r requirements.in
-packaging==23.2
+packaging==24.0
     # via
     #   build
     #   delocate
-pip-tools==7.3.0
+pip-tools==7.4.1
     # via -r requirements.in
 priority==1.3.0
     # via twisted
@@ -88,17 +90,17 @@ py2app==0.28.7
     # via
     #   -r requirements.in
     #   encrust
-pyasn1==0.5.1
+pyasn1==0.6.0
     # via
     #   pyasn1-modules
     #   service-identity
-pyasn1-modules==0.3.0
+pyasn1-modules==0.4.0
     # via service-identity
-pycparser==2.21
+pycparser==2.22
     # via cffi
 pyhamcrest==2.1.0
     # via twisted
-pyobjc-core==10.1
+pyobjc-core==10.2
     # via
     #   pyobjc-framework-cfnetwork
     #   pyobjc-framework-cocoa
@@ -106,9 +108,9 @@ pyobjc-core==10.1
     #   pyobjc-framework-usernotifications
     #   quickmachotkey
     #   twisted
-pyobjc-framework-cfnetwork==10.1
+pyobjc-framework-cfnetwork==10.2
     # via twisted
-pyobjc-framework-cocoa==10.1
+pyobjc-framework-cocoa==10.2
     # via
     #   -r requirements.in
     #   pyobjc-framework-cfnetwork
@@ -116,21 +118,23 @@ pyobjc-framework-cocoa==10.1
     #   pyobjc-framework-usernotifications
     #   quickmacapp
     #   twisted
-pyobjc-framework-exceptionhandling==10.1
+pyobjc-framework-exceptionhandling==10.2
     # via
     #   -r requirements.in
     #   quickmacapp
-pyobjc-framework-usernotifications==10.1
+pyobjc-framework-usernotifications==10.2
     # via
     #   -r requirements.in
     #   quickmacapp
-pyopenssl==24.0.0
+pyopenssl==24.1.0
     # via twisted
-pyproject-hooks==1.0.0
-    # via build
+pyproject-hooks==1.1.0
+    # via
+    #   build
+    #   pip-tools
 pyserial==3.5
     # via twisted
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via -r requirements.in
 quickmacapp==2023.4.24
     # via -r requirements.in
@@ -144,14 +148,14 @@ six==1.16.0
     #   python-dateutil
 sortedcontainers==2.4.0
     # via hypothesis
-twisted[all-non-platform,conch,http2,macos_platform,serial,test,tls]==23.10.0
+twisted[all-non-platform,conch,http2,macos_platform,serial,test,tls]==24.3.0
     # via
     #   -r requirements.in
     #   encrust
     #   quickmacapp
-types-python-dateutil==2.8.19.20240106
+types-python-dateutil==2.9.0.20240316
     # via -r requirements.in
-typing-extensions==4.9.0
+typing-extensions==4.11.0
     # via
     #   delocate
     #   mypy
@@ -160,13 +164,13 @@ tzdata==2024.1
     # via fritter
 ulid-py==1.1.0
     # via -r requirements.in
-wheel==0.42.0
+wheel==0.43.0
     # via pip-tools
 wheel-filename==1.4.1
     # via encrust
 zope-event==5.0
     # via zope-schema
-zope-interface==6.1
+zope-interface==6.3
     # via
     #   mypy-zope
     #   twisted
