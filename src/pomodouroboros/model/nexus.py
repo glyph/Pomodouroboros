@@ -73,14 +73,6 @@ class Nexus:
     coordinated, dispatched, and collected for things like serialization.
     """
 
-    _initialTime: float
-    """
-    An initial time specified during construction.  The nexus will advance to
-    this time upon first construction.
-    """
-    # TODO: we could probably simplify and get rid of this; it ought to be
-    # redundant with lastUpdateTime?
-
     _interfaceFactory: UserInterfaceFactory
     "A factory to create a user interface as the Nexus is being instantiated."
 
@@ -127,14 +119,6 @@ class Nexus:
     )
 
     _lastUpdateTime: float = field(default=0.0)
-
-    def __post_init__(self) -> None:
-        debug(f"post-init, IT={self._initialTime} LUT={self._lastUpdateTime}")
-        if self._initialTime > self._lastUpdateTime:
-            debug("post-init advance")
-            self.advanceToTime(self._initialTime)
-        else:
-            debug("post-init, no advance")
 
     def _newIdleInterval(self) -> Idle:
         from math import inf
@@ -217,7 +201,7 @@ class Nexus:
         Get all score-relevant events since the given timestamp.
         """
         if startTime is None:
-            startTime = self._initialTime
+            startTime = 0.0
         if endTime is None:
             endTime = self._lastUpdateTime
         for intentionIndex, intention in enumerate(self._intentions):
@@ -351,11 +335,7 @@ class Nexus:
                             scoreInfo.scoreAfterLoss(),
                         )
             else:
-                debug("interval active", newTime)
                 if newTime >= currentInterval.endTime:
-                    debug(
-                        "newTime >= endTime", newTime, currentInterval.endTime
-                    )
                     self._lastUpdateTime = currentInterval.endTime
 
                     if currentInterval.intervalType in {
@@ -363,20 +343,12 @@ class Nexus:
                         StartPrompt.intervalType,
                     }:
                         # New streaks begin when grace periods expire.
-                        debug(
-                            currentInterval.intervalType, "grace/prompt expiry"
-                        )
                         self._upcomingDurations = iter(())
 
-                    debug("getting duration", currentInterval.intervalType)
                     newDuration = next(self._upcomingDurations, None)
-                    debug("first interface lookup")
                     self.userInterface.intervalProgress(1.0)
-                    debug("second interface lookup")
                     self.userInterface.intervalEnd()
-                    debug("testing newDuration")
                     if newDuration is None:
-                        debug("no new duration, so catching up to real time")
                         # XXX needs test coverage
                         previous, self._currentStreak = self._currentStreak, []
                         assert (
@@ -384,7 +356,6 @@ class Nexus:
                         ), "rolling off the end of a streak but the streak is empty somehow"
                         self._previousStreaks.append(previous)
                     else:
-                        debug("new duration", newDuration)
                         newInterval = preludeIntervalMap[
                             newDuration.intervalType
                         ](
@@ -392,7 +363,6 @@ class Nexus:
                             currentInterval.endTime + newDuration.seconds,
                         )
                 else:
-                    debug("newTime < endTime")
                     # We're landing in the middle of an interval, so we need to
                     # update its progress.  If it's in the middle then we can
                     # move time all the way forward.
@@ -408,7 +378,6 @@ class Nexus:
             # if we created a new interval for any reason on this iteration
             # through the loop, then we need to mention that fact to the UI.
             if newInterval is not None:
-                debug("newInterval created", newInterval)
                 self._createdInterval(newInterval)
                 # should really be active now
                 assert self._activeInterval is newInterval

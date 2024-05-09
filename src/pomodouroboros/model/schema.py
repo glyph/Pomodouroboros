@@ -94,7 +94,6 @@ SavedNexus = TypedDict(
     "SavedNexus",
     {
         "lastIntentionID": str,
-        "initialTime": float,
         "intentions": list[SavedIntention],
         "lastUpdateTime": float,
         "upcomingDurations": list[SavedDuration],

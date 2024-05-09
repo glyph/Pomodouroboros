@@ -109,9 +109,7 @@ def nexusFromJSON(
 
     nexus = Nexus(
         _lastIntentionID=int(saved["lastIntentionID"]),
-        _initialTime=saved["initialTime"],
         _intentions=intentions,
-        # lastUpdateTime below. maybe it should not be init=False
         _upcomingDurations=iter(
             [
                 Duration(
@@ -192,7 +190,6 @@ def nexusToJSON(nexus: Nexus) -> SavedNexus:
         }
 
     return {
-        "initialTime": nexus._initialTime,
         "lastIntentionID": str(nexus._lastIntentionID),
         "intentions": [
             {
@@ -287,7 +284,7 @@ def loadDefaultNexus(
         )
         loaded.advanceToTime(currentTime)
         return loaded
-    return Nexus(currentTime, userInterfaceFactory, 0)
+    return Nexus(userInterfaceFactory, 0)
 
 
 def saveDefaultNexus(nexus: Nexus) -> None:
