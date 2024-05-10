@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypeVar
+from datetime import time
+from typing import TYPE_CHECKING, Callable, Literal, TypeVar
+from zoneinfo import ZoneInfo
 
 from AppKit import (
     NSApplication,
@@ -11,12 +13,16 @@ from AppKit import (
     NSTextField,
     NSWindow,
 )
+from datetype import aware
 from Foundation import NSIndexSet, NSObject
-from objc import IBAction, IBOutlet
+from fritter.drivers.datetimes import guessLocalZone
+from objc import IBAction, IBOutlet, object_property, super
 from quickmacapp import Status, answer, mainpoint
 from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
+
+from pomodouroboros.model.sessions import DailySessionRule, Weekday
 
 from ..model.debugger import debug
 from ..model.intention import Estimate, Intention
@@ -71,8 +77,7 @@ class MacUserInterface:
             "\n\nStart a Pomodoro now with ⌘⌥⌃P !"
         )
 
-    def describeCurrentState(self, description: str) -> None:
-        ...
+    def describeCurrentState(self, description: str) -> None: ...
 
     def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         self.currentInterval = interval
@@ -141,7 +146,9 @@ class MacUserInterface:
         """
         return IgnoreChanges
 
-    def intervalObserver(self, interval: AnyIntervalOrIdle) -> Changes[str, object]:
+    def intervalObserver(
+        self, interval: AnyIntervalOrIdle
+    ) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """
@@ -189,7 +196,7 @@ class MacUserInterface:
             nexus,
             makeMenuLabel(status.item.menu()),
             owner.intentionDataSource,
-            nexus._activeInterval,            # TODO: that seems wrong
+            nexus._activeInterval,  # TODO: that seems wrong
         )
         self.setExplanation("Starting Up...")
         return self
@@ -229,8 +236,7 @@ class StreakDataSource(NSObject):
 
     # backingData: Sequence[Streak]
 
-    def awakeWithNexus_(self, newNexus: Nexus) -> None:
-        ...
+    def awakeWithNexus_(self, newNexus: Nexus) -> None: ...
 
     # pragma mark NSTableViewDataSource
 
@@ -244,6 +250,144 @@ class StreakDataSource(NSObject):
         row: int,
     ) -> str:
         return "uh oh"
+
+
+def showMeSetter(name: str) -> Callable[[AutoStreakRuleValues, object], None]:
+
+    def aSetter(self: AutoStreakRuleValues, value: object) -> None:
+
+        print(f"setting {name} to {value}")
+        # follow object_property naming convention for storage attribute
+        # (i.e. prefix underscore)
+        setattr(self, f"_{name}", value)
+
+        if self.awoken:
+            print(self.synthesizeRule())
+
+    return aSetter
+
+
+AMPM = Literal["AM", "PM"]
+
+
+def ampmify(hour: int, ampm: AMPM) -> int:
+    if hour == 12:
+        if ampm == "AM":
+            return 0
+        else:
+            return 12
+    elif ampm == "PM":
+        return hour + 12
+    else:
+        return hour
+
+
+def addampm(hour: int) -> tuple[int, AMPM]:
+    if hour == 0:
+        return (12, "AM")
+    elif hour == 12:
+        return (12, "PM")
+    elif hour > 12:
+        return (hour - 12, "PM")
+    else:
+        return (hour, "AM")
+
+
+TZ = guessLocalZone()
+defaultRule = DailySessionRule(
+    aware(time(9, 0, tzinfo=TZ), ZoneInfo),
+    aware(time(5 + 12, 0, tzinfo=TZ), ZoneInfo),
+    days={
+        Weekday.monday,
+        Weekday.tuesday,
+        Weekday.wednesday,
+        Weekday.thursday,
+        Weekday.friday,
+    },
+)
+
+
+class AutoStreakRuleValues(NSObject):
+    sundaySet: bool = object_property()
+    mondaySet: bool = object_property()
+    tuesdaySet: bool = object_property()
+    wednesdaySet: bool = object_property()
+    thursdaySet: bool = object_property()
+    fridaySet: bool = object_property()
+    saturdaySet: bool = object_property()
+
+    startHour: int = object_property()
+    startMinute: int = object_property()
+    startAMPM: AMPM = object_property()
+
+    endHour: int = object_property()
+    endMinute: int = object_property()
+    endAMPM: AMPM = object_property()
+
+    shouldAutoStart = object_property()
+
+    _relevantAttributes = []
+
+    for aname in dir():
+        if aname.startswith("_"):
+            continue
+        _relevantAttributes.append(aname)
+        locals()[aname].setter(showMeSetter(aname))
+    del aname
+
+    awoken = object_property()
+
+    def awakeFromNib(self) -> None:
+        super().awakeFromNib()
+        for attribute in self._relevantAttributes:
+            if getattr(self, attribute) is None:
+                self.absorbRule_(defaultRule)
+        self.awoken = True
+
+    def absorbRule_(self, rule: DailySessionRule) -> None:
+        try:
+            awoken, self.awoken = self.awoken, False
+            for enumerated in Weekday:
+                setattr(self, enumerated.name + "Set", enumerated in rule.days)
+            startHour, startAMPM = addampm(rule.dailyStart.hour)
+            self.startHour, self.startMinute, self.startAMPM = (
+                startHour,
+                rule.dailyStart.minute,
+                startAMPM,
+            )
+            endHour, endAMPM = addampm(rule.dailyEnd.hour)
+            self.endHour, self.endMinute, self.endAMPM = (
+                endHour,
+                rule.dailyEnd.minute,
+                endAMPM,
+            )
+        finally:
+            self.awoken = awoken
+
+    def synthesizeRule(self) -> DailySessionRule:
+        days = set()
+        for enumerated in Weekday:
+            if getattr(self, enumerated.name + "Set"):
+                days.add(enumerated)
+        return DailySessionRule(
+            aware(
+                time(
+                    hour=ampmify(self.startHour, self.startAMPM),
+                    minute=self.startMinute,
+                    tzinfo=TZ,
+                ),
+                ZoneInfo,
+            ),
+            aware(
+                time(
+                    hour=ampmify(self.endHour, self.endAMPM),
+                    minute=self.endMinute,
+                    tzinfo=TZ,
+                ),
+                ZoneInfo,
+            ),
+            days=days,
+        )
 
 
 class PomFilesOwner(NSObject):
@@ -266,11 +410,13 @@ class PomFilesOwner(NSObject):
     intentionsTitleField: NSTextField
     intentionsTitleField = IBOutlet()
 
+    autoStreakRuleValues: AutoStreakRuleValues
+    autoStreakRuleValues = IBOutlet()
+
     if TYPE_CHECKING:
 
         @classmethod
-        def alloc(self) -> PomFilesOwner:
-            ...
+        def alloc(self) -> PomFilesOwner: ...
 
     def initWithNexus_(self, nexus: Nexus) -> PomFilesOwner:
         """
