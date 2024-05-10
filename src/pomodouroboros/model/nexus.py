@@ -66,6 +66,20 @@ def _noUIFactory(nexus: Nexus) -> UIEventListener:
     return _theNoUserInterface
 
 
+def intervalOverlap(
+    startTimeA: float, endTimeA: float, startTimeB: float, endTimeB: float
+) -> bool:
+
+    assert startTimeA <= endTimeA
+    assert startTimeB <= endTimeB
+
+    return (
+        (startTimeA <= endTimeB)
+        and (endTimeA >= startTimeB)
+        and (startTimeB <= endTimeA)
+    )
+
+
 @dataclass
 class Nexus:
     """
@@ -194,6 +208,16 @@ class Nexus:
         hypothetical._lastUpdateTime = self._lastUpdateTime
         return hypothetical
 
+    def intervalsBetween(
+        self, startTime: float, endTime: float
+    ) -> Iterable[AnyStreakInterval]:
+        for streak in self._previousStreaks + [self._currentStreak]:
+            for interval in streak:
+                if intervalOverlap(
+                    startTime, endTime, interval.startTime, interval.endTime
+                ):
+                    yield interval
+
     def scoreEvents(
         self, *, startTime: float | None = None, endTime: float | None = None
     ) -> Iterable[ScoreEvent]:
@@ -270,7 +294,9 @@ class Nexus:
                 if created is not None:
                     newEnd = created.end
                     fromWhenT = fromWhen.timestamp()
-                    assert created.start < created.end, f"{created.start}, {created.end}"
+                    assert (
+                        created.start < created.end
+                    ), f"{created.start}, {created.end}"
                     assert newEnd > fromWhenT, f"{newEnd} <= {fromWhenT}"
                     if created.end > newTime:
                         # Don't create sessions that are already over at the current moment.
