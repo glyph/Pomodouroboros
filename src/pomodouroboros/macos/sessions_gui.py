@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-
+from AppKit import NSTableView
 from datetype import DateTime
+from Foundation import NSObject
 from fritter.drivers.datetimes import guessLocalZone
 
-from AppKit import NSTableView
-from Foundation import NSObject
+from pomodouroboros.model.util import showFailures
 
 from ..model.nexus import Nexus
 
@@ -27,18 +27,53 @@ class SessionDataSource(NSObject):
     def numberOfRowsInTableView_(self, tableView: NSTableView) -> int:
         return len(self.nexus._sessions)
 
+    # This table is not editable.
+    def tableView_shouldEditTableColumn_row_(
+        self, tableView, shouldEditTableColumn, row
+    ) -> bool:
+        return False
+
+    def tableView_setObjectValue_forTableColumn_row_(
+        self,
+        tableView: NSTableView,
+        objectValue: NSObject,
+        tableColumn: object,
+        row: int,
+    ) -> None:
+        return None
+
     def tableView_objectValueForTableColumn_row_(
         self,
         tableView: NSTableView,
         objectValueForTableColumn: NSObject,
         row: int,
     ) -> dict[str, str]:
-        session = self.nexus._sessions[row]
-        dt = DateTime.fromtimestamp(session.start, TZ)
-        return {
-            "startTime": dt.isoformat(),
-            "endTime": str(session.end),
-            "intervals": "interval count",
-            "points": "...",
-            "automatic": str(session.automatic),
-        }
+        with showFailures():
+            session = self.nexus._sessions[row]
+            startDT = DateTime.fromtimestamp(session.start, TZ)
+            endDT = DateTime.fromtimestamp(session.end, TZ)
+            return {
+                "startTime": startDT.isoformat(sep=" ", timespec="minutes"),
+                "endTime": endDT.isoformat(sep=" ", timespec="minutes"),
+                # TODO: how to reload when intervals or points change?  (note,
+                # this should only ever happen to the last session, since all
+                # others are immutable...)
+                "intervals": str(
+                    len(
+                        list(
+                            self.nexus.intervalsBetween(
+                                session.start, session.end
+                            )
+                        )
+                    )
+                ),
+                "points": str(
+                    sum(
+                        each.points
+                        for each in self.nexus.scoreEvents(
+                            startTime=session.start, endTime=session.end
+                        )
+                    )
+                ),
+                "automatic": str(session.automatic),
+            }
