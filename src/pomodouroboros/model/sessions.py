@@ -1,10 +1,12 @@
 # -*- test-case-name: pomodouroboros.model.test.test_sessions -*-
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, datetime
 from enum import IntEnum
 from zoneinfo import ZoneInfo
 
-from datetype import DateTime, Time
+from datetype import DateTime, Time, aware
+from fritter.boundaries import Day
+from fritter.repeat.rules.datetimes import EachWeekOn
 
 
 class Weekday(IntEnum):
@@ -39,21 +41,26 @@ class DailySessionRule:
     def nextAutomaticSession(
         self, fromTimestamp: DateTime[ZoneInfo]
     ) -> Session | None:
+        assert self.dailyStart.tzinfo == fromTimestamp.tzinfo
+        assert self.dailyEnd.tzinfo == fromTimestamp.tzinfo
         if not self.days:
             return None
-        tsStart = fromTimestamp.timetz()
-        isEarlier = tsStart < self.dailyStart
-        thisDay = Weekday(fromTimestamp.date().weekday()) in self.days
-        if thisDay and isEarlier:
-            startTime = DateTime.combine(
-                fromTimestamp.date(), self.dailyStart
-            ).timestamp()
-            endTime = DateTime.combine(
-                fromTimestamp.date(), self.dailyEnd
-            ).timestamp()
-            return Session(startTime, endTime, True)
-        return self.nextAutomaticSession(
-            (fromTimestamp + timedelta(days=1)).replace(
-                hour=0, minute=0, second=0
-            )
+        startRule = EachWeekOn(
+            {getattr(Day, each.name.upper()) for each in self.days},
+            hour=self.dailyStart.hour,
+            minute=self.dailyStart.minute,
+            second=self.dailyStart.second,
         )
+        endRule = EachWeekOn(
+            {getattr(Day, each.name.upper()) for each in self.days},
+            hour=self.dailyEnd.hour,
+            minute=self.dailyEnd.minute,
+            second=self.dailyEnd.second,
+        )
+        startSteps, startNextRefs = startRule(fromTimestamp, fromTimestamp + timedelta(days=7))
+        if not startSteps:
+            return None
+        endSteps, endNextRefs = endRule(startSteps[0], startSteps[0] + timedelta(days=7))
+        if not endSteps:
+            return None
+        return Session(startSteps[0].timestamp(), endSteps[0].timestamp(), True)
