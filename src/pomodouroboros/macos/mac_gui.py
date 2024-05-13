@@ -550,10 +550,6 @@ def newMain(reactor: IReactorTime) -> None:
     # hmm. UI is lazily constructed which is not great, violates the mac's
     # assumptions about launching, makes it seem sluggish, so let's force it to
     # be eager here.
-    # XXX test session
-    theNexus.addManualSession(
-        reactor.seconds() + 1.0, reactor.seconds() + 1000.0
-    )
 
     def doAdvance() -> None:
         theNexus.advanceToTime(reactor.seconds())
