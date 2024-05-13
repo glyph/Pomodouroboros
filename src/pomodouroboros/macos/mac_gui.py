@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import time
-from typing import TYPE_CHECKING, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Callable, TypeVar
 from zoneinfo import ZoneInfo
 
 from AppKit import (
@@ -23,6 +23,7 @@ from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
 from pomodouroboros.model.sessions import DailySessionRule, Weekday
+from pomodouroboros.model.util import AMPM, addampm, ampmify
 
 from ..model.debugger import debug
 from ..model.intention import Estimate, Intention
@@ -265,32 +266,6 @@ def showMeSetter(name: str) -> Callable[[AutoStreakRuleValues, object], None]:
             print(self.synthesizeRule())
 
     return aSetter
-
-
-AMPM = Literal["AM", "PM"]
-
-
-def ampmify(hour: int, ampm: AMPM) -> int:
-    if hour == 12:
-        if ampm == "AM":
-            return 0
-        else:
-            return 12
-    elif ampm == "PM":
-        return hour + 12
-    else:
-        return hour
-
-
-def addampm(hour: int) -> tuple[int, AMPM]:
-    if hour == 0:
-        return (12, "AM")
-    elif hour == 12:
-        return (12, "PM")
-    elif hour > 12:
-        return (hour - 12, "PM")
-    else:
-        return (hour, "AM")
 
 
 TZ = guessLocalZone()

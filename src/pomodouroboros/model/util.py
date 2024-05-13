@@ -1,3 +1,4 @@
+# -*- test-case-name: pomodouroboros.model.test.test_util -*-
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -6,6 +7,7 @@ from typing import (
     Callable,
     Concatenate,
     Iterator,
+    Literal,
     ParamSpec,
     Protocol,
     TypeVar,
@@ -91,3 +93,33 @@ def interactionRoot(
             return result
 
     return showFailuresAndSave
+
+
+AMPM = Literal["AM", "PM"]
+
+
+def ampmify(hour: int, ampm: AMPM) -> int:
+    if hour < 1 or hour > 12:
+        raise ValueError(f"{hour} out of range 0-24")
+    if hour == 12:
+        if ampm == "AM":
+            return 0
+        else:
+            return 12
+    elif ampm == "PM":
+        return hour + 12
+    else:
+        return hour
+
+
+def addampm(hour: int) -> tuple[int, AMPM]:
+    if hour < 0 or hour > 24:
+        raise ValueError(f"{hour} out of range 0-24")
+    if hour == 0:
+        return (12, "AM")
+    elif hour == 12:
+        return (12, "PM")
+    elif hour > 12:
+        return (hour - 12, "PM")
+    else:
+        return (hour, "AM")
