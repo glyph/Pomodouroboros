@@ -491,15 +491,15 @@ class PieTimer(AbstractProgressView):
     A timer that draws itself as two large arcs.
     """
 
-    def drawRect_(self, rect: NSRect) -> None:
+    def drawRect_(self, dirtyRect: NSRect) -> None:
         """
         draw the arc (ignore the given rect, draw to bounds)
         """
         with showFailures():
-            super().drawRect_(rect)
+            super().drawRect_(dirtyRect)
 
             NSColor.clearColor().set()
-            NSRectFill(rect)
+            NSRectFill(dirtyRect)
 
             bounds = self.bounds()
             w, h = bounds.size.width / 2, bounds.size.height / 2
