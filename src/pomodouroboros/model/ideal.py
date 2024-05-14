@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING, Sequence
 
 from .boundaries import EvaluationResult, PomStartResult, ScoreEvent
 from .debugger import debug
+from .intervals import AnyIntervalOrIdle, Break, GracePeriod, Pomodoro, Idle
 
 if TYPE_CHECKING:
     from .nexus import Nexus
     from .intention import Intention
-
-from .intervals import AnyIntervalOrIdle, Break, GracePeriod, Pomodoro, Idle
 
 
 @dataclass
