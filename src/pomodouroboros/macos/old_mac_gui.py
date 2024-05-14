@@ -813,9 +813,9 @@ def main(reactor: IReactorTime) -> None:
     ctrl = DayEditorController.alloc().initWithClock_andDayLoader_(
         reactor, dayLoader
     )
-    NSNib.alloc().initWithNibNamed_bundle_(
+    loaded, topLevelObjects = NSNib.alloc().initWithNibNamed_bundle_(
         "GoalListWindow.nib", None
-    ).instantiateWithOwner_topLevelObjects_(ctrl, None).retain()
+    ).instantiateWithOwner_topLevelObjects_(ctrl, None)
     setupNotifications()
     withdrawIntentPrompt()
     dayManager = DayManager.new(reactor, ctrl, dayLoader)
