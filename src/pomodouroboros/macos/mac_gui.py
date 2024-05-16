@@ -413,7 +413,9 @@ class PomFilesOwner(NSObject):
         nibInstance = NSNib.alloc().initWithNibNamed_bundle_(
             "ProgressHUD.nib", None
         )
-        loaded, tlos = nibInstance.instantiateWithOwner_topLevelObjects_(self, None)
+        loaded, tlos = nibInstance.instantiateWithOwner_topLevelObjects_(
+            self, None
+        )
         tlos.retain()
 
     @IBAction
