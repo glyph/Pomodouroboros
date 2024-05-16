@@ -1,17 +1,39 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from math import cos, pi, sin, sqrt
-from typing import TYPE_CHECKING, Callable, List
+from typing import TYPE_CHECKING, Callable, List, Self
 
 from AppKit import (
+    NSApp,
     NSAttributedString,
+    NSBackingStoreBuffered,
+    NSBackingStoreType,
+    NSBezierPath,
+    NSBorderlessWindowMask,
+    NSColor,
+    NSCompositingOperationCopy,
+    NSEvent,
+    NSFloatingWindowLevel,
+    NSFocusRingTypeNone,
     NSFont,
     NSFontAttributeName,
     NSForegroundColorAttributeName,
+    NSMakePoint,
+    NSRectFill,
+    NSRectFillListWithColorsUsingOperation,
+    NSScreen,
     NSStrokeColorAttributeName,
+    NSStrokeWidthAttributeName,
+    NSView,
+    NSWindow,
+    NSWindowCollectionBehaviorCanJoinAllSpaces,
+    NSWindowCollectionBehaviorStationary,
+    NSWindowStyleMask,
 )
 from Foundation import NSPoint, NSRect
+from objc import super
 from twisted.internet.defer import CancelledError, Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
@@ -20,31 +42,6 @@ from twisted.python.failure import Failure
 
 from ..model.debugger import debug
 from ..model.util import showFailures
-
-import math
-
-from AppKit import (
-    NSApp,
-    NSBackingStoreBuffered,
-    NSBezierPath,
-    NSBorderlessWindowMask,
-    NSColor,
-    NSCompositingOperationCopy,
-    NSEvent,
-    NSFloatingWindowLevel,
-    NSFocusRingTypeNone,
-    NSMakePoint,
-    NSRectFill,
-    NSRectFillListWithColorsUsingOperation,
-    NSScreen,
-    NSStrokeWidthAttributeName,
-    NSView,
-    NSWindow,
-    NSWindowCollectionBehaviorCanJoinAllSpaces,
-    NSWindowCollectionBehaviorStationary,
-)
-from objc import super
-
 from ..storage import TEST_MODE
 
 # https://github.com/ronaldoussoren/pyobjc/issues/540
@@ -58,6 +55,19 @@ class HUDWindow(NSWindow):
     """
     A window that doesn't receive input events and floats as an overlay.
     """
+
+    def initWithContentRect_styleMask_backing_defer_(
+        self,
+        contentRect: NSRect,
+        styleMask: NSWindowStyleMask,
+        backing: NSBackingStoreType,
+        defer: bool,
+    ) -> Self:
+        print("hello HUD")
+        super().initWithContentRect_styleMask_backing_defer_(
+            contentRect, styleMask, backing, defer
+        )
+        return self
 
     def canBecomeKeyWindow(self) -> bool:
         return False
