@@ -22,9 +22,6 @@ from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
-from pomodouroboros.model.sessions import DailySessionRule, Weekday
-from pomodouroboros.model.util import AMPM, addampm, ampmify
-
 from ..model.debugger import debug
 from ..model.intention import Estimate, Intention
 from ..model.intervals import (
@@ -36,8 +33,16 @@ from ..model.intervals import (
 )
 from ..model.nexus import Nexus
 from ..model.observables import Changes, IgnoreChanges, SequenceObserver
+from ..model.sessions import DailySessionRule, Weekday
 from ..model.storage import loadDefaultNexus
-from ..model.util import interactionRoot, intervalSummary, showFailures
+from ..model.util import (
+    AMPM,
+    addampm,
+    ampmify,
+    interactionRoot,
+    intervalSummary,
+    showFailures,
+)
 from ..storage import TEST_MODE
 from .intentions_gui import IntentionDataSource
 from .mac_utils import SometimesBackground
@@ -402,6 +407,14 @@ class PomFilesOwner(NSObject):
 
     def showButton_(self, sender: NSObject) -> None:
         debug("button", sender.title())
+
+    @IBAction
+    def hudDebugButton_(self, sender: NSObject) -> None:
+        nibInstance = NSNib.alloc().initWithNibNamed_bundle_(
+            "ProgressHUD.nib", None
+        )
+        loaded, tlos = nibInstance.instantiateWithOwner_topLevelObjects_(self, None)
+        tlos.retain()
 
     @IBAction
     def quickChooseIntention_(self, sender: NSObject) -> None:
