@@ -67,6 +67,7 @@ class HUDWindow(NSWindow):
         super().initWithContentRect_styleMask_backing_defer_(
             contentRect, styleMask, backing, defer
         )
+        self.setLevel_(NSFloatingWindowLevel)
         return self
 
     def canBecomeKeyWindow(self) -> bool:
@@ -220,7 +221,6 @@ def hudWindowOn(
         | NSWindowCollectionBehaviorAuxiliary
     )
     win.setIgnoresMouseEvents_(True)
-    win.setLevel_(NSFloatingWindowLevel)
     win.orderFront_(app)
     return win  # type: ignore
 
