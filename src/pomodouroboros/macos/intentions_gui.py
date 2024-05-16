@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Iterator, Sequence
 import objc
 from AppKit import NSTableView
 from Foundation import NSColor, NSObject
-from objc import IBAction, IBOutlet
+from objc import IBAction, IBOutlet, super
 
 from ..model.boundaries import EvaluationResult
 from ..model.debugger import debug

@@ -44,6 +44,7 @@ from ..model.util import (
     showFailures,
 )
 from ..storage import TEST_MODE
+from .hudmulti import debugMultiHud
 from .intentions_gui import IntentionDataSource
 from .mac_utils import SometimesBackground
 from .multiple_choice import multipleChoiceButtons
@@ -410,13 +411,7 @@ class PomFilesOwner(NSObject):
 
     @IBAction
     def hudDebugButton_(self, sender: NSObject) -> None:
-        nibInstance = NSNib.alloc().initWithNibNamed_bundle_(
-            "ProgressHUD.nib", None
-        )
-        loaded, tlos = nibInstance.instantiateWithOwner_topLevelObjects_(
-            self, None
-        )
-        tlos.retain()
+        debugMultiHud()
 
     @IBAction
     def quickChooseIntention_(self, sender: NSObject) -> None:

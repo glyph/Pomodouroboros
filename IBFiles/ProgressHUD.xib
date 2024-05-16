@@ -5,11 +5,18 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
-        <customObject id="-2" userLabel="File's Owner"/>
+        <customObject id="-2" userLabel="File's Owner" customClass="HUDMultipleProgress">
+            <connections>
+                <outlet property="left" destination="qtT-2n-cSL" id="iFv-cH-k9J"/>
+                <outlet property="middle" destination="5bu-wp-G7r" id="tYX-Bp-tbc"/>
+                <outlet property="right" destination="8Ta-7z-Kcb" id="sUP-er-qO4"/>
+                <outlet property="win" destination="kDO-vN-Lx8" id="SQU-9A-gfB"/>
+            </connections>
+        </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <window title="Progress HUD Window" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" deferred="NO" hasShadow="NO" releasedWhenClosed="NO" animationBehavior="none" frameAutosaveName="" id="kDO-vN-Lx8" customClass="HUDWindow">
-            <windowCollectionBehavior key="collectionBehavior" canJoinAllSpaces="YES" stationary="YES" ignoresCycle="YES" fullScreenAuxiliary="YES"/>
+            <windowCollectionBehavior key="collectionBehavior" canJoinAllSpaces="YES" stationary="YES" ignoresCycle="YES"/>
             <windowPositionMask key="initialPositionMask" topStrut="YES"/>
             <rect key="contentRect" x="112" y="550" width="1400" height="400"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1512" height="950"/>

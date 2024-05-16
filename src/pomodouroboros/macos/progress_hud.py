@@ -30,8 +30,10 @@ from AppKit import (
     NSWindow,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorStationary,
+    NSWindowCollectionBehaviorAuxiliary,
     NSWindowStyleMask,
 )
+from AppKit import NSWindowCollectionBehaviorCanJoinAllApplications
 from Foundation import NSPoint, NSRect
 from objc import super
 from twisted.internet.defer import CancelledError, Deferred
@@ -43,10 +45,6 @@ from twisted.python.failure import Failure
 from ..model.debugger import debug
 from ..model.util import showFailures
 from ..storage import TEST_MODE
-
-# https://github.com/ronaldoussoren/pyobjc/issues/540
-NSWindowCollectionBehaviorCanJoinAllApplications = 1 << 18
-NSWindowCollectionBehaviorAuxiliary = 1 << 17
 
 log = Logger()
 
@@ -63,11 +61,16 @@ class HUDWindow(NSWindow):
         backing: NSBackingStoreType,
         defer: bool,
     ) -> Self:
-        print("hello HUD")
         super().initWithContentRect_styleMask_backing_defer_(
             contentRect, styleMask, backing, defer
         )
         self.setLevel_(NSFloatingWindowLevel)
+        self.setCollectionBehavior_(
+            NSWindowCollectionBehaviorCanJoinAllSpaces
+            | NSWindowCollectionBehaviorStationary
+            | NSWindowCollectionBehaviorAuxiliary
+            | NSWindowCollectionBehaviorCanJoinAllApplications
+        )
         return self
 
     def canBecomeKeyWindow(self) -> bool:
@@ -215,11 +218,6 @@ def hudWindowOn(
     )
     # Let python handle the refcounting thanks
     win.setReleasedWhenClosed_(False)
-    win.setCollectionBehavior_(
-        NSWindowCollectionBehaviorCanJoinAllSpaces
-        | NSWindowCollectionBehaviorStationary
-        | NSWindowCollectionBehaviorAuxiliary
-    )
     win.setIgnoresMouseEvents_(True)
     win.orderFront_(app)
     return win  # type: ignore
