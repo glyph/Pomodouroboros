@@ -8,7 +8,20 @@ import os
 
 from setuptools import setup
 
-APP = [f"mac/{'Test' if os.environ.get('TEST_MODE') else ''}Pomodouroboros.py"]
+def check_mode() -> str:
+    match os.environ:
+        case {"CI_MODE": b}:
+            if b:
+                return "Ci"
+        case {"TEST_MODE": b}:
+            if b:
+                return "Test"
+        case _:
+            return ""
+
+MODE = check_mode()
+
+APP = [f"mac/{MODE}Pomodouroboros.py"]
 DATA_FILES = [
     "IBFiles/GoalListWindow.xib",
     "IBFiles/IntentionEditor.xib",
@@ -19,13 +32,13 @@ OPTIONS = {
     "plist": {
         "LSUIElement": True,
         "NSRequiresAquaSystemAppearance": False,
-        "CFBundleIdentifier": f"im.glyph.and.this.is.{'test' if os.environ.get('TEST_MODE') else ''}pomodouroboros",
+        "CFBundleIdentifier": f"im.glyph.and.this.is.{MODE}pomodouroboros",
     },
-    "iconfile": f"{'test' if os.environ.get('TEST_MODE') else ''}icon.icns",
+    "iconfile": f"{MODE}icon.icns",
 }
 
 setup(
-    name=f"{'Test' if os.environ.get('TEST_MODE') else ''}Pomodouroboros",
+    name=f"{MODE}Pomodouroboros",
     app=APP,
     data_files=DATA_FILES,
     options={"py2app": OPTIONS},
