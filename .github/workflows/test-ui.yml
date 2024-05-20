@@ -33,7 +33,8 @@ jobs:
           ruff check --select I || true
       - name: Test with unittest
         run: |
-          cd src; python -m unittest
+          cd src
+          python -m unittest
           cd ..
       - name: Build and run the app
         run: |
