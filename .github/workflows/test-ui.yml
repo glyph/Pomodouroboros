@@ -26,11 +26,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
           pip install -Ur requirements.txt
-      - name: Lint with ruff
+      - name: Run Mac GUI tests
         run: |
-          ruff check --select I || true
-      - name: Build and run the app
-        run: |
-          ./testme
+          CI_MODE=YES python setup.py py2app --alias | cat
+          ./dist/CiPomodouroboros.app/Contents/MacOS/CiPomodouroboros
