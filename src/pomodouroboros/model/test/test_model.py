@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
+from datetime import datetime, time
 from typing import Type, TypeVar
 from unittest import TestCase
+from unittest.mock import ANY
+from zoneinfo import ZoneInfo
 
+from datetype import aware
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import Clock
 
@@ -10,15 +14,17 @@ from ..debugger import debug
 from ..ideal import idealScore
 from ..intention import Estimate, Intention
 from ..intervals import (
-    AnyInterval,
+    AnyIntervalOrIdle,
     Break,
     Evaluation,
     GracePeriod,
+    Idle,
     Pomodoro,
     StartPrompt,
 )
 from ..nexus import Nexus
 from ..observables import Changes, IgnoreChanges, SequenceObserver
+from ..sessions import DailySessionRule, Weekday, Session
 
 
 @dataclass
@@ -27,7 +33,7 @@ class TestInterval:
     A record of methods being called on L{TestUserInterface}
     """
 
-    interval: AnyInterval
+    interval: AnyIntervalOrIdle
     actualStartTime: float | None = None
     actualEndTime: float | None = None
     currentProgress: list[float] = field(default_factory=list)
@@ -45,9 +51,9 @@ class TestUserInterface:
     theNexus: Nexus = field(init=False)
     clock: IReactorTime
     actions: list[TestInterval] = field(default_factory=list)
+    actualInterval: TestInterval | None = None
 
-    def describeCurrentState(self, description: str) -> None:
-        ...
+    def describeCurrentState(self, description: str) -> None: ...
 
     def intervalProgress(self, percentComplete: float) -> None:
         """
@@ -55,9 +61,10 @@ class TestUserInterface:
         complete.
         """
         debug("interval: progress!", percentComplete)
-        self.actions[-1].currentProgress.append(percentComplete)
+        assert self.actualInterval is not None
+        self.actualInterval.currentProgress.append(percentComplete)
 
-    def intervalStart(self, interval: AnyInterval) -> None:
+    def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         """
         An interval has started, record it.
         """
@@ -65,13 +72,17 @@ class TestUserInterface:
         assert not (
             self.actions and self.actions[0].interval is interval
         ), f"sanity check: no double-starting ({interval}): {self.actions}"
-        self.actions.append(TestInterval(interval, self.clock.seconds()))
+        it = self.actualInterval = TestInterval(interval, self.clock.seconds())
+        if isinstance(interval, Idle):
+            return
+        self.actions.append(it)
 
     def intervalEnd(self) -> None:
         """
         The interval has ended. Hide the progress bar.
         """
-        self.actions[-1].actualEndTime = self.clock.seconds()
+        assert self.actualInterval is not None
+        self.actualInterval.actualEndTime = self.clock.seconds()
 
     def intentionListObserver(self) -> SequenceObserver[Intention]:
         """
@@ -105,7 +116,9 @@ class TestUserInterface:
         """
         return IgnoreChanges
 
-    def intervalObserver(self, interval: AnyInterval) -> Changes[str, object]:
+    def intervalObserver(
+        self, interval: AnyIntervalOrIdle
+    ) -> Changes[str, object]:
         """
         Return a change observer for the given C{interval}.
         """
@@ -145,7 +158,7 @@ class NexusTests(TestCase):
         self.maxDiff = 9999
         self.clock = Clock()
         self.testUI = TestUserInterface(self.clock)
-        self.nexus = Nexus(self.clock.seconds(), self.testUI.setIt, 0)
+        self.nexus = Nexus(self.testUI.setIt, 0)
 
     def advanceTime(self, n: float) -> None:
         """
@@ -182,7 +195,7 @@ class NexusTests(TestCase):
         a = self.nexus.addIntention("new 1")
         self.advanceTime(1)
         self.assertEqual(checkScore(), 0)
-        b = self.nexus.addIntention("new 2")
+        self.nexus.addIntention("new 2")
         self.advanceTime(1)
         self.nexus.startPomodoro(a)
         pom = a.pomodoros[0]
@@ -336,6 +349,76 @@ class NexusTests(TestCase):
                     actualEndTime=None,
                     currentProgress=[0.0],
                 ),
+            ],
+            self.testUI.actions,
+        )
+
+    def test_advanceToNewSession(self) -> None:
+        """
+        A nexus should start a new session automatically when its rules say
+        it's time to do that.
+        """
+        TZ = ZoneInfo("America/Los_Angeles")
+        dailyStart = aware(
+            time(hour=9, minute=30, tzinfo=TZ),
+            ZoneInfo,
+        )
+        dailyEnd = aware(
+            time(hour=4 + 12, minute=45, tzinfo=TZ),
+            ZoneInfo,
+        )
+        self.nexus._sessionRules.append(
+            DailySessionRule(
+                dailyStart,
+                dailyEnd,
+                {Weekday.monday, Weekday.wednesday, Weekday.thursday},
+            )
+        )
+        now = aware(datetime(2024, 5, 8, 11, tzinfo=TZ), ZoneInfo)
+        self.nexus.advanceToTime(now.timestamp())
+
+        # TODO: try to observe the creation of this session in the way that the
+        # UI would
+        self.assertEqual(
+            self.nexus._sessions[:],
+            [Session(start=1715185800.0, end=1715211900.0, automatic=True)],
+        )
+
+        # note that I definitely cheated a little bit with these data
+        # structures and copied them out of the observed output of the code, I
+        # didn't hand-calculate that it's 1500 seconds to the next score drop
+        promptStart = 1715191200.0
+        promptStop = 1715192700.0
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=StartPrompt(
+                        startTime=promptStart,
+                        endTime=promptStop,
+                        pointsBeforeLoss=ANY,
+                        pointsAfterLoss=ANY,
+                    ),
+                    actualStartTime=0.0,
+                    actualEndTime=None,
+                    currentProgress=[0.0],
+                )
+            ],
+            self.testUI.actions,
+        )
+        self.nexus.advanceToTime(now.timestamp() + 20)
+        self.assertEqual(
+            [
+                TestInterval(
+                    interval=StartPrompt(
+                        startTime=1715191200.0,
+                        endTime=1715192700.0,
+                        pointsBeforeLoss=ANY,
+                        pointsAfterLoss=ANY,
+                    ),
+                    actualStartTime=0.0,
+                    actualEndTime=None,
+                    currentProgress=[0.0, (20 / (promptStop - promptStart))],
+                )
             ],
             self.testUI.actions,
         )
@@ -627,7 +710,6 @@ class NexusTests(TestCase):
             lambda nexus: self.nexus.userInterface,
         )
         self.maxDiff = 99999
-        self.assertEqual(self.nexus._initialTime, roundTrip._initialTime)
         self.assertEqual(self.nexus._intentions, roundTrip._intentions)
         self.assertEqual(self.nexus._activeInterval, roundTrip._activeInterval)
         self.assertEqual(self.nexus._lastUpdateTime, roundTrip._lastUpdateTime)
@@ -635,8 +717,11 @@ class NexusTests(TestCase):
             list(self.nexus.cloneWithoutUI()._upcomingDurations),
             list(roundTrip.cloneWithoutUI()._upcomingDurations),
         )
-        self.assertEqual(self.nexus._rules, roundTrip._rules)
-        self.assertEqual(self.nexus._streaks, roundTrip._streaks)
+        self.assertEqual(self.nexus._streakRules, roundTrip._streakRules)
+        self.assertEqual(
+            self.nexus._previousStreaks, roundTrip._previousStreaks
+        )
+        self.assertEqual(self.nexus._currentStreak, roundTrip._currentStreak)
         self.assertEqual(self.nexus._sessions, roundTrip._sessions)
 
     def test_achievedEarly(self) -> None:
@@ -659,7 +744,7 @@ class NexusTests(TestCase):
 
         self.advanceTime(EARLY_COMPLETION)
         action = self.testUI.actions[0].interval
-        assert isinstance(action, Pomodoro)
+        assert isinstance(action, Pomodoro), f"{action}"
         self.assertEqual(self.nexus.availableIntentions, [intent])
         # TODO:
         # self.assertEqual(self.testUI.completedIntentions, [])

@@ -38,7 +38,16 @@ from AppKit import (
 )
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzlocal
-from Foundation import NSDate, NSIndexSet, NSLog, NSMutableDictionary, NSObject
+from Foundation import (
+    NSDate,
+    NSIndexSet,
+    NSKeyValueObservingOptionInitial,
+    NSKeyValueObservingOptionNew,
+    NSKeyValueObservingOptionOld,
+    NSKeyValueObservingOptionPrior,
+    NSMutableDictionary,
+    NSObject,
+)
 from objc import IBAction, IBOutlet, super
 from PyObjCTools.AppHelper import callLater
 from quickmacapp import Status, ask, choose, quit
@@ -449,7 +458,7 @@ class DayManager(object):
         Deferred.fromCoroutine(whatever())
 
     def showEditorWindow(self) -> None:
-        app = NSApplication.sharedApplication()
+        NSApplication.sharedApplication()
         self.editController.editorWindow.setIsVisible_(True)
         self.editController.editorWindow.makeKeyAndOrderFront_(None)
 
@@ -460,8 +469,6 @@ class DayManager(object):
             NSApp().activateIgnoringOtherApps_(True)
 
         def raiseException() -> NoReturn:
-            # from Foundation import NSException
-            # NSException.raise_format_("SampleException", "a thing happened")
             raise Exception("report this pls")
 
         status.menu(
@@ -635,7 +642,7 @@ class DescriptionChanger(NSObject):
             assert keyPath == "description"
             pom: Pomodoro = ofObject["pom"]
             newDescription: str = change["new"]
-            result = self.day.expressIntention(
+            self.day.expressIntention(
                 self.clock.seconds(), newDescription, pom
             )
             callLater(0.0, lambda: self.ctrl.refreshStatus_(self.day))
@@ -679,17 +686,19 @@ def poms2Dicts(
             ),
             "endTime": pomOrBreak.endTime.time().isoformat(timespec="minutes"),
             "description": desc,
-            "success": ("❌" if now > pomOrBreak.endTimestamp else "…")
-            if pomOrBreak.intention is None
-            else {
-                None: "…" if now < pomOrBreak.startTimestamp else "📝",
-                IntentionSuccess.Achieved: "✅",
-                IntentionSuccess.Focused: "🤔",
-                IntentionSuccess.Distracted: "🦋",
-                IntentionSuccess.NeverEvaluated: "👋",
-                True: "✅",
-                False: "🦋",
-            }[pomOrBreak.intention.wasSuccessful],
+            "success": (
+                ("❌" if now > pomOrBreak.endTimestamp else "…")
+                if pomOrBreak.intention is None
+                else {
+                    None: "…" if now < pomOrBreak.startTimestamp else "📝",
+                    IntentionSuccess.Achieved: "✅",
+                    IntentionSuccess.Focused: "🤔",
+                    IntentionSuccess.Distracted: "🦋",
+                    IntentionSuccess.NeverEvaluated: "👋",
+                    True: "✅",
+                    False: "🦋",
+                }[pomOrBreak.intention.wasSuccessful]
+            ),
             "pom": pomOrBreak,
         }
 
@@ -791,13 +800,6 @@ class DayEditorController(NSObject):
         )
 
 
-from Foundation import (
-    NSKeyValueObservingOptionInitial,
-    NSKeyValueObservingOptionNew,
-    NSKeyValueObservingOptionOld,
-    NSKeyValueObservingOptionPrior,
-)
-
 AllOptions = (
     NSKeyValueObservingOptionNew
     | NSKeyValueObservingOptionOld
@@ -811,11 +813,9 @@ def main(reactor: IReactorTime) -> None:
     ctrl = DayEditorController.alloc().initWithClock_andDayLoader_(
         reactor, dayLoader
     )
-    stuff = list(
-        NSNib.alloc()
-        .initWithNibNamed_bundle_("GoalListWindow.nib", None)
-        .instantiateWithOwner_topLevelObjects_(ctrl, None)
-    )
+    loaded, topLevelObjects = NSNib.alloc().initWithNibNamed_bundle_(
+        "GoalListWindow.nib", None
+    ).instantiateWithOwner_topLevelObjects_(ctrl, None)
     setupNotifications()
     withdrawIntentPrompt()
     dayManager = DayManager.new(reactor, ctrl, dayLoader)

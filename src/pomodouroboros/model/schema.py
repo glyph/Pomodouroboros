@@ -1,6 +1,6 @@
 from typing import Literal, TypedDict, Union
 
-SavedIntervalType = Literal["Pomodoro", "GracePeriod", "Break", "StartPrompt"]
+SavedIntervalType = Literal["Pomodoro", "GracePeriod", "Break", "StartPrompt", "Idle"]
 SavedEstimate = TypedDict(
     "SavedEstimate",
     {
@@ -94,11 +94,13 @@ SavedNexus = TypedDict(
     "SavedNexus",
     {
         "lastIntentionID": str,
-        "initialTime": float,
         "intentions": list[SavedIntention],
         "lastUpdateTime": float,
         "upcomingDurations": list[SavedDuration],
-        "streaks": list[SavedStreak],
+        "currentStreak": SavedStreak,
+        # TODO: previousStreaks should really be saved in separate files for
+        # scalability
+        "previousStreaks": list[SavedStreak],
         "sessions": list[SavedSession],
     },
 )

@@ -13,6 +13,7 @@ DATA_FILES = [
     "IBFiles/GoalListWindow.xib",
     "IBFiles/IntentionEditor.xib",
     "IBFiles/MainMenu.xib",
+    "IBFiles/ProgressHUD.xib",
 ]
 OPTIONS = {
     "plist": {

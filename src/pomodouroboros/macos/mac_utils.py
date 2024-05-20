@@ -31,7 +31,7 @@ from AppKit import (
     NSWorkspaceDidActivateApplicationNotification,
     NSWorkspaceDidHideApplicationNotification,
 )
-from Foundation import NSLog, NSObject
+from Foundation import NSObject
 from quickmacapp import Actionable
 
 T = TypeVar("T")

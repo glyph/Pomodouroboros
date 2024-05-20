@@ -16,3 +16,9 @@ line-length = 79
 [tool.isort]
 profile = "black"
 line_length = 79
+
+[tool.ruff]
+
+ignore = [
+  "E731",
+]
