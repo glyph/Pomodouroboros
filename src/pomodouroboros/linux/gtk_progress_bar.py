@@ -1,8 +1,8 @@
 # Load Gtk
-import gi
+import gi                       # type:ignore
 
 gi.require_version("GLib", "2.0")
-from gi.repository import GLib
+from gi.repository import GLib  # type:ignore
 
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk
@@ -37,10 +37,10 @@ progressbar trough {
 }
 """)
 
-from Xlib.display import Display as XOpenDisplay
-from ewmh import EWMH
+from Xlib.display import Display as XOpenDisplay  # type:ignore
+from ewmh import EWMH                             # type:ignore
 
-from cairo import Region
+from cairo import Region        # type:ignore
 
 
 # When the application is launched…
