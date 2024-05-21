@@ -1,3 +1,14 @@
+
+# installation instructions:
+# sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-4.0
+
+# deps:
+# ewmh==0.1.6
+# pycairo==1.26.0
+# PyGObject==3.48.2
+# python-xlib==0.33
+# six==1.16.0
+
 # Load Gtk
 import gi                       # type:ignore
 
