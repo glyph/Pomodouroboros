@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, List, Self
 
 from AppKit import (
     NSApp,
+    NSPanel,
     NSAttributedString,
     NSBackingStoreBuffered,
     NSBackingStoreType,
@@ -28,10 +29,11 @@ from AppKit import (
     NSStrokeWidthAttributeName,
     NSView,
     NSWindow,
-    NSWindowCollectionBehaviorCanJoinAllSpaces,
+    NSWindowCollectionBehaviorMoveToActiveSpace,
     NSWindowCollectionBehaviorStationary,
     NSWindowCollectionBehaviorAuxiliary,
     NSWindowStyleMask,
+    NSHUDWindowMask,
 )
 from AppKit import NSWindowCollectionBehaviorCanJoinAllApplications
 from Foundation import NSPoint, NSRect
@@ -49,7 +51,7 @@ from ..storage import TEST_MODE
 log = Logger()
 
 
-class HUDWindow(NSWindow):
+class HUDWindow(NSPanel):
     """
     A window that doesn't receive input events and floats as an overlay.
     """
@@ -66,7 +68,7 @@ class HUDWindow(NSWindow):
         )
         self.setLevel_(NSFloatingWindowLevel)
         self.setCollectionBehavior_(
-            NSWindowCollectionBehaviorCanJoinAllSpaces
+            NSWindowCollectionBehaviorMoveToActiveSpace
             | NSWindowCollectionBehaviorStationary
             | NSWindowCollectionBehaviorAuxiliary
             | NSWindowCollectionBehaviorCanJoinAllApplications
@@ -204,7 +206,7 @@ def midScreenSizer(screen: NSScreen) -> NSRect:
 def hudWindowOn(
     screen: NSScreen,
     sizer: Callable[[NSScreen], NSRect],
-    styleMask=NSBorderlessWindowMask,
+    styleMask=(NSBorderlessWindowMask | NSHUDWindowMask),
 ) -> HUDWindow:
     app = NSApp()
     backing = NSBackingStoreBuffered
