@@ -73,6 +73,7 @@ class HUDWindow(NSPanel):
             | NSWindowCollectionBehaviorAuxiliary
             | NSWindowCollectionBehaviorCanJoinAllApplications
         )
+        self.setHidesOnDeactivate_(False)
         return self
 
     def canBecomeKeyWindow(self) -> bool:
