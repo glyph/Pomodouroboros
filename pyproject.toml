@@ -1,8 +1,7 @@
 [build-system]
 requires = [
   "setuptools>=42",
-  # https://github.com/ronaldoussoren/py2app/issues/525
-  "py2app@git+https://github.com/ronaldoussoren/py2app@e9c7a88f34d79c41a3a344ccc14cd97c24904b9f#egg=py2app",
+  "py2app",
   "wheel",
   "quickmacapp",
 ]
