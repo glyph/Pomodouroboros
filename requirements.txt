@@ -56,7 +56,7 @@ hyperframe==6.0.1
     # via h2
 hyperlink==21.0.0
     # via twisted
-hypothesis==6.100.5
+hypothesis==6.102.4
     # via twisted
 idna==3.7
     # via
@@ -148,7 +148,7 @@ six==1.16.0
     #   python-dateutil
 sortedcontainers==2.4.0
     # via hypothesis
-twisted[all-non-platform,conch,http2,macos_platform,serial,test,tls]==24.3.0
+twisted[all-non-platform,conch,http2,macos-platform,serial,test,tls]==24.3.0
     # via
     #   -r requirements.in
     #   encrust
@@ -170,7 +170,7 @@ wheel-filename==1.4.1
     # via encrust
 zope-event==5.0
     # via zope-schema
-zope-interface==6.3
+zope-interface==6.4
     # via
     #   mypy-zope
     #   twisted
