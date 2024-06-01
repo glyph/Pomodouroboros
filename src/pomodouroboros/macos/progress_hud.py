@@ -497,6 +497,92 @@ def edge(start: NSPoint, radius: float, theta: float) -> NSPoint:
     )
 
 
+@dataclass(slots=True)
+class ArcMaker:
+    center: NSPoint
+    radius: float
+
+    def makeArc(self, start: float, end: float) -> NSBezierPath:
+        thickness = 0.1
+
+        # innerRadius = radius * (1 - thickness)
+        # outerStart = edge(center, radius, start)
+        # innerStart = edge(center, innerRadius, start)
+        # outerEnd = edge(center, radius, end)
+        # innerEnd = edge(center, innerRadius, end)
+
+        aPath = NSBezierPath.bezierPath()
+        # aPath.appendBezierPathWithPoints_count_([innerStart], 1)
+        aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
+            self.center, self.radius, start, end
+        )
+        # already at outerEnd
+        # aPath.appendBezierPathWithPoints_count_([innerEnd], 1)
+        aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
+            self.center, self.radius * (1 - thickness), end, start, True
+        )
+        # aPath.setLineWidth_(5)
+        return aPath
+
+
+def makeText(
+    text: str,
+    fill: NSColor,
+    fillAlpha: float,
+    stroke: NSColor | None = None,
+    strokeAlpha: float | None = None,
+    strokeWidth: float | None = None,
+) -> NSAttributedString:
+    font = NSFont.systemFontOfSize_(
+        36.0
+    )  # NSFont.fontWithName_size_("System", 36.0)
+    attributes = {
+        NSForegroundColorAttributeName: fill.colorWithAlphaComponent_(
+            fillAlpha
+        ),
+        NSFontAttributeName: font,
+    }
+    if stroke is not None:
+        attributes[NSStrokeColorAttributeName] = (
+            NSColor.blackColor().colorWithAlphaComponent_(strokeAlpha)
+        )
+    if strokeWidth is not None:
+        attributes[NSStrokeWidthAttributeName] = strokeWidth
+
+    return NSAttributedString.alloc().initWithString_attributes_(
+        text, attributes
+    )
+
+
+def _circledTextWithAlpha(
+    center: NSPoint, text: str, alpha: float, color: NSColor
+):
+    black = NSColor.blackColor()
+    aString = makeText(text, color, alpha)
+    outline = makeText(text, color, 1.0, black, alpha, 5.0)
+    textSize = aString.size()
+    black.colorWithAlphaComponent_(alpha / 3.0).setFill()
+    legibilityCircle = NSBezierPath.bezierPath()
+    legibilityRadius = sqrt(
+        ((textSize.width / 2) ** 2) + ((textSize.height / 2) ** 2)
+    )
+    legibilityCircle.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
+        center,
+        legibilityRadius + 10.0,
+        0,
+        360,
+    )
+    legibilityCircle.fill()
+    stringPoint = NSMakePoint(
+        center.x - (textSize.width / 2),
+        center.y - (textSize.height / 2),
+    )
+    outline.drawAtPoint_(stringPoint)
+    aString.drawAtPoint_(stringPoint)
+
+
+clear = NSColor.clearColor()
+
 class PieTimer(AbstractProgressView):
     """
     A timer that draws itself as two large arcs.
@@ -507,56 +593,36 @@ class PieTimer(AbstractProgressView):
         draw the arc (ignore the given rect, draw to bounds)
         """
         with showFailures():
-            super().drawRect_(dirtyRect)
-
-            NSColor.clearColor().set()
-            NSRectFill(dirtyRect)
-
-            bounds = self.bounds()
-            w, h = bounds.size.width / 2, bounds.size.height / 2
-            center = NSMakePoint(w, h)
-
-            radius = min([w, h]) * 0.95
-
-            if TEST_MODE:
-                radius *= 0.7
-
-            def doArc(start: float, end: float) -> NSBezierPath:
-                thickness = 0.1
-
-                # innerRadius = radius * (1 - thickness)
-                # outerStart = edge(center, radius, start)
-                # innerStart = edge(center, innerRadius, start)
-                # outerEnd = edge(center, radius, end)
-                # innerEnd = edge(center, innerRadius, end)
-
-                aPath = NSBezierPath.bezierPath()
-                # aPath.appendBezierPathWithPoints_count_([innerStart], 1)
-                aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
-                    center, radius, start, end
-                )
-                # already at outerEnd
-                # aPath.appendBezierPathWithPoints_count_([innerEnd], 1)
-                aPath.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
-                    center, radius * (1 - thickness), end, start, True
-                )
-                # aPath.setLineWidth_(5)
-                return aPath
-
-            startDegrees = ((360 * self._percentage) + 90) % 360
-            endDegrees = 90
-            leftArc = doArc(endDegrees, startDegrees)
-            rightArc = doArc(startDegrees, endDegrees)
             leftWithAlpha = self._leftColor.colorWithAlphaComponent_(
                 self._alphaValue
             )
+            rightWithAlpha = self._rightColor.colorWithAlphaComponent_(
+                self._alphaValue
+            )
+
+            super().drawRect_(dirtyRect)
+
+            clear.set()
+            clear.setStroke()
+
+            bounds = self.bounds()
+            NSRectFill(bounds)
+            w, h = bounds.size.width / 2, bounds.size.height / 2
+            center = NSMakePoint(w, h)
+            radius = (min([w, h]) * 0.95) * (0.7 if TEST_MODE else 1.0)
+            startDegrees = ((360 * self._percentage) + 90) % 360
+            endDegrees = 90
+
+            maker = ArcMaker(center, radius)
+            leftArc = maker.makeArc(endDegrees, startDegrees)
+            rightArc = maker.makeArc(startDegrees, endDegrees)
+
             leftWithAlpha.setFill()
             leftArc.fill()
-            self._rightColor.colorWithAlphaComponent_(
-                self._alphaValue
-            ).setFill()
+            rightWithAlpha.setFill()
             rightArc.fill()
             lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
+
             if lineAlpha > 0:
                 whiteWithAlpha = NSColor.whiteColor().colorWithAlphaComponent_(
                     lineAlpha
@@ -566,66 +632,11 @@ class PieTimer(AbstractProgressView):
                 rightArc.setLineWidth_(1 / 4)
                 leftArc.stroke()
                 rightArc.stroke()
+
             if self._reticleText and self._textAlpha:
-                font = NSFont.systemFontOfSize_(
-                    36.0
-                )  # NSFont.fontWithName_size_("System", 36.0)
-                textAlpha = self._textAlpha
-                # aShadow = NSShadow.alloc().init()
-                # aShadow.setShadowOffset_((2.0, -2.0))
-                # aShadow.setShadowColor_(NSColor.blackColor())
-                # aShadow.setShadowBlurRadius_(4.0)
-                aString = NSAttributedString.alloc().initWithString_attributes_(
-                    self._reticleText,
-                    {
-                        NSForegroundColorAttributeName: self._leftColor.colorWithAlphaComponent_(
-                            textAlpha
-                        ),
-                        NSFontAttributeName: font,
-                        # NSStrokeColorAttributeName: NSColor.blackColor().colorWithAlphaComponent_(
-                        #     textAlpha
-                        # ),
-                        # # negative widths are percentages of font point size
-                        # NSStrokeWidthAttributeName: -2.0,
-                        # NSShadowAttributeName: aShadow,
-                    },
+                _circledTextWithAlpha(
+                    center, self._reticleText, self._textAlpha, self._leftColor
                 )
-                outlineString = NSAttributedString.alloc().initWithString_attributes_(
-                    self._reticleText,
-                    {
-                        NSForegroundColorAttributeName: self._leftColor.colorWithAlphaComponent_(
-                            1.0
-                        ),
-                        NSFontAttributeName: font,
-                        NSStrokeColorAttributeName: NSColor.blackColor().colorWithAlphaComponent_(
-                            textAlpha
-                        ),
-                        # negative widths are percentages of font point size
-                        NSStrokeWidthAttributeName: 5.0,
-                        # NSShadowAttributeName: aShadow,
-                    },
-                )
-                textSize = aString.size()
-                NSColor.blackColor().colorWithAlphaComponent_(
-                    textAlpha / 3.0
-                ).setFill()
-                legibilityCircle = NSBezierPath.bezierPath()
-                legibilityRadius = sqrt(
-                    ((textSize.width / 2) ** 2) + ((textSize.height / 2) ** 2)
-                )
-                legibilityCircle.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_(
-                    center,
-                    legibilityRadius + 10.0,
-                    0,
-                    360,
-                )
-                legibilityCircle.fill()
-                stringPoint = NSMakePoint(
-                    center.x - (textSize.width / 2),
-                    center.y - (textSize.height / 2),
-                )
-                outlineString.drawAtPoint_(stringPoint)
-                aString.drawAtPoint_(stringPoint)
 
 
 def _removeWindows(self: ProgressController) -> None:
