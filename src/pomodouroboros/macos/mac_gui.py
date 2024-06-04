@@ -22,6 +22,8 @@ from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import IReactorTime
 from twisted.internet.task import LoopingCall
 
+from pomodouroboros.macos.progress_hud import PieTimer
+
 from ..model.debugger import debug
 from ..model.intention import Estimate, Intention
 from ..model.intervals import (
@@ -234,6 +236,24 @@ class _(NSObject):
         ...
 
 """
+
+
+class DebugDataContainer(NSObject):
+    debugPercentage: float = object_property()
+    myPieTimer: PieTimer
+    myPieTimer = IBOutlet()
+
+    def init(self) -> DebugDataContainer:
+        self.debugPercentage = 0.0
+        return self
+
+    def awakeFromNib(self) -> None:
+        self.myPieTimer.bind_toObject_withKeyPath_options_(
+            "percentage",
+            self,
+            "debugPercentage",
+            None,
+        )
 
 
 class StreakDataSource(NSObject):
