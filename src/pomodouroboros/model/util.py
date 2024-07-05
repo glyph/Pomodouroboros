@@ -71,6 +71,20 @@ P = ParamSpec("P")
 HN = TypeVar("HN", bound=HasNexus)
 
 
+def fallible(fc: Callable[P, None]) -> Callable[P, None]:
+    """
+    Decorator that wraps operations (like custom drawing) that might fail, but
+    don't mutate the model.
+    """
+
+    @wraps(fc)
+    def wrapped(*args: P.args, **kw: P.kwargs) -> None:
+        with showFailures():
+            fc(*args, **kw)
+
+    return wrapped
+
+
 def interactionRoot(
     c: Callable[Concatenate[HN, P], T]
 ) -> Callable[Concatenate[HN, P], T]:

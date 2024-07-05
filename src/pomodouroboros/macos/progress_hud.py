@@ -45,7 +45,7 @@ from twisted.logger import Logger
 from twisted.python.failure import Failure
 
 from ..model.debugger import debug
-from ..model.util import showFailures
+from ..model.util import showFailures, fallible
 from ..storage import TEST_MODE
 
 log = Logger()
@@ -588,55 +588,57 @@ class PieTimer(AbstractProgressView):
     A timer that draws itself as two large arcs.
     """
 
+    @fallible
     def drawRect_(self, dirtyRect: NSRect) -> None:
         """
-        draw the arc (ignore the given rect, draw to bounds)
+        Draw the arcs.
+
+        @note: this ignores the given rect, and draws everything within bounds.
         """
-        with showFailures():
-            leftWithAlpha = self._leftColor.colorWithAlphaComponent_(
-                self._alphaValue
+        leftWithAlpha = self._leftColor.colorWithAlphaComponent_(
+            self._alphaValue
+        )
+        rightWithAlpha = self._rightColor.colorWithAlphaComponent_(
+            self._alphaValue
+        )
+
+        super().drawRect_(dirtyRect)
+
+        clear.set()
+        clear.setStroke()
+
+        bounds = self.bounds()
+        NSRectFill(bounds)
+        w, h = bounds.size.width / 2, bounds.size.height / 2
+        center = NSMakePoint(w, h)
+        radius = (min([w, h]) * 0.95) * (0.7 if TEST_MODE else 1.0)
+        startDegrees = ((360 * self._percentage) + 90) % 360
+        endDegrees = 90
+
+        maker = ArcMaker(center, radius)
+        leftArc = maker.makeArc(endDegrees, startDegrees)
+        rightArc = maker.makeArc(startDegrees, endDegrees)
+
+        leftWithAlpha.setFill()
+        leftArc.fill()
+        rightWithAlpha.setFill()
+        rightArc.fill()
+        lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
+
+        if lineAlpha > 0:
+            whiteWithAlpha = NSColor.whiteColor().colorWithAlphaComponent_(
+                lineAlpha
             )
-            rightWithAlpha = self._rightColor.colorWithAlphaComponent_(
-                self._alphaValue
+            whiteWithAlpha.setStroke()
+            leftArc.setLineWidth_(1 / 4)
+            rightArc.setLineWidth_(1 / 4)
+            leftArc.stroke()
+            rightArc.stroke()
+
+        if self._reticleText and self._textAlpha:
+            _circledTextWithAlpha(
+                center, self._reticleText, self._textAlpha, self._leftColor
             )
-
-            super().drawRect_(dirtyRect)
-
-            clear.set()
-            clear.setStroke()
-
-            bounds = self.bounds()
-            NSRectFill(bounds)
-            w, h = bounds.size.width / 2, bounds.size.height / 2
-            center = NSMakePoint(w, h)
-            radius = (min([w, h]) * 0.95) * (0.7 if TEST_MODE else 1.0)
-            startDegrees = ((360 * self._percentage) + 90) % 360
-            endDegrees = 90
-
-            maker = ArcMaker(center, radius)
-            leftArc = maker.makeArc(endDegrees, startDegrees)
-            rightArc = maker.makeArc(startDegrees, endDegrees)
-
-            leftWithAlpha.setFill()
-            leftArc.fill()
-            rightWithAlpha.setFill()
-            rightArc.fill()
-            lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
-
-            if lineAlpha > 0:
-                whiteWithAlpha = NSColor.whiteColor().colorWithAlphaComponent_(
-                    lineAlpha
-                )
-                whiteWithAlpha.setStroke()
-                leftArc.setLineWidth_(1 / 4)
-                rightArc.setLineWidth_(1 / 4)
-                leftArc.stroke()
-                rightArc.stroke()
-
-            if self._reticleText and self._textAlpha:
-                _circledTextWithAlpha(
-                    center, self._reticleText, self._textAlpha, self._leftColor
-                )
 
 
 def _removeWindows(self: ProgressController) -> None:
