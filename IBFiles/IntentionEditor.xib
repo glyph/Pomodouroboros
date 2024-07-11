@@ -103,7 +103,7 @@
                                         <slider horizontalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="bPN-TO-sTB">
                                             <rect key="frame" x="15" y="32" width="24" height="517"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <sliderCell key="cell" continuous="YES" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="right" sliderType="linear" id="blJ-2d-DkX">
+                                            <sliderCell key="cell" continuous="YES" alignment="left" maxValue="1" doubleValue="0.25" tickMarkPosition="right" sliderType="linear" id="blJ-2d-DkX">
                                                 <font key="font" size="12" name="Helvetica"/>
                                             </sliderCell>
                                             <connections>
@@ -113,7 +113,7 @@
                                         <slider horizontalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="NLA-2v-oRU">
                                             <rect key="frame" x="91" y="32" width="24" height="517"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <sliderCell key="cell" continuous="YES" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="right" sliderType="linear" id="0aK-3R-tmq">
+                                            <sliderCell key="cell" continuous="YES" alignment="left" maxValue="1" doubleValue="0.34999999999999998" tickMarkPosition="right" sliderType="linear" id="0aK-3R-tmq">
                                                 <font key="font" size="12" name="Helvetica"/>
                                             </sliderCell>
                                             <connections>

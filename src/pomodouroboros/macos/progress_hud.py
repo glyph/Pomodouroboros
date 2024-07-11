@@ -148,12 +148,15 @@ class AbstractProgressView(NSView):
         self.setNeedsDisplay_(True)
 
     def setBonusPercentage1_(self, newBonusPercentage: float) -> None:
-        print("bonus 1", newBonusPercentage)
+        if newBonusPercentage is None:
+            return
         self._bonusPercentage1 = newBonusPercentage
         self.setNeedsDisplay_(True)
 
     def setBonusPercentage2_(self, newBonusPercentage: float) -> None:
-        print("bonus 2", newBonusPercentage)
+        if newBonusPercentage is None:
+            # TODO: why???
+            return
         self._bonusPercentage2 = newBonusPercentage
         self.setNeedsDisplay_(True)
 
@@ -595,6 +598,14 @@ def _circledTextWithAlpha(
 
 clear = NSColor.clearColor()
 
+
+def pct2deg(pct: float) -> float:
+    """
+    Convert percentages to degrees.
+    """
+    return ((360 * pct) + 90) % 360
+
+
 class PieTimer(AbstractProgressView):
     """
     A timer that draws itself as two large arcs.
@@ -614,6 +625,13 @@ class PieTimer(AbstractProgressView):
             self._alphaValue
         )
 
+        bonus1Color = NSColor.blueColor().colorWithAlphaComponent_(
+            self._alphaValue
+        )
+        bonus2Color = NSColor.yellowColor().colorWithAlphaComponent_(
+            self._alphaValue
+        )
+
         super().drawRect_(dirtyRect)
 
         clear.set()
@@ -624,17 +642,32 @@ class PieTimer(AbstractProgressView):
         w, h = bounds.size.width / 2, bounds.size.height / 2
         center = NSMakePoint(w, h)
         radius = (min([w, h]) * 0.95) * (0.7 if TEST_MODE else 1.0)
-        startDegrees = ((360 * self._percentage) + 90) % 360
+        startDegrees = pct2deg(self._percentage)
         endDegrees = 90
 
         maker = ArcMaker(center, radius)
         leftArc = maker.makeArc(endDegrees, startDegrees)
         rightArc = maker.makeArc(startDegrees, endDegrees)
 
+        bonusMaker = ArcMaker(center, radius * 1.1)
+
+        bonus1start = pct2deg(self._bonusPercentage1)
+        bonus2start = pct2deg(self._bonusPercentage2)
+
+        bonus1Arc = maker.makeArc(endDegrees, bonus1start)
+        bonus2Arc = maker.makeArc(bonus1start, bonus2start + bonus1start)
+
         leftWithAlpha.setFill()
         leftArc.fill()
         rightWithAlpha.setFill()
         rightArc.fill()
+
+        bonus1Color.setFill()
+        bonus1Arc.fill()
+
+        bonus2Color.setFill()
+        bonus2Arc.fill()
+
         lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
 
         if lineAlpha > 0:
