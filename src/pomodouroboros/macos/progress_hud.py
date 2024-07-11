@@ -96,6 +96,8 @@ class AbstractProgressView(NSView):
 
     _reticleText: str = ""
     _percentage: float = 0.0
+    _bonusPercentage1: float = 0.0
+    _bonusPercentage2: float = 0.0
     _leftColor = NSColor.greenColor()
     _rightColor = NSColor.redColor()
 
@@ -143,6 +145,16 @@ class AbstractProgressView(NSView):
         Set the percentage-full here.
         """
         self._percentage = newPercentage
+        self.setNeedsDisplay_(True)
+
+    def setBonusPercentage1_(self, newBonusPercentage: float) -> None:
+        print("bonus 1", newBonusPercentage)
+        self._bonusPercentage1 = newBonusPercentage
+        self.setNeedsDisplay_(True)
+
+    def setBonusPercentage2_(self, newBonusPercentage: float) -> None:
+        print("bonus 2", newBonusPercentage)
+        self._bonusPercentage2 = newBonusPercentage
         self.setNeedsDisplay_(True)
 
     def setLeftColor_(self, newLeftColor: NSColor) -> None:

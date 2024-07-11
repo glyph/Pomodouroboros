@@ -32,7 +32,7 @@
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="457" y="348" width="843" height="728"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="3840" height="1575"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1080"/>
             <value key="minSize" type="size" width="600" height="600"/>
             <view key="contentView" id="Qzr-8h-V2F">
                 <rect key="frame" x="0.0" y="0.0" width="843" height="728"/>
@@ -67,17 +67,6 @@
                                                 </subviews>
                                             </view>
                                         </box>
-                                        <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="0ZS-fT-bxW">
-                                            <rect key="frame" x="10" y="560" width="110" height="32"/>
-                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <buttonCell key="cell" type="push" title="Test Overlay" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="7cX-z3-j7t">
-                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                                <font key="font" metaFont="system"/>
-                                            </buttonCell>
-                                            <connections>
-                                                <action selector="hudDebugButton:" target="-2" id="CSg-KC-PcX"/>
-                                            </connections>
-                                        </button>
                                         <slider verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="W3h-8h-kl8">
                                             <rect key="frame" x="171" y="32" width="557" height="28"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
@@ -92,6 +81,74 @@
                                                 </binding>
                                             </connections>
                                         </slider>
+                                        <box fixedFrame="YES" title="Debugging Timer" translatesAutoresizingMaskIntoConstraints="NO" id="Yx2-IL-jrt">
+                                            <rect key="frame" x="322" y="584" width="252" height="97"/>
+                                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                            <view key="contentView" id="WsK-id-Q4W">
+                                                <rect key="frame" x="4" y="5" width="244" height="77"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                <subviews>
+                                                    <customView id="bZS-Z4-xnK" userLabel="Debugging Pie Timer" customClass="PieTimer">
+                                                        <rect key="frame" x="0.0" y="0.0" width="244" height="77"/>
+                                                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                        <userDefinedRuntimeAttributes>
+                                                            <userDefinedRuntimeAttribute type="number" keyPath="percentage">
+                                                                <real key="value" value="0.75"/>
+                                                            </userDefinedRuntimeAttribute>
+                                                        </userDefinedRuntimeAttributes>
+                                                    </customView>
+                                                </subviews>
+                                            </view>
+                                        </box>
+                                        <slider horizontalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="bPN-TO-sTB">
+                                            <rect key="frame" x="15" y="32" width="24" height="517"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <sliderCell key="cell" continuous="YES" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="right" sliderType="linear" id="blJ-2d-DkX">
+                                                <font key="font" size="12" name="Helvetica"/>
+                                            </sliderCell>
+                                            <connections>
+                                                <binding destination="DhG-7J-enw" name="value" keyPath="self.debugBonus1" id="MXj-0c-ZRh"/>
+                                            </connections>
+                                        </slider>
+                                        <slider horizontalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="NLA-2v-oRU">
+                                            <rect key="frame" x="91" y="32" width="24" height="517"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <sliderCell key="cell" continuous="YES" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="right" sliderType="linear" id="0aK-3R-tmq">
+                                                <font key="font" size="12" name="Helvetica"/>
+                                            </sliderCell>
+                                            <connections>
+                                                <binding destination="DhG-7J-enw" name="value" keyPath="self.debugBonus2" id="d8H-Rz-MW8"/>
+                                            </connections>
+                                        </slider>
+                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="6Lx-YW-wty">
+                                            <rect key="frame" x="17" y="555" width="48" height="16"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" lineBreakMode="clipping" title="Bonus1" id="wX0-o0-1H0">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="c09-ns-Boe">
+                                            <rect key="frame" x="93" y="555" width="50" height="16"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" lineBreakMode="clipping" title="Bonus2" id="FPe-DL-dUA">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="0ZS-fT-bxW">
+                                            <rect key="frame" x="10" y="652" width="110" height="32"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <buttonCell key="cell" type="push" title="Test Overlay" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="7cX-z3-j7t">
+                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="system"/>
+                                            </buttonCell>
+                                            <connections>
+                                                <action selector="hudDebugButton:" target="-2" id="CSg-KC-PcX"/>
+                                            </connections>
+                                        </button>
                                     </subviews>
                                 </view>
                             </tabViewItem>
@@ -1043,8 +1100,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="0VN-am-jg8">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="739147064.00249803">
-                                                    <!--2024-06-03 22:37:44 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="742423800.84258997">
+                                                    <!--2024-07-11 20:50:00 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1577,8 +1634,8 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <datePickerCell key="cell" borderStyle="bezel" alignment="left" useCurrentDate="YES" id="2ek-VJ-F3s">
                                                 <font key="font" metaFont="system"/>
-                                                <date key="date" timeIntervalSinceReferenceDate="739147064.02081597">
-                                                    <!--2024-06-03 22:37:44 +0000-->
+                                                <date key="date" timeIntervalSinceReferenceDate="742423800.86250198">
+                                                    <!--2024-07-11 20:50:00 +0000-->
                                                 </date>
                                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -1633,7 +1690,7 @@
                     </tabView>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-3418" y="-2528"/>
+            <point key="canvasLocation" x="-3418.5" y="-2528"/>
         </window>
         <customObject id="Z3a-RV-wSy" userLabel="Tab Order Helper" customClass="TabOrderFriendlyTextViewDelegate"/>
         <customObject id="8xN-s7-Y7R" customClass="IntentionPomodorosDataSource">
@@ -1646,6 +1703,7 @@
         <userDefaultsController representsSharedInstance="YES" id="DIz-2o-LJs"/>
         <customObject id="DhG-7J-enw" customClass="DebugDataContainer">
             <connections>
+                <outlet property="myOtherPieTimer" destination="bZS-Z4-xnK" id="0Xe-D1-28i"/>
                 <outlet property="myPieTimer" destination="VlE-4q-xz9" id="t3j-pe-40n"/>
             </connections>
         </customObject>
@@ -1995,6 +2053,16 @@
             </items>
             <point key="canvasLocation" x="-3615" y="-2972"/>
         </menu>
+        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="fgz-Fz-OfJ">
+            <rect key="frame" x="0.0" y="0.0" width="48" height="16"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+            <textFieldCell key="cell" lineBreakMode="clipping" title="Bonus1" id="n4z-IY-aTF">
+                <font key="font" metaFont="system"/>
+                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+            </textFieldCell>
+            <point key="canvasLocation" x="-3534" y="-2076"/>
+        </textField>
     </objects>
     <resources>
         <image name="NSAddTemplate" width="18" height="17"/>

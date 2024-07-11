@@ -240,20 +240,38 @@ class _(NSObject):
 
 class DebugDataContainer(NSObject):
     debugPercentage: float = object_property()
+    debugBonus1: float = object_property()
+    debugBonus2: float = object_property()
+
     myPieTimer: PieTimer
     myPieTimer = IBOutlet()
+    myOtherPieTimer: PieTimer
+    myOtherPieTimer = IBOutlet()
 
     def init(self) -> DebugDataContainer:
         self.debugPercentage = 0.0
         return self
 
     def awakeFromNib(self) -> None:
-        self.myPieTimer.bind_toObject_withKeyPath_options_(
-            "percentage",
-            self,
-            "debugPercentage",
-            None,
-        )
+        for eachPieTimer in [self.myPieTimer, self.myOtherPieTimer]:
+            eachPieTimer.bind_toObject_withKeyPath_options_(
+                "percentage",
+                self,
+                "debugPercentage",
+                None,
+            )
+            eachPieTimer.bind_toObject_withKeyPath_options_(
+                "bonusPercentage1",
+                self,
+                "debugBonus1",
+                None,
+            )
+            eachPieTimer.bind_toObject_withKeyPath_options_(
+                "bonusPercentage2",
+                self,
+                "debugBonus2",
+                None,
+            )
 
 
 class StreakDataSource(NSObject):
