@@ -100,6 +100,8 @@ class AbstractProgressView(NSView):
     _bonusPercentage2: float = 0.0
     _leftColor = NSColor.greenColor()
     _rightColor = NSColor.redColor()
+    _bonus1Color: NSColor = NSColor.blueColor()
+    _bonus2Color: NSColor = NSColor.yellowColor()
 
     _alphaValue: float = 1 / 4
     _textAlpha: float = 0.0
@@ -625,11 +627,11 @@ class PieTimer(AbstractProgressView):
             self._alphaValue
         )
 
-        bonus1Color = NSColor.blueColor().colorWithAlphaComponent_(
-            self._alphaValue
+        bonus1Color = self._bonus1Color.colorWithAlphaComponent_(
+            self._alphaValue + 0.2
         )
-        bonus2Color = NSColor.yellowColor().colorWithAlphaComponent_(
-            self._alphaValue
+        bonus2Color = self._bonus2Color.colorWithAlphaComponent_(
+            self._alphaValue + 0.2
         )
 
         super().drawRect_(dirtyRect)
@@ -649,24 +651,18 @@ class PieTimer(AbstractProgressView):
         leftArc = maker.makeArc(endDegrees, startDegrees)
         rightArc = maker.makeArc(startDegrees, endDegrees)
 
-        bonusMaker = ArcMaker(center, radius * 1.1)
+        bonusMaker = ArcMaker(center, radius * 1.05)
 
         bonus1start = pct2deg(self._bonusPercentage1)
-        bonus2start = pct2deg(self._bonusPercentage2)
+        bonus2start = pct2deg(self._bonusPercentage2 + self._bonusPercentage1)
 
-        bonus1Arc = maker.makeArc(endDegrees, bonus1start)
-        bonus2Arc = maker.makeArc(bonus1start, bonus2start + bonus1start)
+        bonus1Arc = bonusMaker.makeArc(endDegrees, bonus1start)
+        bonus2Arc = bonusMaker.makeArc(bonus1start, bonus2start)
 
         leftWithAlpha.setFill()
         leftArc.fill()
         rightWithAlpha.setFill()
         rightArc.fill()
-
-        bonus1Color.setFill()
-        bonus1Arc.fill()
-
-        bonus2Color.setFill()
-        bonus2Arc.fill()
 
         lineAlpha = (self._alphaValue - DEFAULT_BASE_ALPHA) * 4
 
@@ -684,6 +680,12 @@ class PieTimer(AbstractProgressView):
             _circledTextWithAlpha(
                 center, self._reticleText, self._textAlpha, self._leftColor
             )
+
+        bonus1Color.setFill()
+        bonus1Arc.fill()
+
+        bonus2Color.setFill()
+        bonus2Arc.fill()
 
 
 def _removeWindows(self: ProgressController) -> None:
