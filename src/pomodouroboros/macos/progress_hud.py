@@ -604,7 +604,16 @@ clear = NSColor.clearColor()
 def pct2deg(pct: float) -> float:
     """
     Convert percentages to degrees.
+
+    @note: this fudges the conversion a little bit since there is some boundary
+        with the arc-drawing code where completely full arcs won't be drawn.
     """
+    epsilon = 1e-15
+
+    if pct == 1.0:
+        pct -= epsilon
+    elif pct == 0.0:
+        pct += epsilon
     return ((360 * pct) + 90) % 360
 
 
