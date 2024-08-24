@@ -20,7 +20,7 @@
             <windowCollectionBehavior key="collectionBehavior" moveToActiveSpace="YES" stationary="YES" ignoresCycle="YES" fullScreenAuxiliary="YES"/>
             <windowPositionMask key="initialPositionMask" topStrut="YES"/>
             <rect key="contentRect" x="112" y="550" width="1400" height="400"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="3840" height="1575"/>
             <view key="contentView" id="aNg-of-5Uy">
                 <rect key="frame" x="0.0" y="0.0" width="1400" height="400"/>
                 <autoresizingMask key="autoresizingMask"/>
