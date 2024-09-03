@@ -179,7 +179,7 @@ zope-schema==7.0.1
 # The following packages are considered to be unsafe in a requirements file:
 # pip==24.2
     # via pip-tools
-setuptools==71.1.0
+setuptools==71.0.0
     # via
     #   -r requirements.in
     #   incremental
