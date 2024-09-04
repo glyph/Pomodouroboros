@@ -16,4 +16,4 @@ quickmachotkey
 encrust
 datetype
 fritter
-setuptools<=71.0.0
+setuptools<71.0.0
