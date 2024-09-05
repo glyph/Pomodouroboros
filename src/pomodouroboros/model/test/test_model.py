@@ -278,8 +278,8 @@ class NexusTests(TestCase):
                     interval=StartPrompt(
                         startTime=1100.0,
                         endTime=1400.0,
-                        pointsBeforeLoss=33.25,
-                        pointsAfterLoss=30.25,
+                        pointsBeforeLoss=30.25,
+                        pointsAfterLoss=27.25,
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1150.0,

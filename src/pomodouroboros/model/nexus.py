@@ -19,7 +19,6 @@ from .boundaries import (
     UserInterfaceFactory,
 )
 from .debugger import debug
-from .ideal import idealScore
 from .intention import Estimate, Intention
 from .intervals import (
     AnyIntervalOrIdle,
@@ -174,6 +173,17 @@ class Nexus:
         debug("active interval: yay:", candidateInterval)
         return candidateInterval
 
+    @classmethod
+    def blank(cls) -> Nexus:
+        """
+        Create a new, blank Nexus, with no attached UI.
+        """
+        return cls(
+            _lastIntentionID=1000,
+            _interfaceFactory=_noUIFactory,
+            _userInterface=_theNoUserInterface,
+        )
+
     def cloneWithoutUI(self) -> Nexus:
         """
         Create a deep copy of this L{Nexus}, detached from any user interface,
@@ -234,7 +244,7 @@ class Nexus:
                     yield event
         for streak in self._previousStreaks + [self._currentStreak]:
             for interval in streak:
-                if interval.startTime > startTime:
+                if interval.startTime >= startTime:
                     for event in interval.scoreEvents():
                         debug(
                             "score", event.time > endTime, event, event.points
@@ -349,9 +359,7 @@ class Nexus:
                 debug("interval None, update to real time", newTime)
                 activeSession = self._activeSession(oldTime, newTime)
                 if activeSession is not None:
-                    scoreInfo = idealScore(
-                        self, activeSession.start, activeSession.end
-                    )
+                    scoreInfo = activeSession.idealScoreFor(self)
                     nextDrop = scoreInfo.nextPointLoss
                     if nextDrop is not None and nextDrop > newTime:
                         newInterval = StartPrompt(

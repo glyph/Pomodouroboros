@@ -1,12 +1,18 @@
 # -*- test-case-name: pomodouroboros.model.test.test_sessions -*-
+from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import IntEnum
 from zoneinfo import ZoneInfo
+from typing import TYPE_CHECKING
 
 from datetype import DateTime, Time
 from fritter.boundaries import Day
 from fritter.repeat.rules.datetimes import EachWeekOn
+
+if TYPE_CHECKING:
+    from .ideal import IdealScoreInfo
+    from .nexus import Nexus
 
 
 class Weekday(IntEnum):
@@ -30,6 +36,10 @@ class Session:
     start: float
     end: float
     automatic: bool
+
+    def idealScoreFor(self, nexus: Nexus) -> IdealScoreInfo:
+        from .ideal import idealScore
+        return idealScore(nexus, self.start, self.end)
 
 
 @dataclass
