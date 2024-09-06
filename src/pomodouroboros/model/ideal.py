@@ -1,3 +1,4 @@
+# -*- test-case-name: pomodouroboros.model.test.test_model -*-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -37,20 +38,26 @@ class IdealScoreInfo:
     """
 
     now: float
-    workPeriodEnd: float
+    sessionStart: float
+    sessionEnd: float
     idealScoreNow: ScoreSummary
     nextPointLoss: float | None
     idealScoreNext: ScoreSummary
+    perfectScore: ScoreSummary
 
     def scoreBeforeLoss(self) -> float:
         """
-        What is the score now, before the next loss occurs at C{nextPointLoss}?
+        If the user executes with perfect focus from L{now
+        <IdealScoreInfo.now>} to L{the end of their current session
+        <IdealScoreInfo.sessionEnd>}, before the next loss in ideal score
+        occurs at L{nextPointLoss <IdealScoreInfo.nextPointLoss>}?
         """
         return self.idealScoreNow.totalScore
 
     def scoreAfterLoss(self) -> float:
         """
-        What will the score be after the next loss occurs at C{nextPointLoss}?
+        What would the ideal score be after the next loss occurs at
+        C{nextPointLoss}?
         """
         return self.idealScoreNext.totalScore
 
@@ -62,7 +69,7 @@ class IdealScoreInfo:
 
 
 def idealFuture(
-    nexus: Nexus, activityStart: float, workPeriodEnd: float
+    nexus: Nexus, activityStart: float, sessionEnd: float
 ) -> Nexus:
     """
     Compute the ideal score if we were to maintain focus through the end of
@@ -71,7 +78,7 @@ def idealFuture(
     @param activityStart: The point at which the user begins taking their
         next action to complete ideal future streaks.
 
-    @param workPeriodEnd: The point beyond which we will not count points
+    @param sessionEnd: The point beyond which we will not count points
         any more; i.e. the end of the work day.
     """
     hypothetical = nexus.cloneWithoutUI()
@@ -83,25 +90,14 @@ def idealFuture(
     def newPlaceholder() -> Intention:
         return hypothetical.addIntention(f"placeholder {next(c)}")
 
-    fillerIntentions = [
-        newPlaceholder()
-        for _ in range(max(0, 9 - len(hypothetical.intentions)))
-    ]
-    # fillerIntentions: list[Intention] = []
-
-    def availablePlaceholder() -> Intention:
-        if fillerIntentions:
-            return fillerIntentions.pop(0)
-        return newPlaceholder()
-
-    while hypothetical._lastUpdateTime <= workPeriodEnd:
+    while hypothetical._lastUpdateTime <= sessionEnd:
         workingInterval: AnyIntervalOrIdle = hypothetical._activeInterval
         debug("ideal working interval:", workingInterval)
         if isinstance(workingInterval, (Idle, GracePeriod)):
             # We are either idle or in a grace period, so we should
             # immediately start a pomodoro.
 
-            intention = availablePlaceholder()
+            intention = newPlaceholder()
             startResult = hypothetical.startPomodoro(intention)
             assert startResult in {
                 PomStartResult.Started,
@@ -121,45 +117,58 @@ def idealFuture(
 
 
 def idealScore(
-    nexus: Nexus, workPeriodBegin: float, workPeriodEnd: float
+    nexus: Nexus, sessionStart: float, sessionEnd: float
 ) -> IdealScoreInfo:
     """
     Compute the inflection point for the ideal score the user might achieve.
     We present two hypothetical futures: one where the user executes perfectly
-    from C{workPeriodBegin} to C{workPeriodEnd}, and the other where they wait
-    exactly long enough to lose I{one} element of that perfect score, and then
-    begin executing perfectly.
+    from the current update time of the given C{Nexus} to C{sessionEnd}, and
+    the other where they wait exactly long enough to lose I{one} element of
+    that perfect score, and then begin executing perfectly.
     """
     debug("ideal future 1")
     workPeriodBegin = nexus._lastUpdateTime
-    currentIdeal = idealFuture(nexus, workPeriodBegin, workPeriodEnd)
+    currentIdeal = idealFuture(nexus, workPeriodBegin, sessionEnd)
     idealScoreNow = sorted(
         # TODO: we're scoring all events from all time here
-        currentIdeal.scoreEvents(endTime=workPeriodEnd),
+        currentIdeal.scoreEvents(startTime=sessionStart, endTime=sessionEnd),
         key=lambda it: it.time,
+    )
+    emptyNexus = nexus.blank()
+    emptyNexus.advanceToTime(sessionStart)
+    perfectSummary = ScoreSummary(
+        list(
+            idealFuture(emptyNexus, sessionStart, sessionEnd).scoreEvents(
+                startTime=sessionStart, endTime=sessionEnd
+            )
+        )
     )
     if not idealScoreNow:
         return IdealScoreInfo(
             now=workPeriodBegin,
             idealScoreNow=ScoreSummary(idealScoreNow),
-            workPeriodEnd=workPeriodEnd,
+            sessionStart=sessionStart,
+            sessionEnd=sessionEnd,
             nextPointLoss=None,
             idealScoreNext=ScoreSummary(idealScoreNow),
+            perfectScore=perfectSummary,
         )
     latestScoreTime = idealScoreNow[-1].time
-    pointLossTime = workPeriodBegin + (workPeriodEnd - latestScoreTime)
+    pointLossTime = workPeriodBegin + (sessionEnd - latestScoreTime)
     return IdealScoreInfo(
         now=nexus._lastUpdateTime,
         idealScoreNow=ScoreSummary(idealScoreNow),
-        workPeriodEnd=workPeriodEnd,
+        sessionStart=sessionStart,
+        sessionEnd=sessionEnd,
         nextPointLoss=pointLossTime,
         idealScoreNext=ScoreSummary(
             list(
                 (
-                    idealFuture(nexus, pointLossTime + 1.0, workPeriodEnd)
+                    idealFuture(nexus, pointLossTime + 1.0, sessionEnd)
                     if idealScoreNow
                     else currentIdeal
-                ).scoreEvents(endTime=workPeriodEnd)
+                ).scoreEvents(startTime=sessionStart, endTime=sessionEnd)
             )
         ),
+        perfectScore=perfectSummary,
     )
