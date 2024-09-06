@@ -35,7 +35,7 @@ from ..model.intervals import (
 )
 from ..model.nexus import Nexus
 from ..model.observables import Changes, IgnoreChanges, SequenceObserver
-from ..model.sessions import DailySessionRule, Weekday
+from ..model.sessions import DailySessionRule, Weekday, Session
 from ..model.storage import loadDefaultNexus
 from ..model.util import (
     AMPM,
@@ -87,6 +87,12 @@ class MacUserInterface:
         )
 
     def describeCurrentState(self, description: str) -> None: ...
+
+    def sessionStarted(self, session: Session) -> None:
+        "TODO"
+
+    def sessionEnded(self):
+        "TODO"
 
     def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         self.currentInterval = interval

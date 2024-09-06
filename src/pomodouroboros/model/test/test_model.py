@@ -64,6 +64,12 @@ class TestUserInterface:
         assert self.actualInterval is not None
         self.actualInterval.currentProgress.append(percentComplete)
 
+    def sessionStarted(self, session: Session) -> None:
+        ...
+
+    def sessionEnded(self) -> None:
+        ...
+
     def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         """
         An interval has started, record it.
