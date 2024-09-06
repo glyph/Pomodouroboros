@@ -41,7 +41,7 @@ class StreakRules:
     The rules for what intervals should be part of a streak.
     """
 
-    streakIntervalDurations: Iterable[Duration] = field(
+    streakIntervalDurations: Sequence[Duration] = field(
         default_factory=lambda: [
             each
             for pomMinutes, breakMinutes in [
