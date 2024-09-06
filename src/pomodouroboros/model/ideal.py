@@ -43,6 +43,7 @@ class IdealScoreInfo:
     idealScoreNow: ScoreSummary
     nextPointLoss: float | None
     idealScoreNext: ScoreSummary
+    perfectScore: ScoreSummary
 
     def scoreBeforeLoss(self) -> float:
         """
@@ -89,17 +90,6 @@ def idealFuture(
     def newPlaceholder() -> Intention:
         return hypothetical.addIntention(f"placeholder {next(c)}")
 
-    fillerIntentions = [
-        newPlaceholder()
-        for _ in range(max(0, 9 - len(hypothetical.intentions)))
-    ]
-    # fillerIntentions: list[Intention] = []
-
-    def availablePlaceholder() -> Intention:
-        if fillerIntentions:
-            return fillerIntentions.pop(0)
-        return newPlaceholder()
-
     while hypothetical._lastUpdateTime <= sessionEnd:
         workingInterval: AnyIntervalOrIdle = hypothetical._activeInterval
         debug("ideal working interval:", workingInterval)
@@ -107,7 +97,7 @@ def idealFuture(
             # We are either idle or in a grace period, so we should
             # immediately start a pomodoro.
 
-            intention = availablePlaceholder()
+            intention = newPlaceholder()
             startResult = hypothetical.startPomodoro(intention)
             assert startResult in {
                 PomStartResult.Started,
@@ -144,6 +134,15 @@ def idealScore(
         currentIdeal.scoreEvents(startTime=sessionStart, endTime=sessionEnd),
         key=lambda it: it.time,
     )
+    emptyNexus = nexus.blank()
+    emptyNexus.advanceToTime(sessionStart)
+    perfectSummary = ScoreSummary(
+        list(
+            idealFuture(emptyNexus, sessionStart, sessionEnd).scoreEvents(
+                startTime=sessionStart, endTime=sessionEnd
+            )
+        )
+    )
     if not idealScoreNow:
         return IdealScoreInfo(
             now=workPeriodBegin,
@@ -152,6 +151,7 @@ def idealScore(
             sessionEnd=sessionEnd,
             nextPointLoss=None,
             idealScoreNext=ScoreSummary(idealScoreNow),
+            perfectScore=perfectSummary,
         )
     latestScoreTime = idealScoreNow[-1].time
     pointLossTime = workPeriodBegin + (sessionEnd - latestScoreTime)
@@ -170,4 +170,5 @@ def idealScore(
                 ).scoreEvents(startTime=sessionStart, endTime=sessionEnd)
             )
         ),
+        perfectScore=perfectSummary,
     )

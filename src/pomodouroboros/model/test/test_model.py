@@ -228,8 +228,8 @@ class NexusTests(TestCase):
                     interval=StartPrompt(
                         startTime=1100.0,
                         endTime=1400.0,
-                        pointsBeforeLoss=33.25,
-                        pointsAfterLoss=30.25,
+                        pointsBeforeLoss=21.25,
+                        pointsAfterLoss=15.25,
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1402.0,
@@ -248,8 +248,8 @@ class NexusTests(TestCase):
                     interval=StartPrompt(
                         startTime=1402.0,
                         endTime=1700.0,
-                        pointsBeforeLoss=30.25,
-                        pointsAfterLoss=19.0,
+                        pointsBeforeLoss=15.25,
+                        pointsAfterLoss=4.0,
                     ),
                     actualStartTime=1402.0,
                     actualEndTime=None,
@@ -278,8 +278,8 @@ class NexusTests(TestCase):
                     interval=StartPrompt(
                         startTime=1100.0,
                         endTime=1400.0,
-                        pointsBeforeLoss=30.25,
-                        pointsAfterLoss=27.25,
+                        pointsBeforeLoss=21.25,
+                        pointsAfterLoss=15.25,
                     ),
                     actualStartTime=1100.0,
                     actualEndTime=1150.0,
@@ -313,17 +313,26 @@ class NexusTests(TestCase):
         could execute.
         """
         self.advanceTime(1000)
-        ideal = idealScore(self.nexus, 1000, 2000.0)
-        self.assertEqual(ideal.nextPointLoss, 1400.0)
+        ideal1 = idealScore(self.nexus, 1000.0, 2000.0)
+        self.assertEqual(ideal1.nextPointLoss, 1400.0)
+        pointsForCreatingFirstIntention = 3.0
         pointsForBreak = 1.0
         pointsForSecondIntentionSet = 2.0
         self.assertEqual(
-            ideal.pointsLost(), pointsForBreak + pointsForSecondIntentionSet
+            ideal1.pointsLost(),
+            pointsForBreak
+            + pointsForSecondIntentionSet
+            + pointsForCreatingFirstIntention,
         )
         self.advanceTime(1600)
-        ideal = idealScore(self.nexus, 1000, 2000.0)
-        self.assertEqual(ideal.nextPointLoss, None)
-        self.assertEqual(ideal.pointsLost(), 0.0)
+        ideal2 = idealScore(self.nexus, 1000.0, 2000.0)
+        self.assertEqual(ideal2.nextPointLoss, None)
+        self.assertEqual(ideal2.pointsLost(), 0.0)
+        # The perfect score is the same as the ideal score at the very
+        # beginning of the session.
+        self.assertEqual(
+            ideal1.perfectScore.totalScore, ideal2.perfectScore.totalScore
+        )
 
     def test_exactAdvance(self) -> None:
         """
