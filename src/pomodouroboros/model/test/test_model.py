@@ -43,6 +43,18 @@ T = TypeVar("T")
 
 
 @dataclass
+class SessionChange:
+    session: Session
+    startTime: float
+    progress: list[float] = field(default_factory=list)
+    endTime: float | None = None
+
+    def setEndTime(self, newEndTime: float) -> None:
+        assert self.endTime is None, f"session already ended at {self.endTime}"
+        self.endTime = newEndTime
+
+
+@dataclass
 class TestUserInterface:
     """
     Implementation of all UIEventListener protocols.
@@ -52,6 +64,7 @@ class TestUserInterface:
     clock: IReactorTime
     actions: list[TestInterval] = field(default_factory=list)
     actualInterval: TestInterval | None = None
+    sessionChanges: list[SessionChange] = field(default_factory=list)
 
     def describeCurrentState(self, description: str) -> None: ...
 
@@ -65,10 +78,12 @@ class TestUserInterface:
         self.actualInterval.currentProgress.append(percentComplete)
 
     def sessionStarted(self, session: Session) -> None:
-        ...
+        self.sessionChanges.append(
+            SessionChange(session, self.clock.seconds())
+        )
 
     def sessionEnded(self) -> None:
-        ...
+        self.sessionChanges[-1].setEndTime(self.clock.seconds())
 
     def intervalStart(self, interval: AnyIntervalOrIdle) -> None:
         """
