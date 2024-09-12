@@ -3,11 +3,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from math import cos, pi, sin, sqrt
-from typing import TYPE_CHECKING, Callable, List, Self
+from typing import TYPE_CHECKING, Callable, List, Protocol, Self
 
 from AppKit import (
     NSApp,
-    NSPanel,
     NSAttributedString,
     NSBackingStoreBuffered,
     NSBackingStoreType,
@@ -21,7 +20,9 @@ from AppKit import (
     NSFont,
     NSFontAttributeName,
     NSForegroundColorAttributeName,
+    NSHUDWindowMask,
     NSMakePoint,
+    NSPanel,
     NSRectFill,
     NSRectFillListWithColorsUsingOperation,
     NSScreen,
@@ -29,13 +30,12 @@ from AppKit import (
     NSStrokeWidthAttributeName,
     NSView,
     NSWindow,
+    NSWindowCollectionBehaviorAuxiliary,
+    NSWindowCollectionBehaviorCanJoinAllApplications,
     NSWindowCollectionBehaviorMoveToActiveSpace,
     NSWindowCollectionBehaviorStationary,
-    NSWindowCollectionBehaviorAuxiliary,
     NSWindowStyleMask,
-    NSHUDWindowMask,
 )
-from AppKit import NSWindowCollectionBehaviorCanJoinAllApplications
 from Foundation import NSPoint, NSRect
 from objc import super
 from twisted.internet.defer import CancelledError, Deferred
@@ -45,7 +45,7 @@ from twisted.logger import Logger
 from twisted.python.failure import Failure
 
 from ..model.debugger import debug
-from ..model.util import showFailures, fallible
+from ..model.util import fallible, showFailures
 from ..storage import TEST_MODE
 
 log = Logger()
@@ -264,6 +264,45 @@ def textOpacityCurve(startTime: float, duration: float, now: float):
     return sin(((progressPercent * oomph) + oomph) * (pi / 2)) * maxOpacity
 
 
+class AnimValues(Protocol):
+    def setPercentage(self, percentage: float) -> None: ...
+
+    def setAlpha(self, alpha: float) -> None: ...
+
+
+def animatePct(
+    values: AnimValues,
+    clock: IReactorTime,
+    percentageElapsed: float,
+    previousPercentageElapsed: float,
+    pulseTime: float,
+    baseAlphaValue: float,
+    alphaVariance: float,
+) -> Deferred[None]:
+    if percentageElapsed < previousPercentageElapsed:
+        previousPercentageElapsed = 0
+    elapsedDelta = percentageElapsed - previousPercentageElapsed
+    startTime = clock.seconds()
+
+    def updateSome() -> None:
+        now = clock.seconds()
+        percentDone = (now - startTime) / pulseTime
+        easedEven = math.sin((percentDone * math.pi))
+        easedUp = math.sin((percentDone * math.pi) / 2.0)
+        values.setPercentage(
+            previousPercentageElapsed + (easedUp * elapsedDelta)
+        )
+        if percentDone >= 1.0:
+            alphaValue = baseAlphaValue
+            lc.stop()
+        else:
+            alphaValue = (easedEven * alphaVariance) + baseAlphaValue
+        values.setAlpha(alphaValue)
+
+    lc = LoopingCall(updateSome)
+    return lc.start(1.0 / 30.0).addCallback(lambda ignored: None)
+
+
 @dataclass
 class ProgressController(object):
     """
@@ -322,14 +361,14 @@ class ProgressController(object):
         lc = LoopingCall(updateText)
         lc.clock = clock
 
-        def clear(o: object) -> object:
+        def clearTRIP(o: object) -> object:
             self._textReminderInProgress = None
             return o
 
         self._textReminderInProgress = (
             lc.start(1 / 30)
             .addErrback(lambda f: f.trap(CancelledError))
-            .addBoth(clear)
+            .addBoth(clearTRIP)
         )
 
     def animatePercentage(
@@ -356,37 +395,25 @@ class ProgressController(object):
         self.pulseCounter += 1
         if self.pulseCounter % 3 == 0:
             self._textReminder(clock)
-        startTime = clock.seconds()
-        previousPercentageElapsed = self.percentage
-        if percentageElapsed < previousPercentageElapsed:
-            previousPercentageElapsed = 0
-        elapsedDelta = percentageElapsed - previousPercentageElapsed
 
-        def updateSome() -> None:
-            now = clock.seconds()
-            percentDone = (now - startTime) / pulseTime
-            easedEven = math.sin((percentDone * math.pi))
-            easedUp = math.sin((percentDone * math.pi) / 2.0)
-            self.setPercentage(
-                previousPercentageElapsed + (easedUp * elapsedDelta)
-            )
-            if percentDone >= 1.0:
-                alphaValue = baseAlphaValue
-                lc.stop()
-            else:
-                alphaValue = (easedEven * alphaVariance) + baseAlphaValue
-            self.setAlpha(alphaValue)
-
-        lc = LoopingCall(updateSome)
-
-        def clear(ignored: object) -> None:
+        def clearAnim(result: object | Failure) -> None:
             self._animationInProgress = None
-            if isinstance(ignored, Failure):
-                log.failure("while animating", ignored)
+            if isinstance(result, Failure):
+                log.failure("while animating", result)
 
-        self._animationInProgress = lc.start(1.0 / 30.0).addCallback(clear)
+        animDone = animatePct(
+            values=self,
+            clock=clock,
+            percentageElapsed=percentageElapsed,
+            previousPercentageElapsed=self.percentage,
+            pulseTime=pulseTime,
+            baseAlphaValue=baseAlphaValue,
+            alphaVariance=alphaVariance,
+        )
+        self._animationInProgress = animDone
+        animDone.addBoth(clearAnim)
         self.show()
-        return self._animationInProgress
+        return animDone
 
     def setPercentage(self, percentage: float) -> None:
         """
@@ -598,7 +625,7 @@ def _circledTextWithAlpha(
     aString.drawAtPoint_(stringPoint)
 
 
-clear = NSColor.clearColor()
+clear: NSColor = NSColor.clearColor()
 
 
 def pct2deg(pct: float) -> float:
