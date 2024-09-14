@@ -350,65 +350,71 @@ class Nexus:
             earlyEvaluationSpecialCase = False
             newInterval: AnyStreakInterval | None = None
             currentInterval = self._activeInterval
-            if isinstance(currentInterval, Idle):
-                # If there's no current interval then there's nothing to end
-                # and we can skip forward to current time, and let the start
-                # prompt just begin at the current time, not some point in the
-                # past where some reminder *might* have been appropriate.
-                oldTime = self._lastUpdateTime
-                self._lastUpdateTime = newTime
-                debug("interval None, update to real time", newTime)
-                activeSession = self._activeSession(oldTime, newTime)
-                if activeSession is not None:
-                    scoreInfo = activeSession.idealScoreFor(self)
-                    nextDrop = scoreInfo.nextPointLoss
-                    if nextDrop is not None and nextDrop > newTime:
-                        newInterval = StartPrompt(
-                            self._lastUpdateTime,
-                            nextDrop,
-                            scoreInfo.scoreBeforeLoss(),
-                            scoreInfo.scoreAfterLoss(),
-                        )
-            else:
-                if newTime >= currentInterval.endTime:
-                    self._lastUpdateTime = currentInterval.endTime
-
-                    if currentInterval.intervalType in {
-                        GracePeriod.intervalType,
-                        StartPrompt.intervalType,
-                    }:
-                        # New streaks begin when grace periods expire.
-                        self._upcomingDurations = iter(())
-
-                    newDuration = next(self._upcomingDurations, None)
-                    self.userInterface.intervalProgress(1.0)
-                    self.userInterface.intervalEnd()
-                    if newDuration is None:
-                        # XXX needs test coverage
-                        previous, self._currentStreak = self._currentStreak, []
-                        assert (
-                            previous
-                        ), "rolling off the end of a streak but the streak is empty somehow"
-                        self._previousStreaks.append(previous)
-                    else:
-                        newInterval = preludeIntervalMap[
-                            newDuration.intervalType
-                        ](
-                            currentInterval.endTime,
-                            currentInterval.endTime + newDuration.seconds,
-                        )
-                else:
-                    # We're landing in the middle of an interval, so we need to
-                    # update its progress.  If it's in the middle then we can
-                    # move time all the way forward.
+            match currentInterval:
+                case Idle():
+                    # If there's no current interval then there's nothing to end
+                    # and we can skip forward to current time, and let the start
+                    # prompt just begin at the current time, not some point in the
+                    # past where some reminder *might* have been appropriate.
+                    oldTime = self._lastUpdateTime
                     self._lastUpdateTime = newTime
-                    elapsedWithinInterval = newTime - currentInterval.startTime
-                    intervalDuration = (
-                        currentInterval.endTime - currentInterval.startTime
-                    )
-                    self.userInterface.intervalProgress(
-                        elapsedWithinInterval / intervalDuration
-                    )
+                    debug("interval None, update to real time", newTime)
+                    activeSession = self._activeSession(oldTime, newTime)
+                    if activeSession is not None:
+                        scoreInfo = activeSession.idealScoreFor(self)
+                        nextDrop = scoreInfo.nextPointLoss
+                        if nextDrop is not None and nextDrop > newTime:
+                            newInterval = StartPrompt(
+                                self._lastUpdateTime,
+                                nextDrop,
+                                scoreInfo.scoreBeforeLoss(),
+                                scoreInfo.scoreAfterLoss(),
+                            )
+                case _:
+                    if newTime >= currentInterval.endTime:
+                        self._lastUpdateTime = currentInterval.endTime
+
+                        if currentInterval.intervalType in {
+                            GracePeriod.intervalType,
+                            StartPrompt.intervalType,
+                        }:
+                            # New streaks begin when grace periods expire.
+                            self._upcomingDurations = iter(())
+
+                        newDuration = next(self._upcomingDurations, None)
+                        self.userInterface.intervalProgress(1.0)
+                        self.userInterface.intervalEnd()
+                        if newDuration is None:
+                            # XXX needs test coverage
+                            previous, self._currentStreak = (
+                                self._currentStreak,
+                                [],
+                            )
+                            assert (
+                                previous
+                            ), "rolling off the end of a streak but the streak is empty somehow"
+                            self._previousStreaks.append(previous)
+                        else:
+                            newInterval = preludeIntervalMap[
+                                newDuration.intervalType
+                            ](
+                                currentInterval.endTime,
+                                currentInterval.endTime + newDuration.seconds,
+                            )
+                    else:
+                        # We're landing in the middle of an interval, so we need to
+                        # update its progress.  If it's in the middle then we can
+                        # move time all the way forward.
+                        self._lastUpdateTime = newTime
+                        elapsedWithinInterval = (
+                            newTime - currentInterval.startTime
+                        )
+                        intervalDuration = (
+                            currentInterval.endTime - currentInterval.startTime
+                        )
+                        self.userInterface.intervalProgress(
+                            elapsedWithinInterval / intervalDuration
+                        )
 
             # if we created a new interval for any reason on this iteration
             # through the loop, then we need to mention that fact to the UI.
