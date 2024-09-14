@@ -309,7 +309,8 @@ class Nexus:
                     ), f"{created.start}, {created.end}"
                     assert newEnd > fromWhenT, f"{newEnd} <= {fromWhenT}"
                     if created.end > newTime:
-                        # Don't create sessions that are already over at the current moment.
+                        # Don't create sessions that are already over at the
+                        # current moment.
                         self._sessions.append(created)
                     thisOldTime = created.end
                 else:
