@@ -91,7 +91,7 @@ class MacUserInterface:
     def sessionStarted(self, session: Session) -> None:
         "TODO"
 
-    def sessionEnded(self):
+    def sessionEnded(self) -> None:
         "TODO"
 
     def intervalStart(self, interval: AnyIntervalOrIdle) -> None:

@@ -29,8 +29,7 @@ class IntentionRow(NSObject):
     if TYPE_CHECKING:
 
         @classmethod
-        def alloc(cls) -> IntentionRow:
-            ...
+        def alloc(cls) -> IntentionRow: ...
 
     def initWithIntention_andNexus_(
         self, intention: Intention, nexus: Nexus
@@ -107,7 +106,7 @@ class IntentionRow(NSObject):
         return f"{creationDate.isoformat(timespec='minutes', sep=' ')}"
 
     @modificationText.getter
-    def _getModificationText(self):
+    def _getModificationText(self) -> str:
         modificationDate = datetime.fromtimestamp(self.intention.modified)
         return f"{modificationDate.isoformat(timespec='minutes', sep=' ')}"
 
@@ -119,9 +118,9 @@ class IntentionDataSource(NSObject):
 
     # pragma mark Attributes
 
-    intentionRowMap: ModelConverter[
-        Intention, IntentionRow
-    ] = objc.object_property()
+    intentionRowMap: ModelConverter[Intention, IntentionRow] = (
+        objc.object_property()
+    )
     nexus: Nexus | None = objc.object_property()
 
     selectedIntention: IntentionRow | None = objc.object_property()
@@ -321,14 +320,16 @@ class IntentionPomodorosDataSource(NSObject):
             "date": str(dt.date()),
             "startTime": str(dt.time().replace(microsecond=0)),
             "endTime": str(et.time().replace(microsecond=0)),
-            "evaluation": ""
-            if e is None
-            else {
-                EvaluationResult.distracted: "🦋",
-                EvaluationResult.interrupted: "🗣",
-                EvaluationResult.focused: "🤔",
-                EvaluationResult.achieved: "✅",
-            }[e.result],
+            "evaluation": (
+                ""
+                if e is None
+                else {
+                    EvaluationResult.distracted: "🦋",
+                    EvaluationResult.interrupted: "🗣",
+                    EvaluationResult.focused: "🤔",
+                    EvaluationResult.achieved: "✅",
+                }[e.result]
+            ),
             # TODO: should be a clickable link to the session that this was in,
             # but first we need that feature from the model.
             "inSession": "???",
@@ -338,9 +339,9 @@ class IntentionPomodorosDataSource(NSObject):
         debug("CLEARING SELECTION/intpom data!")
         self.selectedPomodoro = None
         self.hasSelection = False
-        self.canEvaluateDistracted = (
-            self.canEvaluateInterrupted
-        ) = self.canEvaluateFocused = self.canEvaluateAchieved = False
+        self.canEvaluateDistracted = self.canEvaluateInterrupted = (
+            self.canEvaluateFocused
+        ) = self.canEvaluateAchieved = False
 
     # pragma mark NSTableViewDelegate
     @interactionRoot
@@ -359,7 +360,7 @@ class IntentionPomodorosDataSource(NSObject):
         # should also update this last one when reloading data?
         self.canEvaluateAchieved = idx == (len(self.backingData) - 1)
 
-    def doEvaluate_(self, er: EvaluationResult):
+    def doEvaluate_(self, er: EvaluationResult) -> None:
         assert (
             self.selectedPomodoro is not None
         ), "must have a pomodorodo selected and the UI should be enforcing that"

@@ -224,7 +224,7 @@ def midScreenSizer(screen: NSScreen) -> NSRect:
 def hudWindowOn(
     screen: NSScreen,
     sizer: Callable[[NSScreen], NSRect],
-    styleMask=(NSBorderlessWindowMask | NSHUDWindowMask),
+    styleMask: int = (NSBorderlessWindowMask | NSHUDWindowMask),
 ) -> HUDWindow:
     app = NSApp()
     backing = NSBackingStoreBuffered
@@ -248,7 +248,7 @@ DEFAULT_BASE_ALPHA = 0.15
 ProgressViewFactory = Callable[[], AbstractProgressView]
 
 
-def textOpacityCurve(startTime: float, duration: float, now: float):
+def textOpacityCurve(startTime: float, duration: float, now: float) -> float:
     """
     t - float from 0-1
     """
@@ -349,7 +349,7 @@ class ProgressController(object):
         start = clock.seconds()
         endTime = start + totalTime
 
-        def updateText():
+        def updateText() -> None:
             now = clock.seconds()
             if now > endTime:
                 self.setTextAlpha(0.0)
@@ -600,7 +600,7 @@ def makeText(
 
 def _circledTextWithAlpha(
     center: NSPoint, text: str, alpha: float, color: NSColor
-):
+) -> None:
     black = NSColor.blackColor()
     aString = makeText(text, color, alpha)
     outline = makeText(text, color, 1.0, black, alpha, 5.0)

@@ -12,6 +12,7 @@ What do I want in here?
 
             - pass/fail status
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -84,7 +85,7 @@ class PomObserver(Protocol):
         of setting the intention.
         """
 
-    def dayOver(self):
+    def dayOver(self) -> None:
         """
         The day is over, so there will be no more intervals.
         """
@@ -546,7 +547,7 @@ class Day(object):
         Create a new pomodoro that doesn't overlap with existing ones.
         """
 
-        def lengths():
+        def lengths() -> tuple[slice, datetime, timedelta, timedelta]:
             allIntervals = self.elapsedIntervals + self.pendingIntervals
             position = slice(len(self.pendingIntervals), 0)
             if allIntervals:
