@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .intention import Estimate, Intention
     from .intervals import AnyIntervalOrIdle, Pomodoro
     from .nexus import Nexus
+    from .sessions import Session
 
 
 class IntervalType(Enum):
@@ -69,6 +70,16 @@ class UIEventListener(Protocol):
         The interval has ended. Hide the progress bar.
         """
 
+    def sessionStarted(self, session: Session) -> None:
+        """
+        A session has started, and is now running.
+        """
+
+    def sessionEnded(self) -> None:
+        """
+        The currently running session has ended.
+        """
+
     def intentionListObserver(self) -> SequenceObserver[Intention]:
         """
         Return a change observer for the full list of L{Intention}s.
@@ -119,6 +130,12 @@ class NoUserInterface(UIEventListener):
         ...
 
     def intervalEnd(self) -> None:
+        ...
+
+    def sessionStarted(self, session: Session) -> None:
+        ...
+
+    def sessionEnded(self) -> None:
         ...
 
     def intentionListObserver(self) -> SequenceObserver[Intention]:

@@ -1,5 +1,5 @@
 from typing import Self
-from Foundation import NSMakePoint
+from Foundation import NSMakePoint, NSNotification
 from AppKit import (
     NSNib,
     NSObject,
@@ -33,7 +33,7 @@ class HUDMultipleProgress(NSObject):
         self.screen = screen
         return self
 
-    def someSpaceActivated_(self, theSpace) -> None:
+    def someSpaceActivated_(self, notification: NSNotification) -> None:
         print("IOAS", self.win.isOnActiveSpace())
         self.win.setIsVisible_(False)
         self.win.setIsVisible_(True)
@@ -50,9 +50,9 @@ class HUDMultipleProgress(NSObject):
         sw = screenFrame.size.width / 2
         sh = screenFrame.size.height * (5 / 6)
         winOrigin = NSMakePoint(
-                screenFrame.origin.x + (sw - (w / 2)),
-                screenFrame.origin.y + (sh - (h / 2)),
-            )
+            screenFrame.origin.x + (sw - (w / 2)),
+            screenFrame.origin.y + (sh - (h / 2)),
+        )
         print(f"screenOrigin: {screenFrame.origin} winOrigin: {winOrigin}")
         self.win.setFrameOrigin_(winOrigin)
 

@@ -406,7 +406,7 @@ class DayManager(object):
         progressController = ProgressController()
 
         def listRefresher() -> None:
-            def refreshListOnLoop():
+            def refreshListOnLoop() -> None:
                 NSLog("refreshing list from listRefresher")
                 self.update()
 
@@ -450,7 +450,7 @@ class DayManager(object):
         self.observer.refreshList()
 
     def doSetIntention(self) -> None:
-        async def whatever():
+        async def whatever() -> None:
             await setIntention(self.reactor, self.day, self.dayLoader)
             NSLog("refreshing after setting intention")
             self.observer.refreshList()
@@ -632,7 +632,7 @@ class DescriptionChanger(NSObject):
         keyPath: str,
         ofObject: Dict[str, Any],
         change: Dict[str, Any],
-        context,
+        context: object,
     ) -> None:
         if change.get("notificationIsPrior"):
             return
@@ -813,9 +813,11 @@ def main(reactor: IReactorTime) -> None:
     ctrl = DayEditorController.alloc().initWithClock_andDayLoader_(
         reactor, dayLoader
     )
-    loaded, topLevelObjects = NSNib.alloc().initWithNibNamed_bundle_(
-        "GoalListWindow.nib", None
-    ).instantiateWithOwner_topLevelObjects_(ctrl, None)
+    loaded, topLevelObjects = (
+        NSNib.alloc()
+        .initWithNibNamed_bundle_("GoalListWindow.nib", None)
+        .instantiateWithOwner_topLevelObjects_(ctrl, None)
+    )
     setupNotifications()
     withdrawIntentPrompt()
     dayManager = DayManager.new(reactor, ctrl, dayLoader)

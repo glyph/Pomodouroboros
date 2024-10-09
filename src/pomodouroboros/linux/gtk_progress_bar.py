@@ -1,4 +1,3 @@
-
 # installation instructions:
 # sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-4.0
 
@@ -10,7 +9,7 @@
 # six==1.16.0
 
 # Load Gtk
-import gi                       # type:ignore
+import gi  # type:ignore
 
 gi.require_version("GLib", "2.0")
 from gi.repository import GLib  # type:ignore
@@ -30,7 +29,8 @@ css = Gtk.CssProvider()
 # button:active {background-image: image(brown);}
 # """)
 
-css.load_from_data("""
+css.load_from_data(
+    """
 progressbar text {
   color: yellow;
   font-weight: bold;
@@ -46,16 +46,17 @@ progressbar trough {
  background-image: none;
  background-color: #0f0;
 }
-""")
+"""
+)
 
 from Xlib.display import Display as XOpenDisplay  # type:ignore
-from ewmh import EWMH                             # type:ignore
+from ewmh import EWMH  # type:ignore
 
-from cairo import Region        # type:ignore
+from cairo import Region  # type:ignore
 
 
 # When the application is launched…
-def on_activate(app):
+def on_activate(app: Gtk.Application) -> None:
     # … create a new window…
     win = Gtk.ApplicationWindow(application=app, title="Should Never Focus")
     win.set_opacity(0.25)
@@ -73,14 +74,16 @@ def on_activate(app):
         prog.set_fraction(frac)
         return True
 
-    to = GLib.timeout_add((1000//10), refraction)
+    to = GLib.timeout_add((1000 // 10), refraction)
 
     prog.set_fraction(0.7)
 
     win.set_child(prog)
     gdisplay = prog.get_display()
 
-    Gtk.StyleContext.add_provider_for_display(gdisplay, css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+    Gtk.StyleContext.add_provider_for_display(
+        gdisplay, css, Gtk.STYLE_PROVIDER_PRIORITY_USER
+    )
 
     # we can't actually avoid getting focus, but in case the compositors ever
     # fix themselves, let's give it our best try

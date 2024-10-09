@@ -29,7 +29,7 @@ class SessionDataSource(NSObject):
 
     # This table is not editable.
     def tableView_shouldEditTableColumn_row_(
-        self, tableView, shouldEditTableColumn, row
+        self, tableView: NSTableView, shouldEditTableColumn: bool, row: int
     ) -> bool:
         return False
 
