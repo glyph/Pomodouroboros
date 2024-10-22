@@ -142,6 +142,9 @@ class AbstractProgressView(NSView):
         self._textAlpha = newAlpha
         self.setNeedsDisplay_(True)
 
+    def percentage(self) -> float:
+        return self._percentage
+
     def setPercentage_(self, newPercentage: float) -> None:
         """
         Set the percentage-full here.
@@ -149,11 +152,17 @@ class AbstractProgressView(NSView):
         self._percentage = newPercentage
         self.setNeedsDisplay_(True)
 
+    def bonusPercentage1(self) -> float:
+        return self._bonusPercentage1
+
     def setBonusPercentage1_(self, newBonusPercentage: float) -> None:
         if newBonusPercentage is None:
             return
         self._bonusPercentage1 = newBonusPercentage
         self.setNeedsDisplay_(True)
+
+    def bonusPercentage2(self) -> float:
+        return self._bonusPercentage2
 
     def setBonusPercentage2_(self, newBonusPercentage: float) -> None:
         if newBonusPercentage is None:
