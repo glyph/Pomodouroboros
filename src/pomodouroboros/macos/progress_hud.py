@@ -740,5 +740,6 @@ def _removeWindows(self: ProgressController) -> None:
     self.progressViews = []
     self.hudWindows, oldHudWindows = [], self.hudWindows
     for eachWindow in oldHudWindows:
+        eachWindow.setIsVisible_(False)
         eachWindow.close()
         eachWindow.setContentView_(None)
