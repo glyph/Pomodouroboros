@@ -61,7 +61,7 @@ basicMessageIdentifier = "basic-message"
 theDelegate = NotificationDelegate.alloc().init()
 
 
-def askForIntent(callback: Callable[[str], None]):
+def askForIntent(callback: Callable[[str], None]) -> None:
     # When we ask for an intention, we should remove the reminder of the intention.
     notificationCenter.removeDeliveredNotificationsWithIdentifiers_(
         [basicMessageIdentifier]
@@ -97,7 +97,9 @@ def withdrawIntentPrompt() -> None:
     )
 
 
-def notify(title="", subtitle="", informativeText=""):
+def notify(
+    title: str = "", subtitle: str = "", informativeText: str = ""
+) -> None:
     withdrawIntentPrompt()
     content = UNMutableNotificationContent.alloc().init()
     content.setTitle_(title)
@@ -125,7 +127,7 @@ def notify(title="", subtitle="", informativeText=""):
     )
 
 
-def setupNotifications():
+def setupNotifications() -> None:
     notificationCenter.setDelegate_(theDelegate)
     identifier = "SET_INTENTION"
     title = "Set Intention"
@@ -141,7 +143,7 @@ def setupNotifications():
     options = 0
     actions = [setIntentionAction]
     # I think these are mostly to do with Siri
-    intentIdentifiers = []
+    intentIdentifiers: list[str] = []
     setIntentionPromptCategory = UNNotificationCategory.categoryWithIdentifier_actions_intentIdentifiers_options_(
         setIntentionCategoryIdentifier, actions, intentIdentifiers, options
     )

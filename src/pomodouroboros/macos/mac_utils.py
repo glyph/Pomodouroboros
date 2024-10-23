@@ -45,11 +45,9 @@ SelfType = TypeVar("SelfType", contravariant=True)
 class Descriptor(Protocol[ForGetting, ForSetting, SelfType]):
     def __get__(
         self, instance: SelfType, owner: type | None = None
-    ) -> ForGetting:
-        ...
+    ) -> ForGetting: ...
 
-    def __set__(self, instance: SelfType, value: ForSetting) -> None:
-        ...
+    def __set__(self, instance: SelfType, value: ForSetting) -> None: ...
 
 
 PyType = TypeVar("PyType")
@@ -94,8 +92,7 @@ class Forwarder(Generic[SelfType]):
         name: str,
         pyToC: Callable[[PyType], ObjCType],
         cToPy: Callable[[ObjCType], PyType],
-    ) -> Descriptor[ObjCType, ObjCType, SelfType]:
-        ...
+    ) -> Descriptor[ObjCType, ObjCType, SelfType]: ...
 
     def forwarded(
         self,
@@ -255,7 +252,7 @@ class SometimesBackground:
             app = NSApplication.sharedApplication()
             app.unhide_(self)
 
-    def someSpaceActivated_(self, notification) -> None:
+    def someSpaceActivated_(self, notification: NSNotification) -> None:
         """
         Sometimes, fullscreen application stop getting the HUD overlay.
         """

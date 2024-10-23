@@ -53,7 +53,7 @@ class ChoiceAction(NSObject):
 
 
 def answerWith(deferred: Deferred[T], answer: T) -> Callable[[], None]:
-    def answerer():
+    def answerer() -> None:
         debug("giving result", answer)
         deferred.callback(answer)
 
