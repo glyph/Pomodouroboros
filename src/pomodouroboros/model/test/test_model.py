@@ -47,11 +47,11 @@ class SessionChange:
     session: Session
     startTime: float
     progress: list[float] = field(default_factory=list)
-    endTime: float | None = None
+    sessionEndTime: float | None = None
 
     def setEndTime(self, newEndTime: float) -> None:
-        assert self.endTime is None, f"session already ended at {self.endTime}"
-        self.endTime = newEndTime
+        assert self.sessionEndTime is None, f"session already ended at {self.sessionEndTime}"
+        self.sessionEndTime = newEndTime
 
 
 @dataclass
