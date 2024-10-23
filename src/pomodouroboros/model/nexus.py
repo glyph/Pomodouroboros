@@ -4,10 +4,14 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Iterable, Iterator, MutableSequence, Sequence
+from typing import Callable, Iterable, Iterator, MutableSequence, Sequence
 from zoneinfo import ZoneInfo
 
 from datetype import aware
+from fritter.boundaries import Scheduler
+from fritter.drivers.memory import MemoryDriver
+from fritter.drivers.twisted import TwistedTimeDriver
+from fritter.scheduler import schedulerFromDriver
 
 from .boundaries import (
     EvaluationResult,
@@ -132,6 +136,19 @@ class Nexus:
     )
 
     _lastUpdateTime: float = field(default=0.0)
+
+    _scheduler: Scheduler[float, Callable[[], None], int] | None = None
+    _memDriver: MemoryDriver | None = None
+
+    """
+    I want to put the nexus into a state where there is always an active
+    interval, always scheduled against _scheduler to do something upon its end.
+    One way to do this is to force the caller to pass in a _scheduler *and* a
+    current interval, then make the 'front door' construction a classmethod
+    that builds this for us.  Which should be fine, because there are only a
+    few call sites for constructing a nexus, even the tests only have a single
+    one in setUp.
+    """
 
     def _newIdleInterval(self) -> Idle:
         from math import inf
@@ -346,6 +363,12 @@ class Nexus:
         # that notifications of interval starts happen in the correct order
         # (particularly important so tests can be exact).
         self.userInterface
+
+        if self._scheduler is None:
+            self._memDriver = MemoryDriver()
+            self._scheduler = schedulerFromDriver(self._memDriver)
+        assert self._memDriver is not None, "initialized"
+        self._memDriver.advance(newTime - self._memDriver.now())
 
         debug("begin advance from", self._lastUpdateTime, "to", newTime)
         earlyEvaluationSpecialCase = (
