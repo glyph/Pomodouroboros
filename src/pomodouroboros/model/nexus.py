@@ -285,8 +285,22 @@ class Nexus:
         ]
 
     def _activeSession(self, oldTime: float, newTime: float) -> Session | None:
+        """
+        Determine what the current active session is.
 
-        oldTime = max(oldTime, newTime - (86400 * 7))
+        @param oldTime: the time that we have already considered.  We need to
+            use some reference point to start searching for new automatic
+            sessions, so this sets a lower bound on the time we have to search
+            from.
+
+        @param newTime: the time it is now.
+        """
+        # an absurdly high bound for a session length, 7 days; we could
+        # probably dial this down to 18 hours just based on, like, human
+        # physiology.
+        MAX_SESSION_LENGTH = (86400 * 7)
+
+        oldTime = max(oldTime, newTime - MAX_SESSION_LENGTH)
 
         for rule in self._sessionRules:
             thisOldTime = oldTime
@@ -337,11 +351,9 @@ class Nexus:
         earlyEvaluationSpecialCase = (
             # if our current streak is not empty (i.e. we are continuing it)
             self._currentStreak
-            # and the end time of the current interval in the current streak is
-            # not set
-            and (currentEndTime := self._currentStreak[-1].endTime) is not None
-            # and the current end time happens to correspond *exactly* to the last update time
-            and currentEndTime == self._lastUpdateTime
+            # and the current end time happens to correspond *exactly* to the
+            # last update time
+            and self._currentStreak[-1].endTime == self._lastUpdateTime
             # then even if the new time has not moved and we are still on the
             # last update time exactly, we need to process a loop update
             # because the timer at the end of the interval has moved.
@@ -500,15 +512,17 @@ class Nexus:
                 # special case.  Evaluating it in other ways allows it to
                 # continue.  (Might want an 'are you sure' in the UI for this,
                 # since other evaluations can be reversed.)
-                assert pomodoro is self._activeInterval
+                assert pomodoro is (
+                    active := self._activeInterval
+                ), f"""
+                   the pomodoro {pomodoro} is not ended yet, but it is not the
+                   active interval {active}
+                   """
                 pomodoro.endTime = timestamp
                 # We now need to advance back to the current time since we've
                 # changed the landscape; there's a new interval that now starts
                 # there, and we need to emit our final progress notification
                 # and build that new interval.
-
-                # XXX this doesn't work any more, since we drive the loop based
-                # on being out of date on the actual time.
                 self.advanceToTime(self._lastUpdateTime)
 
 
