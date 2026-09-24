@@ -81,3 +81,44 @@ GUI development tools) make a virtualenv however you prefer to do that, run
 Note that if you really want to keep using the app, `./testme` creates a
 different test bundle so you can run through some quick, fake test pomodoros
 without conflicting with the real-time instance that you're using.
+
+## Troubleshooting `./mac-dev-install` / `./runme`
+
+`./runme` builds a real, signed `.app` bundle via `py2app`/`encrust`, so it's
+fussier about your Python install than a typical virtualenv workflow. A few
+gotchas if it doesn't work out of the box:
+
+- **`AttributeError: module 'zlib' has no attribute '__file__'` during
+  `encrust build`.** This means your virtualenv's Python has `zlib` (and
+  probably other stdlib extension modules) statically linked into the
+  interpreter instead of built as a separate shared object — for example a
+  `uv`-managed "standalone" CPython build. `py2app` needs to copy `zlib`'s
+  file, so it can't package a build made from this kind of interpreter. Fix:
+  make the venv from a regular framework/shared build of Python instead (e.g.
+  a python.org installer, or `pyenv install 3.13.x` without
+  `PYTHON_CONFIGURE_OPTS` that disable shared extensions), and re-run
+  `./mac-dev-install` with that interpreter active.
+
+- **`codesign` fails with a `TypeError`/`RuntimeError` about `None`, or
+  `encrust build` can't find a signing identity.** `encrust` reads
+  `~/.encrust.json` for its Apple code-signing identity. If you don't have an
+  Apple Developer Program membership and a "Developer ID Application"
+  certificate installed (check with `security find-identity -v -p
+  codesigning`), that file's `identity` field will be `null`, which breaks the
+  `codesign --sign <identity>` call. For local development only (no
+  notarization, not for distribution), set it to ad-hoc signing instead:
+  `{"identity": "-", "profile": null, "appleID": null, "teamID": null}`.
+
+- **App fails to launch with `dlopen(...): ... not valid for use in process:
+  mapping process and mapped file (non-platform) have different Team IDs`.**
+  This happens when using ad-hoc signing (see above) together with Hardened
+  Runtime (`--options runtime`, which `encrust` always passes): macOS treats
+  every ad-hoc signature as a distinct identity, so Library Validation blocks
+  the main executable from loading the bundled `Python.framework` even though
+  both show `TeamIdentifier=not set`. For local ad-hoc builds, add
+  `com.apple.security.cs.disable-library-validation` (`true`) next to
+  `com.apple.security.cs.allow-unsigned-executable-memory` in the entitlements
+  plist `encrust` uses (`required-python-entitlements.plist` in the
+  `encrust` package itself — this isn't currently configurable from
+  `encrust_setup.py`). A real Developer ID certificate (see above) avoids
+  needing this entirely, since then every file shares the same real Team ID.
