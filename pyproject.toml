@@ -22,7 +22,7 @@ dependencies = [
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-version = "0.5.7"
+version = "0.5.8"
 
 [project.optional-dependencies]
 
