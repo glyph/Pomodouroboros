@@ -9,7 +9,7 @@ altgraph==0.17.5
     #   macholib
     #   modulegraph
     #   py2app
-ast-serialize==0.11.2
+ast-serialize==0.13.1
     # via mypy
 attrs==26.1.0
     # via
@@ -59,13 +59,13 @@ macholib==1.16.4
     # via py2app
 modulegraph==0.19.7
     # via py2app
-mypy==2.3.1
+mypy==2.4.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   mypy-zope
 mypy-extensions==1.1.0
     # via mypy
-mypy-zope==1.0.16
+mypy-zope==1.0.17
     # via Pomodouroboros (pyproject.toml)
 packaging==26.3
     # via
@@ -75,21 +75,21 @@ packaging==26.3
     #   wheel
 pathspec==1.1.1
     # via mypy
-pip-tools==7.6.1
+pip-tools==7.6.2
     # via Pomodouroboros (pyproject.toml)
 priority==1.3.0
     # via twisted
 py2app==0.28.10
     # via encrust
-pycairo==1.29.1
+pycairo==1.29.2
     # via
     #   Pomodouroboros (pyproject.toml)
     #   pygobject
-pycparser==3.0
+pycparser==3.12
     # via cffi
-pygobject==3.58.0
+pygobject==3.58.1
     # via pygobject-stubs
-pygobject-stubs==2.17.0
+pygobject-stubs==2.20.0
     # via Pomodouroboros (pyproject.toml)
 pyopenssl==26.4.0
     # via twisted
@@ -97,7 +97,7 @@ pyproject-hooks==1.3.3
     # via
     #   build
     #   pip-tools
-python-dateutil==2.9.0.post0
+python-dateutil==3.0.0
     # via Pomodouroboros (pyproject.toml)
 service-identity==26.1.0
     # via twisted
@@ -107,24 +107,26 @@ twisted==26.4.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   encrust
-types-python-dateutil==2.9.0.20260807
+types-python-dateutil==2.9.0.20261021
     # via Pomodouroboros (pyproject.toml)
-types-python-xlib==0.33.0.20260724
+types-python-xlib==0.33.0.20261006
     # via Pomodouroboros (pyproject.toml)
 typing-extensions==4.16.0
     # via
     #   mypy
     #   pygobject-stubs
     #   twisted
-tzdata==2026.4
-    # via fritter
+tzdata==2026.5
+    # via
+    #   fritter
+    #   python-dateutil
 ulid-py==1.1.0
     # via Pomodouroboros (pyproject.toml)
 wheel==0.48.0
     # via pip-tools
 zope-event==6.2
     # via zope-schema
-zope-interface==8.6
+zope-interface==8.7
     # via
     #   mypy-zope
     #   twisted
@@ -133,11 +135,11 @@ zope-schema==8.1
     # via mypy-zope
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==26.2.1
+pip==26.2.2
     # via
     #   Pomodouroboros (pyproject.toml)
     #   pip-tools
-setuptools==84.0.0
+setuptools==84.2.1
     # via
     #   Pomodouroboros (pyproject.toml)
     #   modulegraph
