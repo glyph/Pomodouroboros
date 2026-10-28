@@ -81,3 +81,8 @@ GUI development tools) make a virtualenv however you prefer to do that, run
 Note that if you really want to keep using the app, `./testme` creates a
 different test bundle so you can run through some quick, fake test pomodoros
 without conflicting with the real-time instance that you're using.
+
+## AI Policy
+
+This repository follows the [Twisted AI
+Policy](https://docs.twisted.org/en/latest/development/ai-policy.html).
