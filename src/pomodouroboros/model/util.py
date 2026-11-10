@@ -156,8 +156,8 @@ def ampmify(hour: int, ampm: AMPM) -> int:
 
 
 def addampm(hour: int) -> tuple[int, AMPM]:
-    if hour < 0 or hour > 24:
-        raise ValueError(f"{hour} out of range 0-24")
+    if hour < 0 or hour > 23:
+        raise ValueError(f"{hour} out of range 0-23")
     if hour == 0:
         return (12, "AM")
     elif hour == 12:

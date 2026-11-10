@@ -38,4 +38,6 @@ class AMPMTests(TestCase):
         with self.assertRaises(ValueError):
             addampm(25)
         with self.assertRaises(ValueError):
+            addampm(24)
+        with self.assertRaises(ValueError):
             ampmify(13, "AM")
