@@ -9,7 +9,7 @@ altgraph==0.17.5
     #   macholib
     #   modulegraph
     #   py2app
-anyio==4.15.1
+anyio==4.16.0
     # via httpx
 appdirs==1.4.4
     # via twisted
@@ -34,7 +34,7 @@ cryptography==50.0.2
     #   pyopenssl
     #   service-identity
     #   twisted
-cython-test-exception-raiser==1.0.2
+cython-test-exception-raiser==26.4.1
     # via twisted
 datetype==2025.11.30
     # via
@@ -61,7 +61,7 @@ hyperframe==6.1.0
     # via h2
 hyperlink==21.0.0
     # via twisted
-hypothesis==6.170.11
+hypothesis==6.170.15
     # via twisted
 idna==3.20
     # via
@@ -87,7 +87,7 @@ pycparser==3.12
     # via cffi
 pyhamcrest==2.1.0
     # via twisted
-pyobjc-core==12.2.2
+pyobjc-core==13.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   pyobjc-framework-cfnetwork
@@ -97,11 +97,11 @@ pyobjc-core==12.2.2
     #   pyobjc-framework-usernotifications
     #   quickmachotkey
     #   twisted
-pyobjc-framework-cfnetwork==12.2.2
+pyobjc-framework-cfnetwork==13.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   twisted
-pyobjc-framework-cocoa==12.2.2
+pyobjc-framework-cocoa==13.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   pyobjc-framework-cfnetwork
@@ -111,13 +111,13 @@ pyobjc-framework-cocoa==12.2.2
     #   quickmacapp
     #   quickmachotkey
     #   twisted
-pyobjc-framework-exceptionhandling==12.2.2
+pyobjc-framework-exceptionhandling==13.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   quickmacapp
-pyobjc-framework-servicemanagement==12.2.2
+pyobjc-framework-servicemanagement==13.0
     # via Pomodouroboros (pyproject.toml)
-pyobjc-framework-usernotifications==12.2.2
+pyobjc-framework-usernotifications==13.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   quickmacapp
@@ -125,7 +125,7 @@ pyopenssl==26.4.0
     # via twisted
 pyserial==3.5
     # via twisted
-python-dateutil==3.0.0
+python-dateutil==4.0.0
     # via Pomodouroboros (pyproject.toml)
 quickmacapp==2026.2.3
     # via Pomodouroboros (pyproject.toml)
@@ -133,11 +133,9 @@ quickmachotkey==2025.7.28
     # via Pomodouroboros (pyproject.toml)
 service-identity==26.1.0
     # via twisted
-six==1.17.0
-    # via python-dateutil
 sortedcontainers==2.4.0
     # via hypothesis
-twisted==26.4.0
+twisted==26.10.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   quickmacapp
@@ -145,7 +143,7 @@ typing-extensions==4.16.0
     # via
     #   anyio
     #   twisted
-tzdata==2026.5
+tzdata==2026.6
     # via
     #   fritter
     #   python-dateutil

@@ -21,7 +21,7 @@ build==1.6.1
     # via pip-tools
 cffi==2.1.1
     # via cryptography
-click==8.5.0
+click==8.5.1
     # via
     #   encrust
     #   pip-tools
@@ -59,11 +59,11 @@ macholib==1.16.4
     # via py2app
 modulegraph==0.19.7
     # via py2app
-mypy==2.4.0
+mypy==2.4.1
     # via
     #   Pomodouroboros (pyproject.toml)
     #   mypy-zope
-mypy-extensions==1.1.0
+mypy-extensions==1.2.0
     # via mypy
 mypy-zope==1.0.17
     # via Pomodouroboros (pyproject.toml)
@@ -75,7 +75,7 @@ packaging==26.3
     #   wheel
 pathspec==1.1.1
     # via mypy
-pip-tools==7.6.2
+pip-tools==7.7.0
     # via Pomodouroboros (pyproject.toml)
 priority==1.3.0
     # via twisted
@@ -97,26 +97,24 @@ pyproject-hooks==1.3.3
     # via
     #   build
     #   pip-tools
-python-dateutil==3.0.0
+python-dateutil==4.0.0
     # via Pomodouroboros (pyproject.toml)
 service-identity==26.1.0
     # via twisted
-six==1.17.0
-    # via python-dateutil
-twisted==26.4.0
+twisted==26.10.0
     # via
     #   Pomodouroboros (pyproject.toml)
     #   encrust
-types-python-dateutil==2.9.0.20261021
+types-python-dateutil==2.9.0.20261116
     # via Pomodouroboros (pyproject.toml)
-types-python-xlib==0.33.0.20261006
+types-python-xlib==0.33.0.20261101
     # via Pomodouroboros (pyproject.toml)
 typing-extensions==4.16.0
     # via
     #   mypy
     #   pygobject-stubs
     #   twisted
-tzdata==2026.5
+tzdata==2026.6
     # via
     #   fritter
     #   python-dateutil
@@ -135,7 +133,7 @@ zope-schema==8.1
     # via mypy-zope
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==26.2.2
+pip==26.3
     # via
     #   Pomodouroboros (pyproject.toml)
     #   pip-tools
